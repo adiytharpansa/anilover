@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
@@ -46,6 +47,7 @@ import androidx.compose.material.icons.filled.PictureInPicture
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material3.CircularProgressIndicator
@@ -107,6 +109,8 @@ class PlayerActivity : ComponentActivity() {
         const val EXTRA_EPISODE = "episode"
         const val EXTRA_EPISODES = "episodes"
         const val EXTRA_START_POS = "start_pos"
+        const val EXTRA_AUTOPLAY = "autoplay_next"
+        const val EXTRA_SUBTITLE = "subtitle_default"
     }
 
     private var playerRef: ExoPlayer? = null
@@ -130,6 +134,8 @@ class PlayerActivity : ComponentActivity() {
         val title = intent.getStringExtra(EXTRA_TITLE) ?: ""
         currentEp = intent.getIntExtra(EXTRA_EPISODE, 1)
         val startPos = intent.getLongExtra(EXTRA_START_POS, 0L)
+        val autoplayNext = intent.getBooleanExtra(EXTRA_AUTOPLAY, true)
+        val subtitleDefault = intent.getStringExtra(EXTRA_SUBTITLE) ?: "id"
         val episodes = parseEpisodes(intent.getStringExtra(EXTRA_EPISODES) ?: "[]")
 
         setContent {
@@ -140,6 +146,8 @@ class PlayerActivity : ComponentActivity() {
                     episodes = episodes,
                     initialEpisode = currentEp,
                     startPos = startPos,
+                    autoplayNext = autoplayNext,
+                    subtitleDefault = subtitleDefault,
                     store = store,
                     inPip = inPip,
                     onBack = { finish() },
@@ -204,7 +212,7 @@ class PlayerActivity : ComponentActivity() {
     }
 }
 
-private enum class Panel { None, Speed, Tracks, Episodes }
+private enum class Panel { None, Speed, Tracks, Episodes, Quality }
 
 @Composable
 private fun PlayerScreen(
@@ -213,6 +221,8 @@ private fun PlayerScreen(
     episodes: List<EpRef>,
     initialEpisode: Int,
     startPos: Long,
+    autoplayNext: Boolean,
+    subtitleDefault: String,
     store: HistoryStore,
     inPip: Boolean,
     onBack: () -> Unit,
@@ -251,6 +261,14 @@ private fun PlayerScreen(
     val nextEp = episodes.firstOrNull { it.number == (episodes.filter { it.number > currentEp }.minOfOrNull { it.number } ?: -1) }
 
     fun loadEpisode(ep: Int, playlist: String, pos: Long) {
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
+            if (subtitleDefault == "off") {
+                setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+            } else {
+                setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                setPreferredTextLanguage(subtitleDefault)
+            }
+        }.build()
         player.setMediaItem(MediaItem.fromUri(playlist))
         player.prepare()
         if (pos > 0) player.seekTo(pos)
@@ -272,7 +290,7 @@ private fun PlayerScreen(
                 isBuffering = state == Player.STATE_BUFFERING
                 if (state == Player.STATE_ENDED) {
                     ended = true
-                    if (nextEp != null) postPlayIn = 10
+                    if (nextEp != null && autoplayNext) postPlayIn = 10
                 }
                 if (state == Player.STATE_READY) {
                     durationMs = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L
@@ -505,7 +523,7 @@ private fun PlayerScreen(
                     }
                     Column(Modifier.weight(1f)) {
                         Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                        Text("Episode $currentEp", color = Color(0xFFCCCCCC), fontSize = 12.sp)
+                        Text("Episode $currentEp dari ${episodes.size}", color = Color(0xFFCCCCCC), fontSize = 12.sp)
                     }
                     IconButton(onClick = { panel = Panel.Tracks }) {
                         Icon(Icons.Filled.Subtitles, contentDescription = "Audio & subtitle", tint = Color.White)
@@ -559,8 +577,20 @@ private fun PlayerScreen(
                             Icon(Icons.Filled.Speed, contentDescription = "Kecepatan", tint = Color.White)
                         }
                         Text(speedLabel(speed), color = Color.White, fontSize = 12.sp)
+                        IconButton(onClick = { panel = Panel.Quality }) {
+                            Icon(Icons.Filled.HighQuality, contentDescription = "Kualitas", tint = Color.White)
+                        }
                         IconButton(onClick = { panel = Panel.Tracks }) {
                             Icon(Icons.Filled.Audiotrack, contentDescription = "Audio", tint = Color.White)
+                        }
+                        if (nextEp != null) {
+                            IconButton(onClick = {
+                                currentEp = nextEp.number
+                                onEpisodeChanged(nextEp.number)
+                                loadEpisode(nextEp.number, nextEp.playlist, 0L)
+                            }) {
+                                Icon(Icons.Filled.SkipNext, contentDescription = "Episode berikutnya", tint = Color.White)
+                            }
                         }
                         IconButton(onClick = { panel = Panel.Episodes }) {
                             Icon(Icons.Filled.List, contentDescription = "Episode", tint = Color.White)
@@ -579,6 +609,48 @@ private fun PlayerScreen(
             }
         }
 
+        // Lewati Intro: muncul di awal episode (intro umumnya < 90 detik)
+        if (!ended && !inPip && !locked && durationMs > 180_000 && positionMs > 0 && positionMs <= 85_000) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.65f),
+                shape = RoundedCornerShape(6.dp),
+                modifier = Modifier.align(Alignment.BottomEnd)
+                    .padding(end = 22.dp, bottom = 108.dp)
+                    .clickable {
+                        val target = minOf(90_000L, (durationMs - 5_000).coerceAtLeast(0L))
+                        player.seekTo(target)
+                        showControls = false
+                    },
+            ) {
+                Text(
+                    "Lewati Intro", color = Color.White, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+                )
+            }
+        }
+
+        // Episode Berikutnya: muncul menjelang akhir
+        if (!ended && !inPip && !locked && nextEp != null && durationMs > 0 &&
+            (durationMs - positionMs) > 0 && (durationMs - positionMs) <= 45_000
+        ) {
+            Surface(
+                color = Color.White,
+                shape = RoundedCornerShape(6.dp),
+                modifier = Modifier.align(Alignment.BottomEnd)
+                    .padding(end = 22.dp, bottom = 108.dp)
+                    .clickable {
+                        currentEp = nextEp.number
+                        onEpisodeChanged(nextEp.number)
+                        loadEpisode(nextEp.number, nextEp.playlist, 0L)
+                    },
+            ) {
+                Text(
+                    "Episode Berikutnya", color = Color.Black, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+                )
+            }
+        }
+
         // Post-play: episode berikutnya
         if (ended && nextEp != null && !inPip) {
             Box(
@@ -591,7 +663,11 @@ private fun PlayerScreen(
                     Text("Episode ${nextEp.number}", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        if (postPlayIn != null) "Diputar dalam $postPlayIn detik…" else "",
+                        when {
+                            postPlayIn != null -> "Diputar dalam $postPlayIn detik…"
+                            autoplayNext -> ""
+                            else -> "Autoplay nonaktif — putar manual bila siap."
+                        },
                         color = Color(0xFFAAAAAA), fontSize = 12.sp,
                     )
                     Spacer(Modifier.height(10.dp))
@@ -644,6 +720,7 @@ private fun PlayerScreen(
                     }
                 }
             }
+            Panel.Quality -> QualityPanel(player = player, onClose = { panel = Panel.None })
             Panel.Tracks -> TracksPanel(player = player, onClose = { panel = Panel.None })
             Panel.Episodes -> PanelSheet(onClose = { panel = Panel.None }) {
                 Text("Episode", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
@@ -757,6 +834,51 @@ private fun TracksPanel(player: ExoPlayer, onClose: () -> Unit) {
             }
         }
         if (refresh < 0) Text("") // penanda state dibaca ulang
+    }
+}
+
+@Composable
+private fun QualityPanel(player: ExoPlayer, onClose: () -> Unit) {
+    var refresh by remember { mutableIntStateOf(0) }
+    PanelSheet(onClose = onClose) {
+        Text("Kualitas Video", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Spacer(Modifier.height(8.dp))
+        val videoGroups = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
+        Row(
+            Modifier.fillMaxWidth().clickable {
+                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                    .clearOverridesOfType(C.TRACK_TYPE_VIDEO).build()
+                refresh++
+            }.padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Otomatis (disarankan)", color = Color.White, modifier = Modifier.weight(1f))
+        }
+        if (videoGroups.isEmpty()) {
+            Text("Hanya satu kualitas tersedia dari gudang untuk episode ini.", color = Color(0xFFAAAAAA), fontSize = 13.sp)
+        }
+        for (g in videoGroups) {
+            for (i in 0 until g.length) {
+                val f = g.getTrackFormat(i)
+                val label = when {
+                    f.height > 0 -> "${f.height}p"
+                    f.bitrate > 0 -> "${f.bitrate / 1000} kbps"
+                    else -> "Kualitas ${i + 1}"
+                }
+                Row(
+                    Modifier.fillMaxWidth().clickable {
+                        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                            .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, i)).build()
+                        refresh++
+                    }.padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(label, color = Color.White, modifier = Modifier.weight(1f))
+                    if (g.isTrackSelected(i)) Icon(Icons.Filled.Check, contentDescription = null, tint = ReaAccent)
+                }
+            }
+        }
+        if (refresh < 0) Text("")
     }
 }
 

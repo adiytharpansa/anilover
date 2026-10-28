@@ -32,6 +32,17 @@ fun formatClock(ms: Long): String {
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
 }
 
-/** Sisa waktu gaya Netflix: "-12:34". */
+/** Sisa waktu gaya Netflix: "-12:34". Dipakai di dalam pemutar. */
 fun formatRemaining(positionMs: Long, durationMs: Long): String =
     if (durationMs <= 0) "--:--" else "-" + formatClock(durationMs - positionMs)
+
+/** Sisa waktu polos tanpa tanda minus: "12:34". Dipakai di kartu dan detail. */
+fun formatRemainingPlain(positionMs: Long, durationMs: Long): String =
+    if (durationMs <= 0) "--:--" else formatClock(durationMs - positionMs)
+
+fun formatSize(bytes: Long): String = when {
+    bytes >= 1_000_000_000L -> String.format("%.1f GB", bytes / 1_000_000_000.0)
+    bytes >= 1_000_000L -> String.format("%.0f MB", bytes / 1_000_000.0)
+    bytes > 0 -> String.format("%.0f KB", bytes / 1_000.0)
+    else -> "0 MB"
+}
