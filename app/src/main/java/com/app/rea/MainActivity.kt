@@ -99,13 +99,22 @@ class MainActivity : ComponentActivity() {
         com.app.rea.data.CrashReporter.install(applicationContext)
         val splashScreen = installSplashScreen()
         // Animasi keluar splash: logo membesar memudar (rasa pembuka Netflix).
+        // iconView BISA null di sebagian perangkat/kondisi luncur (NPE terbukti
+        // dari laporan galat 2.6.3) — pakai panggilan aman + jaring pengaman,
+        // dan pastikan provider.remove() selalu terpanggil.
         splashScreen.setOnExitAnimationListener { provider ->
-            provider.iconView.animate()
-                .scaleX(1.3f).scaleY(1.3f).alpha(0f)
-                .setDuration(380).start()
-            provider.view.animate()
-                .alpha(0f).setDuration(420)
-                .withEndAction { provider.remove() }.start()
+            try {
+                provider.iconView?.animate()
+                    ?.scaleX(1.3f)?.scaleY(1.3f)?.alpha(0f)
+                    ?.setDuration(380)?.start()
+                provider.view.animate()
+                    .alpha(0f).setDuration(420)
+                    .withEndAction {
+                        try { provider.remove() } catch (e: Exception) { }
+                    }.start()
+            } catch (e: Exception) {
+                try { provider.remove() } catch (e2: Exception) { }
+            }
         }
         super.onCreate(savedInstanceState)
         // Izin notifikasi (Android 13+) untuk kabar judul baru & "Sudah tayang".
