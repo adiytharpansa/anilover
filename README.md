@@ -3,7 +3,20 @@
 Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
 **api.anime** (https://api-anime.adiyth-arpansa.workers.dev).
 
-**Unduh APK:** [REA-2.4.0.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.4.0.apk)
+**Unduh APK:** [REA-2.5.0.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.5.0.apk)
+
+## REA 2.5.0 — polish UI/UX
+
+- **Animasi layar**: perpindahan tab memudar+bergeser; halaman Detail muncul
+  mengambang dari bawah.
+- **Shimmer**: rangka pemuatan katalog kini berkilau berdenyut.
+- **Billboard parallax**: tertinggal perlahan dan memudar saat beranda digeser;
+  gradasi bawahnya menyatu ke daftar.
+- **Bilah atas lengket**: logo REA tetap di atas dan menghitam pekat saat scroll.
+- **Efek tekan kartu**: kartu poster/Top 10/lanskap memampat halus saat ditekan.
+- **HUD gestur pemutar**: ikon besar + bilah kecerahan/volume gaya Netflix.
+- **Keadaan kosong berikon**: Daftarku & Unduhan kosong tampil berikon lingkaran.
+- **Splash beranimasi**: logo membesar memudar saat aplikasi dibuka.
 
 ## REA 2.4.0 — Cast ke TV + billboard video
 
