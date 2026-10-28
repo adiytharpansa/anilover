@@ -3,7 +3,16 @@
 Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
 **api.anime** (https://api-anime.adiyth-arpansa.workers.dev).
 
-**Unduh APK:** [REA-2.6.3.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.6.3.apk)
+**Unduh APK:** [REA-2.6.4.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.6.4.apk)
+
+## REA 2.6.4 — perbaikan keluar sendiri (terbukti dari laporan galat)
+
+- **Akar masalah ditemukan** lewat CrashReporter: NullPointerException di
+  pendengar animasi keluar splash screen (`provider.iconView` bisa null di
+  sebagian perangkat/kondisi luncur) — aplikasi mati tepat saat pembuka
+  selesai, sejak animasi itu ditambahkan di 2.5.0.
+- Perbaikan: panggilan aman untuk ikon, seluruh animasi dibungkus jaring
+  pengaman, dan `provider.remove()` dijamin selalu terpanggil.
 
 ## REA 2.6.3 — katalog tahan kuota (cermin gudang)
 
