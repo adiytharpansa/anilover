@@ -40,6 +40,8 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -89,6 +91,7 @@ fun HomeScreen(
     onRemoveContinue: (WatchEntry) -> Unit,
     onSearch: () -> Unit,
     onProfile: () -> Unit,
+    onGenre: (String) -> Unit,
 ) {
     val byId = titles.associateBy { it.id }
     val continueWatching = history
@@ -102,6 +105,11 @@ fun HomeScreen(
     // Urutan katalog = urutan terbit di gudang; yang terakhir masuk = terbaru.
     val newIds = if (titles.size >= 4) titles.takeLast(3).map { it.id }.toSet() else emptySet()
     val top10 = titles.sortedByDescending { it.score ?: 0.0 }.take(10)
+    // Chip kategori ala Netflix: genre terlaris di katalog, urut jumlah judul.
+    val homeGenres = remember(titles) {
+        titles.flatMap { it.genres }.groupingBy { it }.eachCount().entries
+            .sortedByDescending { it.value }.map { it.key }.take(14)
+    }
     // "Karena Anda menonton X": X = judul terakhir ditonton; rekomendasi = genre sama,
     // judul yang dinilai tidak suka dikeluarkan.
     val becauseBase = history.filter { it.isStarted }
@@ -137,6 +145,27 @@ fun HomeScreen(
                 }
                 IconButton(onClick = onProfile) {
                     Icon(Icons.Filled.AccountCircle, contentDescription = "Profil", tint = Color.White, modifier = Modifier.size(28.dp))
+                }
+            }
+        }
+
+        if (homeGenres.isNotEmpty()) {
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(homeGenres) { g ->
+                        FilterChip(
+                            selected = false,
+                            onClick = { onGenre(g) },
+                            label = { Text(g) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                labelColor = Color.White,
+                                containerColor = Color.Transparent,
+                            ),
+                        )
+                    }
                 }
             }
         }
@@ -350,12 +379,12 @@ fun PosterRow(
  * tanpa data trailer, billboard memakai gambar banner seperti biasa.
  */
 @Composable
-private fun TrailerPlayer(url: String) {
+internal fun TrailerPlayer(url: String, controls: Boolean = false) {
     val context = LocalContext.current
-    val exo = remember(url) {
+    val exo = remember(url, controls) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(url))
-            volume = 0f
+            volume = if (controls) 1f else 0f
             repeatMode = Player.REPEAT_MODE_ONE
             playWhenReady = true
             prepare()
@@ -366,7 +395,7 @@ private fun TrailerPlayer(url: String) {
         factory = { ctx ->
             PlayerView(ctx).apply {
                 player = exo
-                useController = false
+                useController = controls
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
             }
         },

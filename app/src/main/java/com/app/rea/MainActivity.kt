@@ -72,6 +72,7 @@ import com.app.rea.data.ReaSettings
 import com.app.rea.data.SoonTitle
 import com.app.rea.data.Title
 import com.app.rea.player.PlayerActivity
+import com.app.rea.ui.CategoryScreen
 import com.app.rea.ui.DetailScreen
 import com.app.rea.ui.DownloadsScreen
 import com.app.rea.ui.HomeScreen
@@ -159,6 +160,7 @@ private fun AppRoot(
     var error by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableIntStateOf(0) }
     var selected by remember { mutableStateOf<Title?>(null) }
+    var genreSel by remember { mutableStateOf<String?>(null) }
     var tab by remember { mutableStateOf(Tab.Home) }
     val scope = rememberCoroutineScope()
 
@@ -169,6 +171,7 @@ private fun AppRoot(
     val settings by library.settings.collectAsState(initial = ReaSettings())
     val downloads by library.downloads.collectAsState(initial = emptyList())
     val reminders by library.reminders.collectAsState(initial = emptySet())
+    val recents by library.recentSearches.collectAsState(initial = emptyList())
     val context = LocalContext.current
 
     LaunchedEffect(reloadKey) {
@@ -221,11 +224,12 @@ private fun AppRoot(
         onPlay(t, ep, pos, settings.autoplayNext, settings.subtitleDefault)
 
     BackHandler(enabled = selected != null) { selected = null }
+    BackHandler(enabled = selected == null && genreSel != null) { genreSel = null }
 
     Scaffold(
         containerColor = ReaBackground,
         bottomBar = {
-            if (selected == null) {
+            if (selected == null && genreSel == null) {
                 NavigationBar(containerColor = Color(0xFF0B0B0B)) {
                     NavItem(Tab.Home, tab, Icons.Filled.Home, "Beranda") { tab = it }
                     NavItem(Tab.Search, tab, Icons.Filled.Search, "Cari") { tab = it }
@@ -271,6 +275,12 @@ private fun AppRoot(
                         )
                     }
                 }
+                genreSel != null -> CategoryScreen(
+                    genre = genreSel!!,
+                    titles = (titles ?: emptyList()).filter { it.genres.contains(genreSel) },
+                    onOpen = { selected = it },
+                    onBack = { genreSel = null },
+                )
                 error != null && titles == null -> Column(
                     Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -314,10 +324,14 @@ private fun AppRoot(
                         },
                         onSearch = { tab = Tab.Search },
                         onProfile = { tab = Tab.Profile },
+                        onGenre = { genreSel = it },
                     )
                     Tab.Search -> SearchScreen(
                         titles = titles!!,
                         onOpen = { selected = it },
+                        recents = recents,
+                        onSaveRecent = { q -> scope.launch { library.addRecentSearch(q) } },
+                        onClearRecents = { scope.launch { library.clearRecentSearches() } },
                     )
                     Tab.New -> NewScreen(
                         titles = titles!!,

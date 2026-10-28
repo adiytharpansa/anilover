@@ -22,11 +22,21 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.app.Activity
+import android.content.Intent
+import android.speech.RecognizerIntent
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlayCircle
@@ -57,6 +67,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,9 +83,28 @@ import com.app.rea.data.Title
 fun SearchScreen(
     titles: List<Title>,
     onOpen: (Title) -> Unit,
+    recents: List<String> = emptyList(),
+    onSaveRecent: (String) -> Unit = {},
+    onClearRecents: () -> Unit = {},
 ) {
     var query by remember { mutableStateOf("") }
     var genre by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    // Pencarian suara bawaan Android (tanpa izin tambahan; lewat intent sistem).
+    val voiceLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spoken = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+            if (!spoken.isNullOrBlank()) query = spoken
+        }
+    }
+    fun openSaving(t: Title) {
+        if (query.isNotBlank()) onSaveRecent(query)
+        onOpen(t)
+    }
     val genres = remember(titles) { titles.flatMap { it.genres }.distinct() }
     val results = titles.filter { t ->
         (genre == null || t.genres.contains(genre)) &&
@@ -95,6 +125,29 @@ fun SearchScreen(
             onValueChange = { query = it },
             placeholder = { Text("Cari judul atau genre…", color = ReaTextDim) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = Color.White) },
+            trailingIcon = {
+                IconButton(onClick = {
+                    try {
+                        voiceLauncher.launch(
+                            Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                putExtra(
+                                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+                                )
+                                putExtra(RecognizerIntent.EXTRA_PROMPT, "Sebutkan judul anime…")
+                            },
+                        )
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Pencarian suara tidak tersedia", Toast.LENGTH_SHORT).show()
+                    }
+                }) {
+                    Icon(Icons.Filled.Mic, contentDescription = "Pencarian suara", tint = Color.White)
+                }
+            },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = {
+                if (query.isNotBlank()) onSaveRecent(query)
+            }),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
@@ -122,13 +175,43 @@ fun SearchScreen(
                 }
             }
         }
+        if (query.isBlank() && genre == null && recents.isNotEmpty()) {
+            Spacer(Modifier.height(14.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Pencarian Terakhir", color = Color.White, fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
+                )
+                Text(
+                    "Hapus", color = ReaAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { onClearRecents() }.padding(4.dp),
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(recents) { r ->
+                    FilterChip(
+                        selected = false,
+                        onClick = { query = r },
+                        label = { Text(r) },
+                        leadingIcon = {
+                            Icon(Icons.Filled.History, contentDescription = null, modifier = Modifier.size(16.dp))
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            labelColor = Color.White,
+                            containerColor = Color.Transparent,
+                        ),
+                    )
+                }
+            }
+        }
         if (showTrending) {
             Spacer(Modifier.height(14.dp))
             Text("Sedang Tren Sekarang", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
             for ((idx, t) in trending.withIndex()) {
                 Row(
-                    Modifier.fillMaxWidth().clickable { onOpen(t) }.padding(vertical = 5.dp),
+                    Modifier.fillMaxWidth().clickable { openSaving(t) }.padding(vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -156,11 +239,35 @@ fun SearchScreen(
         }
         Spacer(Modifier.height(12.dp))
         if (results.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    "Tidak ada hasil untuk \"$query\".\nCoba kata kunci lain.",
-                    color = ReaTextDim, fontSize = 14.sp,
-                )
+            if (query.isBlank()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Tidak ada judul untuk filter ini.", color = ReaTextDim, fontSize = 14.sp)
+                }
+            } else {
+                // Hasil kosong yang membantu: pesan + saran judul (skor tertinggi).
+                val suggestions = remember(titles) {
+                    titles.sortedByDescending { it.score ?: 0.0 }.take(6)
+                }
+                Column(Modifier.fillMaxSize()) {
+                    Text(
+                        "Tidak ada hasil untuk \"$query\".",
+                        color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        "Periksa ejaan, atau coba salah satu judul populer ini:",
+                        color = ReaTextDim, fontSize = 13.sp,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = 24.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(suggestions) { t -> GridPoster(t) { openSaving(t) } }
+                    }
+                }
             }
         } else {
             LazyVerticalGrid(
@@ -170,7 +277,7 @@ fun SearchScreen(
                 contentPadding = PaddingValues(bottom = 24.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
-                items(results) { t -> GridPoster(t) { onOpen(t) } }
+                items(results) { t -> GridPoster(t) { openSaving(t) } }
             }
         }
     }
@@ -191,6 +298,42 @@ private fun GridPoster(t: Title, onClick: () -> Unit) {
                 .clip(RoundedCornerShape(6.dp)).background(ReaSurface),
         )
         CardTitles(t)
+    }
+}
+
+// ---------------- Kategori (halaman genre dari chip Beranda) ----------------
+
+@Composable
+fun CategoryScreen(
+    genre: String,
+    titles: List<Title>,
+    onOpen: (Title) -> Unit,
+    onBack: () -> Unit,
+) {
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
+            }
+            Text(genre, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(6.dp))
+            Text(
+                "${titles.size} judul", color = ReaTextDim, fontSize = 13.sp,
+                modifier = Modifier.padding(top = 3.dp),
+            )
+        }
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, bottom = 24.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(titles) { t -> GridPoster(t) { onOpen(t) } }
+        }
     }
 }
 

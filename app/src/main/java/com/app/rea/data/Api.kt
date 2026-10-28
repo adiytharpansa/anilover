@@ -212,6 +212,7 @@ private val KNOWN_IDS_KEY = stringPreferencesKey("known_catalog_ids")
 private val SMART_KEY = booleanPreferencesKey("smart_downloads")
 private val WIFIONLY_KEY = booleanPreferencesKey("wifi_only_downloads")
 private val CACHE_KEY = stringPreferencesKey("catalog_cache")
+private val RECENT_KEY = stringPreferencesKey("recent_searches_json")
 private val DOWNLOADS_KEY = stringPreferencesKey("downloads_json")
 
 class HistoryStore(private val context: Context) {
@@ -316,6 +317,28 @@ class LibraryStore(private val context: Context) {
     }
     val downloads: Flow<List<DownloadItem>> = context.dataStore.data.map { prefs ->
         parseDownloads(prefs[DOWNLOADS_KEY])
+    }
+    /** Riwayat pencarian, terbaru di depan (maks 8). */
+    val recentSearches: Flow<List<String>> = context.dataStore.data.map { prefs ->
+        parseStringList(prefs[RECENT_KEY])
+    }
+
+    suspend fun addRecentSearch(query: String) {
+        val q = query.trim()
+        if (q.length < 2) return
+        context.dataStore.edit { prefs ->
+            val list = parseStringList(prefs[RECENT_KEY])
+                .filter { !it.equals(q, ignoreCase = true) }
+                .toMutableList()
+            list.add(0, q)
+            val arr = JSONArray()
+            for (v in list.take(8)) arr.put(v)
+            prefs[RECENT_KEY] = arr.toString()
+        }
+    }
+
+    suspend fun clearRecentSearches() {
+        context.dataStore.edit { it.remove(RECENT_KEY) }
     }
 
     suspend fun toggleMyList(id: String) {
@@ -424,6 +447,16 @@ class LibraryStore(private val context: Context) {
 
     suspend fun downloadsNow(): List<DownloadItem> =
         parseDownloads(context.dataStore.data.first()[DOWNLOADS_KEY])
+
+    private fun parseStringList(s: String?): List<String> = try {
+        if (s.isNullOrBlank()) emptyList()
+        else {
+            val arr = JSONArray(s)
+            val out = ArrayList<String>()
+            for (i in 0 until arr.length()) out.add(arr.optString(i))
+            out
+        }
+    } catch (e: Exception) { emptyList() }
 
     private fun parseStringSet(s: String?): Set<String> = try {
         if (s.isNullOrBlank()) emptySet()

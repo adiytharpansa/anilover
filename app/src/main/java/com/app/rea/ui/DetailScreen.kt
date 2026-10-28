@@ -15,8 +15,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -81,16 +89,41 @@ fun DetailScreen(
         .maxByOrNull { it.updatedAt }
     val downloadByEp = downloads.filter { it.titleId == title.id }.associateBy { it.episode }
     var synopsisExpanded by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val hasTrailer = !title.trailer.isNullOrBlank()
+    val tabKeys = buildList {
+        add("ep")
+        if (hasTrailer) add("trailer")
+        if (similar.isNotEmpty()) add("similar")
+    }
+    var tabKey by remember(title.id) { mutableStateOf("ep") }
+    if (!tabKeys.contains(tabKey)) tabKey = "ep"
+    // Tombol Putar lengket: muncul setelah hero + info tergeser lewat.
+    val showSticky by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex >= 2 ||
+                (listState.firstVisibleItemIndex == 1 && listState.firstVisibleItemScrollOffset > 650)
+        }
+    }
 
-    LazyColumn(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize()) {
+    LazyColumn(
+        Modifier.fillMaxSize(), state = listState,
+        contentPadding = PaddingValues(bottom = 84.dp),
+    ) {
         item {
             Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(ReaSurface)) {
-                AsyncImage(
-                    model = title.banner ?: title.poster,
-                    contentDescription = title.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                if (hasTrailer) {
+                    // Trailer inline ala Netflix: bisu, mutar otomatis di hero.
+                    TrailerPlayer(title.trailer!!)
+                } else {
+                    AsyncImage(
+                        model = title.banner ?: title.poster,
+                        contentDescription = title.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
                 Box(
                     Modifier.fillMaxSize().background(
                         Brush.verticalGradient(
@@ -233,15 +266,36 @@ fun DetailScreen(
                             .padding(vertical = 4.dp),
                     )
                 }
-                Spacer(Modifier.height(14.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Episode", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(8.dp))
-                    Text("${title.episodes.size} episode", color = ReaTextDim, fontSize = 12.sp)
+                Spacer(Modifier.height(16.dp))
+                Row(Modifier.fillMaxWidth()) {
+                    for (key in tabKeys) {
+                        val label = when (key) {
+                            "ep" -> "Episode"
+                            "trailer" -> "Trailer & Lainnya"
+                            else -> "Lainnya Seperti Ini"
+                        }
+                        Column(
+                            Modifier.weight(1f).clickable { tabKey = key },
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            if (tabKey == key) {
+                                Box(Modifier.fillMaxWidth().height(3.dp).background(ReaAccent))
+                            } else {
+                                Spacer(Modifier.height(3.dp))
+                            }
+                            Text(
+                                label,
+                                color = if (tabKey == key) Color.White else ReaTextDim,
+                                fontSize = 13.sp,
+                                fontWeight = if (tabKey == key) FontWeight.Bold else FontWeight.Normal,
+                                modifier = Modifier.padding(vertical = 8.dp),
+                            )
+                        }
+                    }
                 }
-                Spacer(Modifier.height(6.dp))
             }
         }
+        if (tabKey == "ep") {
         items(title.episodes.size) { idx ->
             val ep = title.episodes[idx]
             val prog = progressByEp[ep.number]
@@ -339,10 +393,71 @@ fun DetailScreen(
                 }
             }
         }
-        if (similar.isNotEmpty()) {
+        }
+        if (tabKey == "trailer" && hasTrailer) {
+            item {
+                Column(Modifier.padding(16.dp)) {
+                    Box(
+                        Modifier.fillMaxWidth().aspectRatio(16f / 9f)
+                            .clip(RoundedCornerShape(8.dp)).background(ReaSurface),
+                    ) {
+                        TrailerPlayer(title.trailer!!, controls = true)
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "Trailer — ${title.title}", color = Color.White,
+                        fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        "Cuplikan resmi dari katalog gudang REA.",
+                        color = ReaTextDim, fontSize = 12.sp,
+                    )
+                }
+            }
+        }
+        if (tabKey == "similar" && similar.isNotEmpty()) {
             item { PosterRow("Judul Serupa", similar, onOpenTitle) }
         }
         item { Spacer(Modifier.height(28.dp)) }
+    }
+    AnimatedVisibility(
+        visible = showSticky,
+        enter = fadeIn(tween(180)) + slideInVertically(tween(180)) { it },
+        exit = fadeOut(tween(120)),
+        modifier = Modifier.align(Alignment.BottomCenter),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().background(Color(0xFF161616))
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title.title, color = Color.White, fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    if (resume != null) "Lanjutkan E${resume.episode}" else "${title.episodes.size} episode",
+                    color = ReaTextDim, fontSize = 12.sp,
+                )
+            }
+            Button(
+                onClick = {
+                    if (resume != null) onPlay(resume.episode, resume.positionMs)
+                    else onPlay(title.episodes.firstOrNull()?.number ?: 1, 0L)
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White, contentColor = Color.Black,
+                ),
+                shape = RoundedCornerShape(6.dp),
+            ) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                Spacer(Modifier.width(4.dp))
+                Text(if (resume != null) "Lanjutkan" else "Putar", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
     }
 }
 
