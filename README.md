@@ -3,7 +3,19 @@
 Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
 **api.anime** (https://api-anime.adiyth-arpansa.workers.dev).
 
-**Unduh APK:** [REA-2.6.2.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.6.2.apk)
+**Unduh APK:** [REA-2.6.3.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.6.3.apk)
+
+## REA 2.6.3 — katalog tahan kuota (cermin gudang)
+
+- **Rantai sumber katalog**: api.anime → cermin jsDelivr → raw.githubusercontent.
+  Bila Worker kena batas kuota Cloudflare (galat 1027/429), aplikasi mengambil
+  catalog.json langsung dari repo gudang dan menyusun alamat putar jsDelivr
+  di sisi aplikasi (meniru transformasi Worker persis: repo+pin per judul /
+  pin global).
+- **Segera Tayang ikut bercermin** dari coming-soon.json + penyaringan id
+  yang sudah tayang dilakukan di aplikasi.
+- Dites langsung dari sisi pengembang: 8/8 judul lolos uji putar
+  ujung-ke-ujung dari cermin (playlist + segmen pertama sah).
 
 ## REA 2.6.2 — perbaikan keluar sendiri + pelapor galat
 
