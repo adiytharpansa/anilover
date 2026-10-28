@@ -135,6 +135,7 @@ class PlayerActivity : FragmentActivity() {
     private var inPip by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        com.app.rea.data.CrashReporter.install(applicationContext)
         super.onCreate(savedInstanceState)
         store = HistoryStore(applicationContext)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
@@ -260,7 +261,7 @@ private fun PlayerScreen(
 
     // ---- Cast ke TV (Google Cast, Default Media Receiver) ----
     val castContext = remember {
-        try { CastContext.getSharedInstance(context) } catch (e: Exception) { null }
+        try { CastContext.getSharedInstance(context) } catch (e: Throwable) { null }
     }
     var casting by remember { mutableStateOf(false) }
     val latestPlaylist by rememberUpdatedState(currentPlaylist)
@@ -366,6 +367,13 @@ private fun PlayerScreen(
     var hudFraction by remember { mutableFloatStateOf(0f) }
     var scrubPreview by remember { mutableStateOf<Long?>(null) }
     var postPlayIn by remember { mutableStateOf<Int?>(null) }
+    // State gestur seret — di tingkat atas, BUKAN di blok kondisional (slot Compose).
+    var dragMode by remember { mutableIntStateOf(0) } // 0=belum, 1=geser posisi, 2=kecerahan, 3=volume
+    var dragStartPos by remember { mutableLongStateOf(0L) }
+    var dragAccumX by remember { mutableFloatStateOf(0f) }
+    var dragAccumY by remember { mutableFloatStateOf(0f) }
+    var startBrightness by remember { mutableFloatStateOf(0.5f) }
+    var startVolume by remember { mutableIntStateOf(0) }
 
     val nextEp = episodes.firstOrNull { it.number == (episodes.filter { it.number > currentEp }.minOfOrNull { it.number } ?: -1) }
 
@@ -502,12 +510,6 @@ private fun PlayerScreen(
                 }
             )
             // Lapisan gestur: seret (kecerahan/volume/loncat)
-            var dragMode by remember { mutableStateOf(0) } // 0=belum, 1=geser posisi, 2=kecerahan, 3=volume
-            var dragStartPos by remember { mutableLongStateOf(0L) }
-            var dragAccumX by remember { mutableFloatStateOf(0f) }
-            var dragAccumY by remember { mutableFloatStateOf(0f) }
-            var startBrightness by remember { mutableFloatStateOf(0.5f) }
-            var startVolume by remember { mutableIntStateOf(0) }
             Box(
                 Modifier.fillMaxSize().pointerInput(Unit) {
                     detectDragGestures(
@@ -670,7 +672,7 @@ private fun PlayerScreen(
                                 MediaRouteButton(ctx).also { btn ->
                                     try {
                                         CastButtonFactory.setUpMediaRouteButton(ctx, btn)
-                                    } catch (e: Exception) { }
+                                    } catch (e: Throwable) { }
                                 }
                             },
                             modifier = Modifier.size(48.dp),

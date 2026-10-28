@@ -28,6 +28,9 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -36,6 +39,9 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -90,6 +96,7 @@ import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        com.app.rea.data.CrashReporter.install(applicationContext)
         val splashScreen = installSplashScreen()
         // Animasi keluar splash: logo membesar memudar (rasa pembuka Netflix).
         splashScreen.setOnExitAnimationListener { provider ->
@@ -173,6 +180,36 @@ private fun AppRoot(
     val reminders by library.reminders.collectAsState(initial = emptySet())
     val recents by library.recentSearches.collectAsState(initial = emptyList())
     val context = LocalContext.current
+
+    // Laporan galat terakhir (dari CrashReporter): tampilkan agar bisa dibagikan
+    // untuk diagnosis, lalu hapus.
+    var crashText by remember { mutableStateOf(com.app.rea.data.CrashReporter.read(context)) }
+    if (crashText != null) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Aplikasi sempat berhenti") },
+            text = {
+                Column(Modifier.height(300.dp).verticalScroll(rememberScrollState())) {
+                    Text(crashText!!, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, crashText)
+                    }
+                    context.startActivity(Intent.createChooser(send, "Bagikan laporan galat"))
+                }) { Text("Bagikan") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    com.app.rea.data.CrashReporter.clear(context)
+                    crashText = null
+                }) { Text("Tutup") }
+            },
+        )
+    }
 
     LaunchedEffect(reloadKey) {
         if (titles.isNullOrEmpty()) {

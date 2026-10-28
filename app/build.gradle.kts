@@ -12,8 +12,8 @@ android {
         applicationId = "com.app.rea"
         minSdk = 24
         targetSdk = 34
-        versionCode = 9
-        versionName = "2.6.1"
+        versionCode = 10
+        versionName = "2.6.2"
     }
 
     signingConfigs {

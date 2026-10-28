@@ -215,6 +215,38 @@ private val CACHE_KEY = stringPreferencesKey("catalog_cache")
 private val RECENT_KEY = stringPreferencesKey("recent_searches_json")
 private val DOWNLOADS_KEY = stringPreferencesKey("downloads_json")
 
+/**
+ * Penangkap galat tak tertangani: jejak tumpukan disimpan ke berkas agar bisa
+ * ditampilkan & dibagikan pada pembukaan berikutnya (diagnosis keluar sendiri).
+ */
+object CrashReporter {
+    private const val NAME = "last-crash.txt"
+
+    fun install(context: Context) {
+        val app = context.applicationContext
+        val prev = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+            try {
+                val sw = java.io.StringWriter()
+                error.printStackTrace(java.io.PrintWriter(sw))
+                val text = sw.toString()
+                File(app.filesDir, NAME)
+                    .writeText(text.takeLast(7000))
+            } catch (e: Throwable) { /* abaikan */ }
+            prev?.uncaughtException(thread, error)
+        }
+    }
+
+    fun read(context: Context): String? = try {
+        val f = File(context.filesDir, NAME)
+        if (f.exists()) f.readText().ifBlank { null } else null
+    } catch (e: Throwable) { null }
+
+    fun clear(context: Context) {
+        try { File(context.filesDir, NAME).delete() } catch (e: Throwable) { }
+    }
+}
+
 class HistoryStore(private val context: Context) {
     val entries: Flow<List<WatchEntry>> = context.dataStore.data.map { prefs ->
         parse(prefs[HISTORY_KEY] ?: "[]")
