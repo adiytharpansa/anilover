@@ -37,6 +37,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.BrightnessHigh
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.HighQuality
@@ -360,6 +362,8 @@ private fun PlayerScreen(
     var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
     var seekFeedback by remember { mutableStateOf<String?>(null) }
     var gestureHint by remember { mutableStateOf<String?>(null) }
+    var hudKind by remember { mutableIntStateOf(0) }
+    var hudFraction by remember { mutableFloatStateOf(0f) }
     var scrubPreview by remember { mutableStateOf<Long?>(null) }
     var postPlayIn by remember { mutableStateOf<Int?>(null) }
 
@@ -544,6 +548,8 @@ private fun PlayerScreen(
                                     val frac = (startBrightness - dragAccumY / size.height).coerceIn(0.05f, 1f)
                                     act.window.attributes = act.window.attributes.apply { screenBrightness = frac }
                                     gestureHint = "Kecerahan ${(frac * 100).toInt()}%"
+                                    hudKind = 2
+                                    hudFraction = frac
                                 }
                                 3 -> {
                                     val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
@@ -551,6 +557,8 @@ private fun PlayerScreen(
                                     val vol = (frac * max).toInt()
                                     audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, vol, 0)
                                     gestureHint = "Volume ${(frac * 100).toInt()}%"
+                                    hudKind = 3
+                                    hudFraction = frac
                                 }
                             }
                         },
@@ -589,12 +597,31 @@ private fun PlayerScreen(
             )
         }
         if (gestureHint != null) {
-            Text(
-                gestureHint!!, color = Color.White, fontSize = 14.sp,
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 64.dp)
-                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 14.dp, vertical = 6.dp),
-            )
+            // HUD gestur gaya Netflix: ikon besar + bilah tingkat + persen.
+            Column(
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp)
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    if (hudKind == 2) Icons.Filled.BrightnessHigh else Icons.Filled.VolumeUp,
+                    contentDescription = null, tint = Color.White,
+                    modifier = Modifier.size(30.dp),
+                )
+                Spacer(Modifier.height(6.dp))
+                Box(
+                    Modifier.width(150.dp).height(5.dp)
+                        .background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(3.dp)),
+                ) {
+                    Box(
+                        Modifier.fillMaxWidth(hudFraction.coerceIn(0f, 1f)).height(5.dp)
+                            .background(Color.White, RoundedCornerShape(3.dp)),
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(gestureHint!!, color = Color.White, fontSize = 12.sp)
+            }
         }
         if (scrubPreview != null) {
             Text(

@@ -3,7 +3,9 @@ package com.app.rea.ui
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -60,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -110,10 +114,16 @@ fun HomeScreen(
         }.take(10)
     } ?: emptyList()
 
-    LazyColumn(Modifier.fillMaxSize()) {
-        item {
+    val listState = rememberLazyListState()
+    LazyColumn(Modifier.fillMaxSize(), state = listState) {
+        // Bilah atas lengket: transparan di posisi awal, menghitam pekat saat digeser.
+        stickyHeader {
+            val solid = listState.firstVisibleItemIndex > 0 ||
+                listState.firstVisibleItemScrollOffset > 200
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                Modifier.fillMaxWidth()
+                    .background(if (solid) Color(0xFF0B0B0B) else Color.Transparent)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -139,6 +149,16 @@ fun HomeScreen(
                     onOpen = { onOpen(featured) },
                     onPlay = { ep, pos -> onPlay(featured, ep, pos) },
                     onToggleMyList = { onToggleMyList(featured) },
+                    modifier = Modifier.graphicsLayer {
+                        // Parallax: billboard tertinggal perlahan + memudar saat digeser.
+                        val off = if (listState.firstVisibleItemIndex <= 1) {
+                            listState.firstVisibleItemScrollOffset.toFloat()
+                        } else {
+                            900f
+                        }
+                        translationY = off * 0.35f
+                        alpha = (1f - off / 1100f).coerceIn(0.3f, 1f)
+                    },
                 )
             }
         }
@@ -356,8 +376,10 @@ private fun TrailerPlayer(url: String) {
 /** Kartu Top 10 gaya Netflix: angka peringkat raksasa bergaris tepi + poster. */
 @Composable
 fun Top10Card(rank: Int, t: Title, onClick: () -> Unit) {
+    val pressSource = remember { MutableInteractionSource() }
     Row(
-        Modifier.clickable(onClick = onClick),
+        Modifier.pressScaleFx(pressSource)
+            .clickable(interactionSource = pressSource, indication = LocalIndication.current, onClick = onClick),
         verticalAlignment = Alignment.Bottom,
     ) {
         Text(
@@ -387,12 +409,13 @@ private fun Billboard(
     onOpen: () -> Unit,
     onPlay: (Int, Long) -> Unit,
     onToggleMyList: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val resume = history
         .filter { it.titleId == t.id && it.isStarted && !it.isFinished }
         .maxByOrNull { it.updatedAt }
     Box(
-        Modifier.fillMaxWidth().aspectRatio(16f / 11f)
+        modifier.fillMaxWidth().aspectRatio(16f / 11f)
             .background(ReaSurface),
     ) {
         if (!t.trailer.isNullOrBlank()) {
@@ -550,6 +573,7 @@ fun PosterCard(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val hasMenu = onPlayFirst != null || onToggleMyList != null || onDownloadFirst != null
+    val pressSource = remember { MutableInteractionSource() }
     Column(Modifier.width(112.dp)) {
         Box {
             AsyncImage(
@@ -558,7 +582,10 @@ fun PosterCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)
                     .clip(RoundedCornerShape(6.dp)).background(ReaSurface)
+                    .pressScaleFx(pressSource)
                     .combinedClickable(
+                        interactionSource = pressSource,
+                        indication = LocalIndication.current,
                         onClick = onClick,
                         onLongClick = if (hasMenu) ({ menuOpen = true }) else null,
                     ),
@@ -660,7 +687,11 @@ fun EpisodeCard(t: Title, episode: Int, entry: WatchEntry?, onClick: () -> Unit)
 
 @Composable
 fun LandscapeCard(t: Title, onClick: () -> Unit) {
-    Column(Modifier.width(190.dp).clickable(onClick = onClick)) {
+    val pressSource = remember { MutableInteractionSource() }
+    Column(
+        Modifier.width(190.dp).pressScaleFx(pressSource)
+            .clickable(interactionSource = pressSource, indication = LocalIndication.current, onClick = onClick),
+    ) {
         AsyncImage(
             model = t.banner ?: t.poster,
             contentDescription = t.title,

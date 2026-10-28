@@ -37,6 +37,14 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -73,6 +81,7 @@ import com.app.rea.ui.ReaAccent
 import com.app.rea.ui.ReaBackground
 import com.app.rea.ui.ReaSurface
 import com.app.rea.ui.ReaTheme
+import com.app.rea.ui.ShimmerBox
 import com.app.rea.ui.SearchScreen
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -80,7 +89,16 @@ import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
+        // Animasi keluar splash: logo membesar memudar (rasa pembuka Netflix).
+        splashScreen.setOnExitAnimationListener { provider ->
+            provider.iconView.animate()
+                .scaleX(1.3f).scaleY(1.3f).alpha(0f)
+                .setDuration(380).start()
+            provider.view.animate()
+                .alpha(0f).setDuration(420)
+                .withEndAction { provider.remove() }.start()
+        }
         super.onCreate(savedInstanceState)
         // Izin notifikasi (Android 13+) untuk kabar judul baru & "Sudah tayang".
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -229,7 +247,14 @@ private fun AppRoot(
                                 (other.score ?: 0.0)
                         }
                         .take(10)
-                    DetailScreen(
+                    var shown by remember { mutableStateOf(false) }
+                    LaunchedEffect(t.id) { shown = true }
+                    AnimatedVisibility(
+                        visible = shown,
+                        enter = fadeIn(tween(230)) + slideInVertically(tween(230)) { it / 5 },
+                        exit = fadeOut(tween(150)),
+                    ) {
+                        DetailScreen(
                         title = t,
                         history = history,
                         inMyList = myList.contains(t.id),
@@ -243,7 +268,8 @@ private fun AppRoot(
                         onDownload = { ep -> downloader.start(t, ep) },
                         onDeleteDownload = { item -> downloader.delete(item) },
                         onOpenTitle = { other -> selected = other },
-                    )
+                        )
+                    }
                 }
                 error != null && titles == null -> Column(
                     Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
@@ -259,7 +285,15 @@ private fun AppRoot(
                     ) { Text("Coba Lagi") }
                 }
                 titles == null -> SkeletonHome()
-                else -> when (tab) {
+                else -> AnimatedContent(
+                    targetState = tab,
+                    transitionSpec = {
+                        (fadeIn(tween(200)) + slideInHorizontally(tween(200)) { it / 12 }) togetherWith
+                            fadeOut(tween(130))
+                    },
+                    label = "tab",
+                ) { currentTab ->
+                    when (currentTab) {
                     Tab.Home -> HomeScreen(
                         titles = titles!!,
                         history = history,
@@ -324,6 +358,7 @@ private fun AppRoot(
                         },
                         onClearHistory = { scope.launch { store.clearAll() } },
                     )
+                    }
                 }
             }
         }
@@ -359,29 +394,20 @@ private fun SkeletonHome() {
         Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Box(
-            Modifier.fillMaxWidth().height(28.dp).width(90.dp)
-                .background(ReaSurface, androidx.compose.foundation.shape.RoundedCornerShape(6.dp)),
+        ShimmerBox(Modifier.height(28.dp).width(90.dp))
+        ShimmerBox(
+            Modifier.fillMaxWidth().aspectRatio(16f / 10f),
+            androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
         )
-        Box(
-            Modifier.fillMaxWidth().aspectRatio(16f / 10f)
-                .background(ReaSurface, androidx.compose.foundation.shape.RoundedCornerShape(8.dp)),
+        ShimmerBox(Modifier.fillMaxWidth(0.45f).height(18.dp))
+        ShimmerBox(
+            Modifier.fillMaxWidth().height(110.dp),
+            androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
         )
-        Box(
-            Modifier.fillMaxWidth(0.45f).height(18.dp)
-                .background(ReaSurface, androidx.compose.foundation.shape.RoundedCornerShape(6.dp)),
-        )
-        Box(
-            Modifier.fillMaxWidth().height(110.dp)
-                .background(ReaSurface, androidx.compose.foundation.shape.RoundedCornerShape(8.dp)),
-        )
-        Box(
-            Modifier.fillMaxWidth(0.35f).height(18.dp)
-                .background(ReaSurface, androidx.compose.foundation.shape.RoundedCornerShape(6.dp)),
-        )
-        Box(
-            Modifier.fillMaxWidth().height(170.dp)
-                .background(ReaSurface, androidx.compose.foundation.shape.RoundedCornerShape(8.dp)),
+        ShimmerBox(Modifier.fillMaxWidth(0.35f).height(18.dp))
+        ShimmerBox(
+            Modifier.fillMaxWidth().height(170.dp),
+            androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
         )
     }
 }

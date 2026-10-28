@@ -46,6 +46,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -176,7 +178,11 @@ fun SearchScreen(
 
 @Composable
 private fun GridPoster(t: Title, onClick: () -> Unit) {
-    Column(Modifier.clickable(onClick = onClick)) {
+    val pressSource = remember { MutableInteractionSource() }
+    Column(
+        Modifier.pressScaleFx(pressSource)
+            .clickable(interactionSource = pressSource, indication = LocalIndication.current, onClick = onClick),
+    ) {
         AsyncImage(
             model = t.poster ?: t.banner,
             contentDescription = t.title,
@@ -433,8 +439,13 @@ fun DownloadsScreen(
                     Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 60.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Icon(Icons.Filled.Download, contentDescription = null, tint = ReaTextDim, modifier = Modifier.size(54.dp))
-                    Spacer(Modifier.height(12.dp))
+                    Box(
+                        Modifier.size(88.dp).background(ReaSurface, androidx.compose.foundation.shape.CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Filled.Download, contentDescription = null, tint = ReaTextDim, modifier = Modifier.size(40.dp))
+                    }
+                    Spacer(Modifier.height(14.dp))
                     Text("Belum ada unduhan", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
                     Text(
@@ -678,7 +689,7 @@ fun ProfileScreen(
             }
             Column(Modifier.padding(horizontal = 16.dp)) {
                 Spacer(Modifier.height(28.dp))
-                Text("REA versi 2.4.0", color = ReaTextDim, fontSize = 12.sp)
+                Text("REA versi 2.5.0", color = ReaTextDim, fontSize = 12.sp)
                 Spacer(Modifier.height(24.dp))
             }
         }
@@ -703,16 +714,43 @@ private fun SettingsIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) 
     }
 }
 
+/** Keadaan kosong bergaya Netflix: ikon besar dalam lingkaran + ajakan. */
+@Composable
+fun EmptyState(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier.size(88.dp).background(ReaSurface, androidx.compose.foundation.shape.CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = ReaTextDim, modifier = Modifier.size(40.dp))
+        }
+        Spacer(Modifier.height(14.dp))
+        Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            subtitle, color = ReaTextDim, fontSize = 13.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+    }
+}
+
 @Composable
 private fun PosterRowOrEmpty(myListTitles: List<Title>, onOpenTitle: (Title) -> Unit) {
     if (myListTitles.isNotEmpty()) {
         PosterRow("Daftarku", myListTitles, onOpenTitle)
     } else {
         SectionTitle("Daftarku")
-        Text(
-            "Daftarku masih kosong — tambahkan judul dari tombol + di beranda atau halaman detail.",
-            color = ReaTextDim, fontSize = 13.sp,
-            modifier = Modifier.padding(horizontal = 16.dp),
+        EmptyState(
+            icon = Icons.Filled.PlayCircle,
+            title = "Daftarku masih kosong",
+            subtitle = "Tambahkan judul dari tombol + di beranda atau halaman detail supaya mudah ditemukan lagi.",
         )
     }
 }
