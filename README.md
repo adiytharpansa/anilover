@@ -3,7 +3,18 @@
 Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
 **api.anime** (https://api-anime.adiyth-arpansa.workers.dev).
 
-**Unduh APK:** [REA-2.2.0.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.2.0.apk)
+**Unduh APK:** [REA-2.3.0.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.3.0.apk)
+
+## REA 2.3.0 — Segera Tayang, Ingatkan Saya, Unduhan Cerdas
+
+- Tab **Baru**: bagian **Segera Tayang** — judul yang sedang disalin ke gudang
+  (dari API `/api/soon`) dengan banner, sinopsis, dan tombol **Ingatkan Saya**.
+- **Notifikasi judul baru**: pemeriksa katalog berkala (tiap ±6 jam) memberi
+  tahu bila ada judul baru, dan kabar khusus "Sudah tayang di REA" untuk judul
+  yang kamu ingatkan. Jalan pertama hanya mencatat keadaan awal.
+- **Unduhan Cerdas** (tab Unduhan): episode berikutnya terunduh otomatis dan
+  unduhan episode yang selesai ditonton terhapus sendiri; opsi **Hanya Wi-Fi**.
+- Indikator **penyimpanan perangkat** (bebas/total + bilah pemakaian).
 
 ## REA 2.2.0 — baris & rasa Netflix
 
