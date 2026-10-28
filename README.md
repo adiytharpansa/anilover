@@ -3,7 +3,20 @@
 Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
 **api.anime** (https://api-anime.adiyth-arpansa.workers.dev).
 
-**Unduh APK:** [REA-2.6.0.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.6.0.apk)
+**Unduh APK:** [REA-2.6.2.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.6.2.apk)
+
+## REA 2.6.2 — perbaikan keluar sendiri + pelapor galat
+
+- **Cari**: `remember` saran hasil kosong dipindah ke tingkat atas — versi
+  2.6.0 menaruhnya di cabang kondisional yang merusak state Compose saat
+  hasil berubah kosong/ada (aplikasi keluar sendiri).
+- **Pemutar**: inisialisasi Cast kini menangkap semua jenis galat (termasuk
+  Error yang lolos dari penangkap lama); state gestur seret dipindah keluar
+  blok kondisional.
+- **Detail**: kunci item daftar distabilkan; tab aktif menjadi nilai turunan.
+- **Pelapor galat bawaan**: bila aplikasi berhenti, jejak galatnya disimpan;
+  saat aplikasi dibuka lagi muncul jendela "Aplikasi sempat berhenti" dengan
+  tombol Bagikan untuk diagnosis.
 
 ## REA 2.6.0 — versi final hasil riset Netflix (bedah APK pakai REA)
 
