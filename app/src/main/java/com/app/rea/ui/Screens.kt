@@ -329,7 +329,7 @@ fun CategoryScreen(
             columns = GridCells.Fixed(3),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp, bottom = 24.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
             items(titles) { t -> GridPoster(t) { onOpen(t) } }
