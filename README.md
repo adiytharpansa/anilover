@@ -3,7 +3,28 @@
 Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
 **api.anime** (https://api-anime.adiyth-arpansa.workers.dev).
 
-**Unduh APK:** [REA-2.5.0.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.5.0.apk)
+**Unduh APK:** [REA-2.6.0.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.6.0.apk)
+
+## REA 2.6.0 — versi final hasil riset Netflix (bedah APK pakai REA)
+
+- **Chip kategori di Beranda** + halaman kategori: ketuk genre untuk melihat
+  semua judul genre itu dalam kisi.
+- **Detail bertab ala Netflix**: Episode | Trailer & Lainnya | Lainnya Seperti
+  Ini, dengan garis merah di atas tab aktif.
+- **Trailer inline di Detail**: trailer memutar bisu otomatis di hero Detail
+  dan dapat diputar bersuara dari tab Trailer (aktif bila katalog menyediakan
+  trailer).
+- **Tombol Putar lengket**: bilah Putar/Lanjutkan menempel di bawah saat
+  daftar episode digeser.
+- **Pencarian suara**: ikon mikrofon di kolom Cari (pengenalan suara bawaan
+  Android).
+- **Riwayat pencarian**: chip kata terakhir yang dicari + tombol Hapus.
+- **Hasil Cari kosong yang membantu**: saran judul populer, bukan halaman
+  kosong.
+
+Yang sengaja TIDAK dibuat dari hasil riset: umpan klip vertikal (keputusan
+pemilik), billboard karusel dan tombol Lewati Kredit (tidak terbukti ada di
+APK Netflix).
 
 ## REA 2.5.0 — polish UI/UX
 
