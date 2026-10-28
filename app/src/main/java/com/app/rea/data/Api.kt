@@ -21,6 +21,15 @@ import java.net.URL
 
 const val API_BASE = "https://api-anime.adiyth-arpansa.workers.dev"
 
+// Cermin katalog gudang (dipakai bila API utama kena batas kuota Cloudflare).
+private const val CATALOG_MIRROR =
+    "https://cdn.jsdelivr.net/gh/adiytharpansa/project-X@main/catalog.json"
+private const val CATALOG_MIRROR2 =
+    "https://raw.githubusercontent.com/adiytharpansa/project-X/main/catalog.json"
+private const val SOON_MIRROR =
+    "https://cdn.jsdelivr.net/gh/adiytharpansa/project-X@main/coming-soon.json"
+private const val PROJECT_REPO = "adiytharpansa/project-X"
+
 data class Episode(
     val number: Int,
     val playlist: String,
@@ -80,12 +89,42 @@ data class Title(
 }
 
 object CatalogApi {
+    /** Id katalog terakhir yang berhasil dibaca (untuk menyaring Segera Tayang). */
+    @Volatile
+    var lastCatalogIds: Set<String> = emptySet()
+
+    private fun httpGetText(url: String, timeoutMs: Int = 15000): String {
+        val conn = URL(url).openConnection() as HttpURLConnection
+        conn.connectTimeout = timeoutMs
+        conn.readTimeout = timeoutMs
+        conn.setRequestProperty("Accept", "application/json")
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (REA Android)")
+        if (conn.responseCode !in 200..299) {
+            throw java.io.IOException("HTTP " + conn.responseCode + " dari " + url)
+        }
+        return conn.inputStream.bufferedReader().use { it.readText() }
+    }
+
     fun parseCatalog(body: String): List<Title> {
         val root = JSONObject(body)
+        val rootPin = root.optString("pin")
         val arr = root.optJSONArray("titles") ?: JSONArray()
         val out = ArrayList<Title>()
         for (i in 0 until arr.length()) {
             val t = arr.getJSONObject(i)
+            // Basis media per judul (meniru Worker api.anime): repo+pin judul,
+            // atau repo proyek + pin katalog global. Respons API sudah absolut.
+            val tRepo = t.optString("repo")
+            val tPin = t.optString("pin")
+            val base = when {
+                tRepo.isNotBlank() && tPin.isNotBlank() ->
+                    "https://cdn.jsdelivr.net/gh/$tRepo@$tPin"
+                rootPin.isNotBlank() ->
+                    "https://cdn.jsdelivr.net/gh/$PROJECT_REPO@$rootPin"
+                else -> null
+            }
+            fun absolut(path: String): String =
+                if (path.startsWith("http") || base == null) path else "$base/$path"
             val eps = ArrayList<Episode>()
             val ea = t.optJSONArray("episodes") ?: JSONArray()
             for (j in 0 until ea.length()) {
@@ -93,9 +132,9 @@ object CatalogApi {
                 eps.add(
                     Episode(
                         number = e.optInt("number"),
-                        playlist = e.optString("playlist"),
+                        playlist = absolut(e.optString("playlist")),
                         title = e.optString("title").ifBlank { null },
-                        thumb = e.optString("thumb").ifBlank { null },
+                        thumb = e.optString("thumb").ifBlank { null }?.let { absolut(it) },
                         synopsis = e.optString("synopsis").ifBlank { null },
                         introEnd = if (e.has("introEnd") && !e.isNull("introEnd")) e.optLong("introEnd") else null,
                     )
@@ -121,30 +160,44 @@ object CatalogApi {
                 )
             )
         }
+        lastCatalogIds = out.map { it.id }.toSet()
         return out
     }
 
+    /**
+     * Ambil katalog mentah: API utama dulu; bila gagal (mis. kuota Worker
+     * Cloudflare habis — galat 1027/429), jatuh ke cermin jsDelivr lalu
+     * raw.githubusercontent dari repo gudang yang sama.
+     */
     suspend fun fetchRawCatalog(): String = withContext(Dispatchers.IO) {
-        val conn = URL("$API_BASE/api/catalog").openConnection() as HttpURLConnection
-        conn.connectTimeout = 20000
-        conn.readTimeout = 20000
-        conn.setRequestProperty("Accept", "application/json")
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (REA Android)")
-        conn.inputStream.bufferedReader().use { it.readText() }
+        val sources = listOf("$API_BASE/api/catalog", CATALOG_MIRROR, CATALOG_MIRROR2)
+        var last: Exception? = null
+        for (u in sources) {
+            try {
+                return@withContext httpGetText(u)
+            } catch (e: Exception) {
+                last = e
+            }
+        }
+        throw last ?: java.io.IOException("semua sumber katalog gagal")
     }
 
     suspend fun fetchCatalog(): List<Title> = parseCatalog(fetchRawCatalog())
 
     /** Daftar "Segera Tayang": judul antrean gudang yang belum terbit. */
     suspend fun fetchSoon(): List<SoonTitle> = withContext(Dispatchers.IO) {
-        val conn = URL("$API_BASE/api/soon").openConnection() as HttpURLConnection
-        conn.connectTimeout = 20000
-        conn.readTimeout = 20000
-        conn.setRequestProperty("Accept", "application/json")
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (REA Android)")
-        val body = conn.inputStream.bufferedReader().use { it.readText() }
-        val root = JSONObject(body)
-        val arr = root.optJSONArray("titles") ?: JSONArray()
+        val body = try {
+            httpGetText("$API_BASE/api/soon")
+        } catch (e: Exception) {
+            httpGetText(SOON_MIRROR)
+        }
+        // API membungkus {titles:[...]}; berkas cermin adalah array telanjang.
+        val trimmed = body.trimStart()
+        val arr = if (trimmed.startsWith("[")) {
+            JSONArray(trimmed)
+        } else {
+            JSONObject(trimmed).optJSONArray("titles") ?: JSONArray()
+        }
         val out = ArrayList<SoonTitle>()
         for (i in 0 until arr.length()) {
             val t = arr.getJSONObject(i)
@@ -165,7 +218,9 @@ object CatalogApi {
                 )
             )
         }
-        out
+        // Judul yang sudah tayang tidak ditampilkan sebagai "segera tayang"
+        // (penyaringan ini biasanya dilakukan Worker; cermin perlu disaring di sini).
+        out.filter { !lastCatalogIds.contains(it.id) }
     }
 }
 
