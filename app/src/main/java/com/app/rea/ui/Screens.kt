@@ -25,9 +25,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -139,11 +143,7 @@ private fun GridPoster(t: Title, onClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)
                 .clip(RoundedCornerShape(6.dp)).background(ReaSurface),
         )
-        Text(
-            t.title, color = Color.White, fontSize = 11.sp, maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 4.dp),
-        )
+        CardTitles(t)
     }
 }
 
@@ -315,6 +315,8 @@ fun DownloadsScreen(
 fun ProfileScreen(
     myListTitles: List<Title>,
     historyCount: Int,
+    finishedEpisodes: Int,
+    watchedTitles: Int,
     settings: ReaSettings,
     onOpenTitle: (Title) -> Unit,
     onAutoplayChange: (Boolean) -> Unit,
@@ -329,7 +331,13 @@ fun ProfileScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(
-                    Modifier.size(72.dp).background(ReaAccent, RoundedCornerShape(10.dp)),
+                    Modifier.size(76.dp)
+                        .background(
+                            androidx.compose.ui.graphics.Brush.linearGradient(
+                                listOf(ReaAccent, Color(0xFFFF7A18))
+                            ),
+                            RoundedCornerShape(50),
+                        ),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text("A", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
@@ -338,17 +346,26 @@ fun ProfileScreen(
                 Text("Adiyth", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
                 Text("Akun lokal di perangkat ini", color = ReaTextDim, fontSize = 12.sp)
             }
+            Spacer(Modifier.height(18.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                StatColumn("$finishedEpisodes", "Episode selesai")
+                StatColumn("$watchedTitles", "Judul ditonton")
+                StatColumn("${myListTitles.size}", "Di Daftarku")
+            }
             Spacer(Modifier.height(8.dp))
         }
-        if (myListTitles.isNotEmpty()) {
-            item { PosterRow("Daftarku", myListTitles, onOpenTitle) }
-        }
+        item { PosterRowOrEmpty(myListTitles, onOpenTitle) }
         item {
             SectionTitle("Pengaturan Putar")
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                SettingsIcon(Icons.Filled.PlayCircle)
+                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Autoplay episode berikutnya", color = Color.White, fontSize = 14.sp)
                     Text("Hitung mundur lalu putar otomatis", color = ReaTextDim, fontSize = 12.sp)
@@ -359,46 +376,101 @@ fun ProfileScreen(
                     colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = ReaAccent),
                 )
             }
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
-                Text("Subtitle bawaan", color = Color.White, fontSize = 14.sp)
-                Text("Dipilih otomatis saat episode mulai diputar", color = ReaTextDim, fontSize = 12.sp)
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for ((value, label) in listOf("id" to "Indonesia", "en" to "Inggris", "off" to "Nonaktif")) {
-                        FilterChip(
-                            selected = settings.subtitleDefault == value,
-                            onClick = { onSubtitleChange(value) },
-                            label = { Text(label) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = ReaAccent,
-                                selectedLabelColor = Color.White,
-                                labelColor = Color.White,
-                            ),
-                        )
+            HorizontalDivider(
+                Modifier.padding(horizontal = 16.dp),
+                thickness = 0.5.dp, color = Color.White.copy(alpha = 0.10f),
+            )
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                SettingsIcon(Icons.Filled.Subtitles)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Subtitle bawaan", color = Color.White, fontSize = 14.sp)
+                    Text("Dipilih otomatis saat episode mulai diputar", color = ReaTextDim, fontSize = 12.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for ((value, label) in listOf("id" to "Indonesia", "en" to "Inggris", "off" to "Nonaktif")) {
+                            FilterChip(
+                                selected = settings.subtitleDefault == value,
+                                onClick = { onSubtitleChange(value) },
+                                label = { Text(label) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = ReaAccent,
+                                    selectedLabelColor = Color.White,
+                                    labelColor = Color.White,
+                                ),
+                            )
+                        }
                     }
                 }
             }
         }
         item {
             SectionTitle("Riwayat")
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                SettingsIcon(Icons.Filled.History)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        when {
+                            cleared -> "Riwayat sudah dibersihkan."
+                            historyCount == 0 -> "Belum ada riwayat tonton."
+                            else -> "$historyCount riwayat tonton tersimpan."
+                        },
+                        color = ReaTextDim, fontSize = 13.sp,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Bersihkan riwayat tonton", color = ReaAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable {
+                            onClearHistory()
+                            cleared = true
+                        },
+                    )
+                }
+            }
             Column(Modifier.padding(horizontal = 16.dp)) {
-                Text(
-                    if (cleared) "Riwayat sudah dibersihkan."
-                    else "$historyCount entri riwayat tonton tersimpan di perangkat ini.",
-                    color = ReaTextDim, fontSize = 13.sp,
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Bersihkan riwayat tonton", color = ReaAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable {
-                        onClearHistory()
-                        cleared = true
-                    },
-                )
                 Spacer(Modifier.height(28.dp))
-                Text("REA versi 2.0.0", color = ReaTextDim, fontSize = 12.sp)
+                Text("REA versi 2.1.0", color = ReaTextDim, fontSize = 12.sp)
                 Spacer(Modifier.height(24.dp))
             }
         }
+    }
+}
+
+@Composable
+private fun StatColumn(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = ReaTextDim, fontSize = 11.sp)
+    }
+}
+
+@Composable
+private fun SettingsIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Box(
+        Modifier.size(38.dp).background(ReaSurface, RoundedCornerShape(8.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(21.dp))
+    }
+}
+
+@Composable
+private fun PosterRowOrEmpty(myListTitles: List<Title>, onOpenTitle: (Title) -> Unit) {
+    if (myListTitles.isNotEmpty()) {
+        PosterRow("Daftarku", myListTitles, onOpenTitle)
+    } else {
+        SectionTitle("Daftarku")
+        Text(
+            "Daftarku masih kosong — tambahkan judul dari tombol + di beranda atau halaman detail.",
+            color = ReaTextDim, fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
     }
 }

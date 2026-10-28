@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -18,10 +19,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.FiberNew
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -66,6 +67,7 @@ import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         val store = HistoryStore(applicationContext)
         val library = LibraryStore(applicationContext)
@@ -148,7 +150,7 @@ private fun AppRoot(
                 NavigationBar(containerColor = Color(0xFF0B0B0B)) {
                     NavItem(Tab.Home, tab, Icons.Filled.Home, "Beranda") { tab = it }
                     NavItem(Tab.Search, tab, Icons.Filled.Search, "Cari") { tab = it }
-                    NavItem(Tab.New, tab, Icons.Filled.FiberNew, "Baru") { tab = it }
+                    NavItem(Tab.New, tab, Icons.Filled.Whatshot, "Baru") { tab = it }
                     NavItem(Tab.Downloads, tab, Icons.Filled.Download, "Unduhan") { tab = it }
                     NavItem(Tab.Profile, tab, Icons.Filled.Person, "Profil") { tab = it }
                 }
@@ -240,6 +242,8 @@ private fun AppRoot(
                     Tab.Profile -> ProfileScreen(
                         myListTitles = titles!!.filter { myList.contains(it.id) },
                         historyCount = history.size,
+                        finishedEpisodes = history.count { it.isFinished },
+                        watchedTitles = history.map { it.titleId }.distinct().size,
                         settings = settings,
                         onOpenTitle = { selected = it },
                         onAutoplayChange = { v -> scope.launch { library.setAutoplay(v) } },
@@ -270,7 +274,7 @@ private fun androidx.compose.foundation.layout.RowScope.NavItem(
             selectedTextColor = Color.White,
             unselectedIconColor = Color(0xFF8C8C8C),
             unselectedTextColor = Color(0xFF8C8C8C),
-            indicatorColor = ReaAccent,
+            indicatorColor = Color.Transparent,
         ),
     )
 }

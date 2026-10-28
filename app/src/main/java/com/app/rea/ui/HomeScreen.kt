@@ -27,6 +27,9 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -135,6 +138,28 @@ fun HomeScreen(
 
         if (titles.isNotEmpty()) {
             item { PosterRow("Di Gudang", titles, onOpen) }
+        }
+
+        if (featured != null && featured.episodes.size > 1) {
+            item {
+                SectionTitle("Episode " + featured.seriesName)
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(featured.episodes) { ep ->
+                        val entry = history.firstOrNull {
+                            it.titleId == featured.id && it.episode == ep.number
+                        }
+                        EpisodeCard(featured, ep.number, entry) {
+                            onPlay(
+                                featured, ep.number,
+                                if (entry != null && entry.isStarted && !entry.isFinished) entry.positionMs else 0L,
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         if (titles.size >= 2) {
@@ -271,12 +296,12 @@ private fun Billboard(
                     Text(if (resume != null) "Lanjutkan" else "Putar", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
                 BillboardAction(
-                    icon = if (inMyList) Icons.Filled.Check else Icons.Filled.Add,
+                    icon = if (inMyList) Icons.Outlined.Check else Icons.Outlined.Add,
                     label = "Daftarku",
                     onClick = onToggleMyList,
                 )
                 BillboardAction(
-                    icon = Icons.Filled.Info,
+                    icon = Icons.Outlined.Info,
                     label = "Detail",
                     onClick = onOpen,
                 )
@@ -293,7 +318,8 @@ private fun BillboardAction(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick).padding(horizontal = 4.dp),
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.width(56.dp).height(54.dp).clickable(onClick = onClick),
     ) {
         Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(26.dp))
         Text(label, color = Color.White, fontSize = 11.sp)
@@ -308,6 +334,25 @@ fun SectionTitle(text: String) {
     )
 }
 
+/** Judul kartu dua baris tetap: nama seri (tebal) + season/bagian (redup). */
+@Composable
+fun CardTitles(t: Title) {
+    Column(Modifier.height(36.dp).padding(top = 4.dp)) {
+        Text(
+            t.seriesName, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            t.titleSub ?: listOfNotNull(
+                t.year?.toString(),
+                if (t.episodes.isNotEmpty()) "${t.episodes.size} Episode" else null,
+            ).joinToString(" · "),
+            color = ReaTextDim, fontSize = 11.sp,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
 @Composable
 fun PosterCard(t: Title, onClick: () -> Unit) {
     Column(Modifier.width(112.dp).clickable(onClick = onClick)) {
@@ -318,13 +363,57 @@ fun PosterCard(t: Title, onClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)
                 .clip(RoundedCornerShape(6.dp)).background(ReaSurface),
         )
-        Box(Modifier.height(34.dp)) {
-            Text(
-                t.title, color = Color.White, fontSize = 12.sp, maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp),
+        CardTitles(t)
+    }
+}
+
+@Composable
+fun EpisodeCard(t: Title, episode: Int, entry: WatchEntry?, onClick: () -> Unit) {
+    Column(Modifier.width(170.dp).clickable(onClick = onClick)) {
+        Box(
+            Modifier.fillMaxWidth().aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(6.dp)).background(ReaSurface),
+        ) {
+            AsyncImage(
+                model = t.banner ?: t.poster,
+                contentDescription = "Episode $episode",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
             )
+            Box(
+                Modifier.align(Alignment.BottomStart)
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(topEnd = 6.dp))
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+            ) {
+                Text("E$episode", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+            if (entry != null && entry.isStarted && !entry.isFinished) {
+                Box(
+                    Modifier.align(Alignment.BottomStart).fillMaxWidth()
+                        .height(4.dp).background(Color.White.copy(alpha = 0.35f)),
+                ) {
+                    Box(
+                        Modifier.fillMaxWidth(entry.fraction).height(4.dp)
+                            .background(ReaAccent),
+                    )
+                }
+            }
         }
+        Text(
+            "Episode $episode", color = Color.White, fontSize = 12.sp,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Text(
+            when {
+                entry != null && entry.isFinished -> "Selesai ditonton"
+                entry != null && entry.isStarted ->
+                    "Sisa " + formatRemainingPlain(entry.positionMs, entry.durationMs)
+                else -> t.seriesName
+            },
+            color = ReaTextDim, fontSize = 11.sp,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -338,13 +427,7 @@ fun LandscapeCard(t: Title, onClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(6.dp)).background(ReaSurface),
         )
-        Box(Modifier.height(34.dp)) {
-            Text(
-                t.title, color = Color.White, fontSize = 12.sp, maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
+        CardTitles(t)
     }
 }
 
@@ -402,8 +485,8 @@ private fun ContinueCard(
                 )
             }
             Box {
-                IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "Pilihan", tint = Color.White, modifier = Modifier.size(18.dp))
+                IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(40.dp)) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "Pilihan", tint = Color.White, modifier = Modifier.size(20.dp))
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(

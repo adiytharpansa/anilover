@@ -317,7 +317,8 @@ private fun DetailAction(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.width(76.dp).height(58.dp).clickable(onClick = onClick),
     ) {
         Icon(
             icon, contentDescription = label,

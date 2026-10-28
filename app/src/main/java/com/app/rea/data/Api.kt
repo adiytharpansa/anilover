@@ -40,6 +40,24 @@ data class Title(
 ) {
     /** Persentase kecocokan gaya Netflix, diturunkan dari skor (8,6 -> 86%). */
     val matchPercent: Int? get() = score?.let { (it * 10).toInt().coerceIn(0, 100) }
+    /** Nama seri tanpa embel season, untuk baris pertama judul kartu. */
+    val seriesName: String
+        get() {
+            val i = title.indexOf(" Season ")
+            if (i > 0) return title.substring(0, i)
+            val j = title.indexOf(": ")
+            if (j > 0) return title.substring(0, j)
+            return title
+        }
+    /** Sisa judul sesudah nama seri (season/bagian), untuk baris kedua kartu. */
+    val titleSub: String?
+        get() {
+            val i = title.indexOf(" Season ")
+            if (i > 0) return title.substring(i + 1)
+            val j = title.indexOf(": ")
+            if (j > 0) return title.substring(j + 2)
+            return null
+        }
     val statusLabel: String?
         get() = when (status) {
             "FINISHED" -> "Tamat"
