@@ -97,7 +97,7 @@ fun DetailScreen(
         if (similar.isNotEmpty()) add("similar")
     }
     var tabKey by remember(title.id) { mutableStateOf("ep") }
-    if (!tabKeys.contains(tabKey)) tabKey = "ep"
+    val activeTab = if (tabKeys.contains(tabKey)) tabKey else "ep"
     // Tombol Putar lengket: muncul setelah hero + info tergeser lewat.
     val showSticky by remember {
         derivedStateOf {
@@ -111,7 +111,7 @@ fun DetailScreen(
         Modifier.fillMaxSize(), state = listState,
         contentPadding = PaddingValues(bottom = 84.dp),
     ) {
-        item {
+        item(key = "hero") {
             Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(ReaSurface)) {
                 if (hasTrailer) {
                     // Trailer inline ala Netflix: bisu, mutar otomatis di hero.
@@ -278,16 +278,16 @@ fun DetailScreen(
                             Modifier.weight(1f).clickable { tabKey = key },
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            if (tabKey == key) {
+                            if (activeTab == key) {
                                 Box(Modifier.fillMaxWidth().height(3.dp).background(ReaAccent))
                             } else {
                                 Spacer(Modifier.height(3.dp))
                             }
                             Text(
                                 label,
-                                color = if (tabKey == key) Color.White else ReaTextDim,
+                                color = if (activeTab == key) Color.White else ReaTextDim,
                                 fontSize = 13.sp,
-                                fontWeight = if (tabKey == key) FontWeight.Bold else FontWeight.Normal,
+                                fontWeight = if (activeTab == key) FontWeight.Bold else FontWeight.Normal,
                                 modifier = Modifier.padding(vertical = 8.dp),
                             )
                         }
@@ -295,8 +295,8 @@ fun DetailScreen(
                 }
             }
         }
-        if (tabKey == "ep") {
-        items(title.episodes.size) { idx ->
+        if (activeTab == "ep") {
+        items(title.episodes.size, key = { idx -> "ep" + title.episodes[idx].number }) { idx ->
             val ep = title.episodes[idx]
             val prog = progressByEp[ep.number]
             val dl = downloadByEp[ep.number]
@@ -394,8 +394,8 @@ fun DetailScreen(
             }
         }
         }
-        if (tabKey == "trailer" && hasTrailer) {
-            item {
+        if (activeTab == "trailer" && hasTrailer) {
+            item(key = "trailer") {
                 Column(Modifier.padding(16.dp)) {
                     Box(
                         Modifier.fillMaxWidth().aspectRatio(16f / 9f)
@@ -415,8 +415,8 @@ fun DetailScreen(
                 }
             }
         }
-        if (tabKey == "similar" && similar.isNotEmpty()) {
-            item { PosterRow("Judul Serupa", similar, onOpenTitle) }
+        if (activeTab == "similar" && similar.isNotEmpty()) {
+            item(key = "similar") { PosterRow("Judul Serupa", similar, onOpenTitle) }
         }
         item { Spacer(Modifier.height(28.dp)) }
     }

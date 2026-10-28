@@ -115,6 +115,12 @@ fun SearchScreen(
     val trending = remember(titles) {
         titles.sortedByDescending { it.score ?: 0.0 }.take(5)
     }
+    // Saran untuk hasil kosong. WAJIB di tingkat atas: remember di dalam cabang
+    // kondisional merusak tabel slot Compose dan membuat aplikasi keluar sendiri
+    // saat hasil pencarian berubah kosong<->ada (perbaikan 2.6.1).
+    val suggestions = remember(titles) {
+        titles.sortedByDescending { it.score ?: 0.0 }.take(6)
+    }
     val showTrending = query.isBlank() && genre == null && trending.size >= 3
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Spacer(Modifier.height(14.dp))
@@ -245,9 +251,6 @@ fun SearchScreen(
                 }
             } else {
                 // Hasil kosong yang membantu: pesan + saran judul (skor tertinggi).
-                val suggestions = remember(titles) {
-                    titles.sortedByDescending { it.score ?: 0.0 }.take(6)
-                }
                 Column(Modifier.fillMaxSize()) {
                     Text(
                         "Tidak ada hasil untuk \"$query\".",
