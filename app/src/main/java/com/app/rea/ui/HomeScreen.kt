@@ -74,6 +74,7 @@ import coil.compose.AsyncImage
 import com.app.rea.data.Title
 import com.app.rea.data.WatchEntry
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     titles: List<Title>,
