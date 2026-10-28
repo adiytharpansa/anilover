@@ -203,10 +203,14 @@ private fun AppRoot(
                         titles = titles!!,
                         history = history,
                         myList = myList,
+                        ratings = ratings,
                         hiddenContinue = hidden,
                         onOpen = { selected = it },
                         onPlay = { t, ep, pos -> play(t, ep, pos) },
                         onToggleMyList = { t -> scope.launch { library.toggleMyList(t.id) } },
+                        onDownloadFirst = { t ->
+                            t.episodes.firstOrNull()?.let { ep -> downloader.start(t, ep) }
+                        },
                         onRemoveContinue = { entry ->
                             scope.launch {
                                 library.hideContinue(entry.titleId, entry.episode)
@@ -248,6 +252,9 @@ private fun AppRoot(
                         onOpenTitle = { selected = it },
                         onAutoplayChange = { v -> scope.launch { library.setAutoplay(v) } },
                         onSubtitleChange = { v -> scope.launch { library.setSubtitleDefault(v) } },
+                        onSubtitleStyleChange = { size, color ->
+                            scope.launch { library.setSubtitleStyle(size, color) }
+                        },
                         onClearHistory = { scope.launch { store.clearAll() } },
                     )
                 }

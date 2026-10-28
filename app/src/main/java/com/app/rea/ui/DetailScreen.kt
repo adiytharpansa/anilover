@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -135,6 +136,14 @@ fun DetailScreen(
                             .background(Color.White.copy(alpha = 0.22f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     )
+                    if (title.adult) {
+                        Text(
+                            "18+", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .background(Color.White.copy(alpha = 0.22f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                        )
+                    }
                 }
                 if (title.genres.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
@@ -172,10 +181,29 @@ fun DetailScreen(
                         onClick = onToggleMyList,
                     )
                     DetailAction(
+                        icon = Icons.Filled.ThumbDown,
+                        label = "Tidak Suka",
+                        active = rating == -1,
+                        onClick = { onRate(if (rating == -1) 0 else -1) },
+                    )
+                    DetailAction(
                         icon = Icons.Filled.ThumbUp,
-                        label = if (rating > 0) "Disukai" else "Sukai",
+                        label = when (rating) {
+                            2 -> "Sangat Suka"
+                            1 -> "Disukai"
+                            else -> "Sukai"
+                        },
                         active = rating > 0,
-                        onClick = { onRate(if (rating > 0) 0 else 1) },
+                        // Ketuk berurutan ala Netflix: Suka -> Sangat Suka -> batal.
+                        onClick = {
+                            onRate(
+                                when (rating) {
+                                    1 -> 2
+                                    2 -> 0
+                                    else -> 1
+                                }
+                            )
+                        },
                     )
                     DetailAction(
                         icon = Icons.Filled.Share,
@@ -236,7 +264,7 @@ fun DetailScreen(
                             .clip(RoundedCornerShape(6.dp)).background(ReaSurface),
                     ) {
                         AsyncImage(
-                            model = title.banner ?: title.poster,
+                            model = ep.thumb ?: title.banner ?: title.poster,
                             contentDescription = "Episode ${ep.number}",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize(),
@@ -262,7 +290,17 @@ fun DetailScreen(
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Episode ${ep.number}", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                        Text(
+                            ep.title ?: "Episode ${ep.number}",
+                            color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                        if (!ep.synopsis.isNullOrBlank()) {
+                            Text(
+                                ep.synopsis, color = ReaTextDim, fontSize = 12.sp,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                         when {
                             prog != null && prog.isFinished ->
                                 Text("Selesai ditonton", color = ReaTextDim, fontSize = 12.sp)

@@ -24,6 +24,12 @@ const val API_BASE = "https://api-anime.adiyth-arpansa.workers.dev"
 data class Episode(
     val number: Int,
     val playlist: String,
+    /** Judul episode dari API bila ada (data opsional, tampil bila terisi). */
+    val title: String? = null,
+    /** Gambar cuplikan episode dari API bila ada. */
+    val thumb: String? = null,
+    /** Sinopsis episode dari API bila ada. */
+    val synopsis: String? = null,
 )
 
 data class Title(
@@ -37,6 +43,10 @@ data class Title(
     val status: String? = null,
     val genres: List<String> = emptyList(),
     val episodes: List<Episode> = emptyList(),
+    /** Konten khusus dewasa dari API bila datanya ada; menggerakkan lencana 18+ dan filter profil Anak. */
+    val adult: Boolean = false,
+    /** URL trailer dari API bila ada; billboard memutarnya otomatis bila terisi. */
+    val trailer: String? = null,
 ) {
     /** Persentase kecocokan gaya Netflix, diturunkan dari skor (8,6 -> 86%). */
     val matchPercent: Int? get() = score?.let { (it * 10).toInt().coerceIn(0, 100) }
@@ -78,7 +88,15 @@ object CatalogApi {
             val ea = t.optJSONArray("episodes") ?: JSONArray()
             for (j in 0 until ea.length()) {
                 val e = ea.getJSONObject(j)
-                eps.add(Episode(e.optInt("number"), e.optString("playlist")))
+                eps.add(
+                    Episode(
+                        number = e.optInt("number"),
+                        playlist = e.optString("playlist"),
+                        title = e.optString("title").ifBlank { null },
+                        thumb = e.optString("thumb").ifBlank { null },
+                        synopsis = e.optString("synopsis").ifBlank { null },
+                    )
+                )
             }
             val genres = ArrayList<String>()
             val ga = t.optJSONArray("genres") ?: JSONArray()
@@ -95,6 +113,8 @@ object CatalogApi {
                     status = t.optString("status").ifBlank { null },
                     genres = genres,
                     episodes = eps.sortedBy { it.number },
+                    adult = t.optBoolean("adult", false),
+                    trailer = t.optString("trailer").ifBlank { null },
                 )
             )
         }
@@ -134,6 +154,8 @@ private val RATINGS_KEY = stringPreferencesKey("ratings_json")
 private val HIDDEN_KEY = stringPreferencesKey("hidden_continue_json")
 private val AUTOPLAY_KEY = booleanPreferencesKey("autoplay_next")
 private val SUBTITLE_KEY = stringPreferencesKey("subtitle_default")
+private val SUBSIZE_KEY = stringPreferencesKey("subtitle_size")
+private val SUBCOLOR_KEY = stringPreferencesKey("subtitle_color")
 private val CACHE_KEY = stringPreferencesKey("catalog_cache")
 private val DOWNLOADS_KEY = stringPreferencesKey("downloads_json")
 
@@ -202,6 +224,10 @@ class HistoryStore(private val context: Context) {
 data class ReaSettings(
     val autoplayNext: Boolean = true,
     val subtitleDefault: String = "id",
+    /** Ukuran teks subtitle: kecil | sedang | besar. */
+    val subtitleSize: String = "sedang",
+    /** Warna teks subtitle: putih | kuning | hijau. */
+    val subtitleColor: String = "putih",
 )
 
 /** Daftarku, nilai, sembunyikan-dari-Lanjutkan, pengaturan, cache katalog, unduhan. */
@@ -220,6 +246,8 @@ class LibraryStore(private val context: Context) {
         ReaSettings(
             autoplayNext = prefs[AUTOPLAY_KEY] ?: true,
             subtitleDefault = prefs[SUBTITLE_KEY] ?: "id",
+            subtitleSize = prefs[SUBSIZE_KEY] ?: "sedang",
+            subtitleColor = prefs[SUBCOLOR_KEY] ?: "putih",
         )
     }
     val downloads: Flow<List<DownloadItem>> = context.dataStore.data.map { prefs ->
@@ -258,6 +286,13 @@ class LibraryStore(private val context: Context) {
 
     suspend fun setSubtitleDefault(value: String) {
         context.dataStore.edit { it[SUBTITLE_KEY] = value }
+    }
+
+    suspend fun setSubtitleStyle(size: String, color: String) {
+        context.dataStore.edit { prefs ->
+            prefs[SUBSIZE_KEY] = size
+            prefs[SUBCOLOR_KEY] = color
+        }
     }
 
     suspend fun saveCatalogCache(raw: String) {

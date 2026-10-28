@@ -58,6 +58,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -85,8 +86,12 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
+import androidx.media3.ui.SubtitleView
 import com.app.rea.data.HistoryStore
+import com.app.rea.data.LibraryStore
+import com.app.rea.data.ReaSettings
 import com.app.rea.data.WatchEntry
 import com.app.rea.ui.ReaAccent
 import com.app.rea.ui.ReaTheme
@@ -239,6 +244,37 @@ private fun PlayerScreen(
     val player = remember {
         ExoPlayer.Builder(context).build().also { onPlayerCreated(it) }
     }
+    var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
+    val library = remember { LibraryStore(context) }
+    val reaSettings by library.settings.collectAsState(initial = ReaSettings())
+
+    // Terapkan gaya subtitle pilihan pengguna (warna + ukuran) ke tampilan subtitle.
+    LaunchedEffect(playerViewRef, reaSettings.subtitleSize, reaSettings.subtitleColor) {
+        val sv = playerViewRef?.subtitleView ?: return@LaunchedEffect
+        val fg = when (reaSettings.subtitleColor) {
+            "kuning" -> android.graphics.Color.YELLOW
+            "hijau" -> android.graphics.Color.GREEN
+            else -> android.graphics.Color.WHITE
+        }
+        sv.setStyle(
+            CaptionStyleCompat(
+                fg,
+                android.graphics.Color.argb(150, 0, 0, 0),
+                android.graphics.Color.TRANSPARENT,
+                CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
+                android.graphics.Color.BLACK,
+                null,
+            )
+        )
+        sv.setViewTextSize(
+            SubtitleView.TEXT_SIZE_TYPE_FRACTIONAL,
+            when (reaSettings.subtitleSize) {
+                "kecil" -> 0.040f
+                "besar" -> 0.075f
+                else -> 0.0533f
+            },
+        )
+    }
 
     var isPlaying by remember { mutableStateOf(false) }
     var isBuffering by remember { mutableStateOf(true) }
@@ -370,9 +406,13 @@ private fun PlayerScreen(
                     this.player = player
                     useController = false
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    playerViewRef = this
                 }
             },
-            update = { it.resizeMode = resizeMode },
+            update = {
+                it.resizeMode = resizeMode
+                if (playerViewRef !== it) playerViewRef = it
+            },
             modifier = Modifier.fillMaxSize(),
         )
 

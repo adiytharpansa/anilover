@@ -1,7 +1,9 @@
 package com.app.rea.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
@@ -47,7 +51,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -61,10 +67,12 @@ fun HomeScreen(
     titles: List<Title>,
     history: List<WatchEntry>,
     myList: Set<String>,
+    ratings: Map<String, Int>,
     hiddenContinue: Set<String>,
     onOpen: (Title) -> Unit,
     onPlay: (Title, Int, Long) -> Unit,
     onToggleMyList: (Title) -> Unit,
+    onDownloadFirst: (Title) -> Unit,
     onRemoveContinue: (WatchEntry) -> Unit,
     onSearch: () -> Unit,
     onProfile: () -> Unit,
@@ -78,6 +86,21 @@ fun HomeScreen(
         .sortedByDescending { it.updatedAt }
     val featured = titles.maxByOrNull { it.score ?: 0.0 } ?: titles.firstOrNull()
     val myListTitles = titles.filter { myList.contains(it.id) }
+    // Urutan katalog = urutan terbit di gudang; yang terakhir masuk = terbaru.
+    val newIds = if (titles.size >= 4) titles.takeLast(3).map { it.id }.toSet() else emptySet()
+    val top10 = titles.sortedByDescending { it.score ?: 0.0 }.take(10)
+    // "Karena Anda menonton X": X = judul terakhir ditonton; rekomendasi = genre sama,
+    // judul yang dinilai tidak suka dikeluarkan.
+    val becauseBase = history.filter { it.isStarted }
+        .maxByOrNull { it.updatedAt }?.let { byId[it.titleId] }
+    val becauseList = becauseBase?.let { base ->
+        titles.filter { other ->
+            other.id != base.id && ratings[other.id] != -1 &&
+                other.genres.any { g -> base.genres.contains(g) }
+        }.sortedByDescending { other ->
+            other.genres.count { g -> base.genres.contains(g) } * 100 + (other.score ?: 0.0)
+        }.take(10)
+    } ?: emptyList()
 
     LazyColumn(Modifier.fillMaxSize()) {
         item {
@@ -132,12 +155,66 @@ fun HomeScreen(
             }
         }
 
+        if (titles.size >= 3) {
+            item {
+                SectionTitle("10 Teratas di REA Hari Ini")
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    items(top10.size) { idx ->
+                        Top10Card(rank = idx + 1, t = top10[idx]) { onOpen(top10[idx]) }
+                    }
+                }
+            }
+        }
+
+        if (becauseBase != null && becauseList.size >= 3) {
+            item {
+                PosterRow(
+                    "Karena Anda Menonton ${becauseBase.seriesName}", becauseList, onOpen,
+                    newIds = newIds, myList = myList,
+                    onPlayFirst = { t -> onPlay(t, t.episodes.firstOrNull()?.number ?: 1, 0L) },
+                    onToggleMyList = onToggleMyList,
+                    onDownloadFirst = onDownloadFirst,
+                )
+            }
+        }
+
+        if (titles.size >= 2) {
+            item {
+                PosterRow(
+                    "Baru Ditambahkan", titles.reversed(), onOpen,
+                    newIds = newIds, myList = myList,
+                    onPlayFirst = { t -> onPlay(t, t.episodes.firstOrNull()?.number ?: 1, 0L) },
+                    onToggleMyList = onToggleMyList,
+                    onDownloadFirst = onDownloadFirst,
+                )
+            }
+        }
+
         if (myListTitles.isNotEmpty()) {
-            item { PosterRow("Daftarku", myListTitles, onOpen) }
+            item {
+                PosterRow(
+                    "Daftarku", myListTitles, onOpen,
+                    newIds = newIds, myList = myList,
+                    onPlayFirst = { t -> onPlay(t, t.episodes.firstOrNull()?.number ?: 1, 0L) },
+                    onToggleMyList = onToggleMyList,
+                    onDownloadFirst = onDownloadFirst,
+                )
+            }
         }
 
         if (titles.isNotEmpty()) {
-            item { PosterRow("Di Gudang", titles, onOpen) }
+            item {
+                PosterRow(
+                    "Di Gudang", titles, onOpen,
+                    newIds = newIds, myList = myList,
+                    onPlayFirst = { t -> onPlay(t, t.episodes.firstOrNull()?.number ?: 1, 0L) },
+                    onToggleMyList = onToggleMyList,
+                    onDownloadFirst = onDownloadFirst,
+                )
+            }
         }
 
         if (featured != null && featured.episodes.size > 1) {
@@ -163,23 +240,43 @@ fun HomeScreen(
         }
 
         if (titles.size >= 2) {
-            val topRated = titles.sortedByDescending { it.score ?: 0.0 }
-            if (topRated != titles) {
-                item { PosterRow("Skor Tertinggi", topRated, onOpen) }
-            }
             val releasing = titles.filter { it.status == "RELEASING" }
             if (releasing.isNotEmpty()) {
-                item { PosterRow("Sedang Tayang", releasing, onOpen) }
+                item {
+                    PosterRow(
+                        "Sedang Tayang", releasing, onOpen,
+                        newIds = newIds, myList = myList,
+                        onPlayFirst = { t -> onPlay(t, t.episodes.firstOrNull()?.number ?: 1, 0L) },
+                        onToggleMyList = onToggleMyList,
+                        onDownloadFirst = onDownloadFirst,
+                    )
+                }
             }
             val finished = titles.filter { it.status == "FINISHED" }
             if (finished.isNotEmpty() && finished.size != titles.size) {
-                item { PosterRow("Serial Tamat", finished, onOpen) }
+                item {
+                    PosterRow(
+                        "Serial Tamat", finished, onOpen,
+                        newIds = newIds, myList = myList,
+                        onPlayFirst = { t -> onPlay(t, t.episodes.firstOrNull()?.number ?: 1, 0L) },
+                        onToggleMyList = onToggleMyList,
+                        onDownloadFirst = onDownloadFirst,
+                    )
+                }
             }
             val genres = titles.flatMap { it.genres }.distinct().take(4)
             for (g in genres) {
                 val inGenre = titles.filter { it.genres.contains(g) }
                 if (inGenre.isNotEmpty()) {
-                    item { PosterRow(g, inGenre, onOpen) }
+                    item {
+                        PosterRow(
+                            g, inGenre, onOpen,
+                            newIds = newIds, myList = myList,
+                            onPlayFirst = { t -> onPlay(t, t.episodes.firstOrNull()?.number ?: 1, 0L) },
+                            onToggleMyList = onToggleMyList,
+                            onDownloadFirst = onDownloadFirst,
+                        )
+                    }
                 }
             }
         }
@@ -189,13 +286,58 @@ fun HomeScreen(
 }
 
 @Composable
-fun PosterRow(title: String, list: List<Title>, onOpen: (Title) -> Unit) {
+fun PosterRow(
+    title: String,
+    list: List<Title>,
+    onOpen: (Title) -> Unit,
+    newIds: Set<String> = emptySet(),
+    myList: Set<String>? = null,
+    onPlayFirst: ((Title) -> Unit)? = null,
+    onToggleMyList: ((Title) -> Unit)? = null,
+    onDownloadFirst: ((Title) -> Unit)? = null,
+) {
     SectionTitle(title)
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        items(list) { t -> PosterCard(t) { onOpen(t) } }
+        items(list) { t ->
+            PosterCard(
+                t = t,
+                badge = if (newIds.contains(t.id)) "BARU" else null,
+                inMyList = myList?.contains(t.id) ?: false,
+                onPlayFirst = onPlayFirst?.let { f -> { f(t) } },
+                onToggleMyList = onToggleMyList?.let { f -> { f(t) } },
+                onDownloadFirst = onDownloadFirst?.let { f -> { f(t) } },
+                onClick = { onOpen(t) },
+            )
+        }
+    }
+}
+
+/** Kartu Top 10 gaya Netflix: angka peringkat raksasa bergaris tepi + poster. */
+@Composable
+fun Top10Card(rank: Int, t: Title, onClick: () -> Unit) {
+    Row(
+        Modifier.clickable(onClick = onClick),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        Text(
+            text = rank.toString(),
+            color = Color(0xFF141414),
+            fontSize = if (rank < 10) 96.sp else 76.sp,
+            fontWeight = FontWeight.Black,
+            style = TextStyle(drawStyle = Stroke(width = 3.5f, join = androidx.compose.ui.graphics.StrokeJoin.Round)),
+            modifier = Modifier.padding(start = 2.dp),
+        )
+        AsyncImage(
+            model = t.poster ?: t.banner,
+            contentDescription = t.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.width(88.dp).aspectRatio(2f / 3f)
+                .offset(x = (-10).dp)
+                .clip(RoundedCornerShape(6.dp)).background(ReaSurface),
+        )
     }
 }
 
@@ -353,17 +495,74 @@ fun CardTitles(t: Title) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun PosterCard(t: Title, onClick: () -> Unit) {
-    Column(Modifier.width(112.dp).clickable(onClick = onClick)) {
-        AsyncImage(
-            model = t.poster ?: t.banner,
-            contentDescription = t.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)
-                .clip(RoundedCornerShape(6.dp)).background(ReaSurface),
-        )
-        CardTitles(t)
+fun PosterCard(
+    t: Title,
+    badge: String? = null,
+    inMyList: Boolean = false,
+    onPlayFirst: (() -> Unit)? = null,
+    onToggleMyList: (() -> Unit)? = null,
+    onDownloadFirst: (() -> Unit)? = null,
+    onClick: () -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val hasMenu = onPlayFirst != null || onToggleMyList != null || onDownloadFirst != null
+    Column(Modifier.width(112.dp)) {
+        Box {
+            AsyncImage(
+                model = t.poster ?: t.banner,
+                contentDescription = t.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)
+                    .clip(RoundedCornerShape(6.dp)).background(ReaSurface)
+                    .combinedClickable(
+                        onClick = onClick,
+                        onLongClick = if (hasMenu) ({ menuOpen = true }) else null,
+                    ),
+            )
+            if (badge != null) {
+                Text(
+                    badge, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Black,
+                    modifier = Modifier.align(Alignment.TopStart)
+                        .background(ReaAccent, RoundedCornerShape(bottomEnd = 6.dp))
+                        .padding(horizontal = 5.dp, vertical = 2.dp),
+                )
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                if (onPlayFirst != null) {
+                    DropdownMenuItem(
+                        text = { Text("Putar") },
+                        leadingIcon = { Icon(Icons.Filled.PlayArrow, contentDescription = null) },
+                        onClick = { menuOpen = false; onPlayFirst() },
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text("Detail") },
+                    leadingIcon = { Icon(Icons.Filled.Info, contentDescription = null) },
+                    onClick = { menuOpen = false; onClick() },
+                )
+                if (onToggleMyList != null) {
+                    DropdownMenuItem(
+                        text = { Text(if (inMyList) "Hapus dari Daftarku" else "Tambah ke Daftarku") },
+                        leadingIcon = {
+                            Icon(if (inMyList) Icons.Filled.Check else Icons.Filled.Add, contentDescription = null)
+                        },
+                        onClick = { menuOpen = false; onToggleMyList() },
+                    )
+                }
+                if (onDownloadFirst != null && t.episodes.isNotEmpty()) {
+                    DropdownMenuItem(
+                        text = { Text("Unduh Episode 1") },
+                        leadingIcon = { Icon(Icons.Filled.Download, contentDescription = null) },
+                        onClick = { menuOpen = false; onDownloadFirst() },
+                    )
+                }
+            }
+        }
+        Column(Modifier.clickable(onClick = onClick)) {
+            CardTitles(t)
+        }
     }
 }
 

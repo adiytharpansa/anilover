@@ -75,6 +75,11 @@ fun SearchScreen(
             (query.isBlank() || t.title.contains(query, ignoreCase = true) ||
                 t.genres.any { it.contains(query, ignoreCase = true) })
     }
+    // "Sedang Tren Sekarang" ala Netflix: tampil saat kolom masih kosong.
+    val trending = remember(titles) {
+        titles.sortedByDescending { it.score ?: 0.0 }.take(5)
+    }
+    val showTrending = query.isBlank() && genre == null && trending.size >= 3
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Spacer(Modifier.height(14.dp))
         Text("Cari", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
@@ -108,6 +113,38 @@ fun SearchScreen(
                             labelColor = Color.White,
                         ),
                     )
+                }
+            }
+        }
+        if (showTrending) {
+            Spacer(Modifier.height(14.dp))
+            Text("Sedang Tren Sekarang", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            for ((idx, t) in trending.withIndex()) {
+                Row(
+                    Modifier.fillMaxWidth().clickable { onOpen(t) }.padding(vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "${idx + 1}", color = ReaAccent, fontSize = 17.sp, fontWeight = FontWeight.Black,
+                        modifier = Modifier.width(30.dp),
+                    )
+                    AsyncImage(
+                        model = t.poster ?: t.banner,
+                        contentDescription = t.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.width(40.dp).aspectRatio(2f / 3f)
+                            .clip(RoundedCornerShape(4.dp)).background(ReaSurface),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        t.title, color = Color.White, fontSize = 14.sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    t.matchPercent?.let {
+                        Text("$it%", color = Color(0xFF46D369), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -321,6 +358,7 @@ fun ProfileScreen(
     onOpenTitle: (Title) -> Unit,
     onAutoplayChange: (Boolean) -> Unit,
     onSubtitleChange: (String) -> Unit,
+    onSubtitleStyleChange: (String, String) -> Unit,
     onClearHistory: () -> Unit,
 ) {
     var cleared by remember { mutableStateOf(false) }
@@ -406,6 +444,55 @@ fun ProfileScreen(
                     }
                 }
             }
+            HorizontalDivider(
+                Modifier.padding(horizontal = 16.dp),
+                thickness = 0.5.dp, color = Color.White.copy(alpha = 0.10f),
+            )
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                SettingsIcon(Icons.Filled.Subtitles)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Tampilan Subtitle", color = Color.White, fontSize = 14.sp)
+                    Text("Ukuran dan warna teks subtitle di pemutar", color = ReaTextDim, fontSize = 12.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Ukuran", color = ReaTextDim, fontSize = 12.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for ((value, label) in listOf("kecil" to "Kecil", "sedang" to "Sedang", "besar" to "Besar")) {
+                            FilterChip(
+                                selected = settings.subtitleSize == value,
+                                onClick = { onSubtitleStyleChange(value, settings.subtitleColor) },
+                                label = { Text(label) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = ReaAccent,
+                                    selectedLabelColor = Color.White,
+                                    labelColor = Color.White,
+                                ),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text("Warna", color = ReaTextDim, fontSize = 12.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for ((value, label) in listOf("putih" to "Putih", "kuning" to "Kuning", "hijau" to "Hijau")) {
+                            FilterChip(
+                                selected = settings.subtitleColor == value,
+                                onClick = { onSubtitleStyleChange(settings.subtitleSize, value) },
+                                label = { Text(label) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = ReaAccent,
+                                    selectedLabelColor = Color.White,
+                                    labelColor = Color.White,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
         }
         item {
             SectionTitle("Riwayat")
@@ -436,7 +523,7 @@ fun ProfileScreen(
             }
             Column(Modifier.padding(horizontal = 16.dp)) {
                 Spacer(Modifier.height(28.dp))
-                Text("REA versi 2.1.0", color = ReaTextDim, fontSize = 12.sp)
+                Text("REA versi 2.2.0", color = ReaTextDim, fontSize = 12.sp)
                 Spacer(Modifier.height(24.dp))
             }
         }
