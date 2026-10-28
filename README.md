@@ -3,7 +3,18 @@
 Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
 **api.anime** (https://api-anime.adiyth-arpansa.workers.dev).
 
-**Unduh APK:** [REA-2.3.0.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.3.0.apk)
+**Unduh APK:** [REA-2.4.0.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.4.0.apk)
+
+## REA 2.4.0 — Cast ke TV + billboard video
+
+- **Cast ke TV**: tombol Cast resmi (Google Cast) di bar atas pemutar; episode
+  streaming yang sedang diputar dikirim ke Chromecast/Android TV lewat Default
+  Media Receiver, melanjutkan dari posisi saat ini. Sesi berakhir -> pemutaran
+  lokal lanjut dari posisi TV. Episode unduhan tidak bisa di-cast (beri tahu).
+- **Billboard video**: bila katalog menyediakan trailer, billboard beranda
+  memutar video trailer bisu berulang ala Netflix; tanpa trailer tetap gambar.
+- **Lewati Intro** kini membaca batas intro dari data API (`introEnd`) bila
+  gudang menyediakannya; tanpa data tetap heuristik 90 detik.
 
 ## REA 2.3.0 — Segera Tayang, Ingatkan Saya, Unduhan Cerdas
 
