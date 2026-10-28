@@ -1,6 +1,11 @@
 package com.app.rea
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -43,12 +48,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.app.rea.data.CatalogApi
+import com.app.rea.data.CatalogCheckWorker
 import com.app.rea.data.DownloadManager
 import com.app.rea.data.HistoryStore
 import com.app.rea.data.LibraryStore
 import com.app.rea.data.ReaSettings
+import com.app.rea.data.SoonTitle
 import com.app.rea.data.Title
 import com.app.rea.player.PlayerActivity
 import com.app.rea.ui.DetailScreen
@@ -69,6 +82,23 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        // Izin notifikasi (Android 13+) untuk kabar judul baru & "Sudah tayang".
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
+        }
+        // Pemeriksa katalog berkala: notifikasi judul baru / yang diingatkan sudah tayang.
+        try {
+            val checkRequest = PeriodicWorkRequestBuilder<CatalogCheckWorker>(
+                6, java.util.concurrent.TimeUnit.HOURS,
+            ).setConstraints(
+                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+            ).build()
+            WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+                "rea-catalog-check", ExistingPeriodicWorkPolicy.KEEP, checkRequest,
+            )
+        } catch (e: Exception) { /* notifikasi latar bersifat tambahan */ }
         val store = HistoryStore(applicationContext)
         val library = LibraryStore(applicationContext)
         val downloader = DownloadManager(applicationContext, library)
@@ -107,6 +137,7 @@ private fun AppRoot(
     onPlay: (Title, Int, Long, Boolean, String) -> Unit,
 ) {
     var titles by remember { mutableStateOf<List<Title>?>(null) }
+    var soon by remember { mutableStateOf<List<SoonTitle>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableIntStateOf(0) }
     var selected by remember { mutableStateOf<Title?>(null) }
@@ -119,6 +150,8 @@ private fun AppRoot(
     val hidden by library.hiddenContinue.collectAsState(initial = emptySet())
     val settings by library.settings.collectAsState(initial = ReaSettings())
     val downloads by library.downloads.collectAsState(initial = emptyList())
+    val reminders by library.reminders.collectAsState(initial = emptySet())
+    val context = LocalContext.current
 
     LaunchedEffect(reloadKey) {
         if (titles.isNullOrEmpty()) {
@@ -134,6 +167,34 @@ private fun AppRoot(
         } catch (e: Exception) {
             if (titles.isNullOrEmpty()) {
                 error = "Tidak bisa memuat katalog. Periksa koneksi internetmu."
+            }
+        }
+        try { soon = CatalogApi.fetchSoon() } catch (e: Exception) { /* Segera Tayang tambahan */ }
+    }
+
+    // Unduhan Cerdas: sesudah episode selesai ditonton, unduh lanjutannya dan
+    // hapus unduhan episode yang sudah selesai. Berhenti di data seluler bila
+    // pengaturan "Hanya Wi-Fi" aktif.
+    LaunchedEffect(history, downloads, settings.smartDownloads, settings.wifiOnlyDownloads, titles) {
+        if (!settings.smartDownloads) return@LaunchedEffect
+        val list = titles ?: return@LaunchedEffect
+        if (settings.wifiOnlyDownloads) {
+            val cm = context.getSystemService(ConnectivityManager::class.java)
+            val caps = cm?.getNetworkCapabilities(cm.activeNetwork)
+            val onWifi = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            if (!onWifi) return@LaunchedEffect
+        }
+        val byId = list.associateBy { it.id }
+        for (d in downloads.filter { it.state == "selesai" }) {
+            val h = history.firstOrNull { it.titleId == d.titleId && it.episode == d.episode }
+            if (h != null && h.isFinished) downloader.delete(d)
+        }
+        for (h in history.filter { it.isFinished }) {
+            val t = byId[h.titleId] ?: continue
+            val next = t.episodes.firstOrNull { it.number == h.episode + 1 } ?: continue
+            val exists = downloads.any { it.titleId == t.id && it.episode == next.number }
+            if (!exists && downloader.localPlaylistUri(t.id, next.number) == null) {
+                downloader.start(t, next)
             }
         }
     }
@@ -226,11 +287,15 @@ private fun AppRoot(
                     )
                     Tab.New -> NewScreen(
                         titles = titles!!,
+                        soon = soon,
+                        reminders = reminders,
+                        onToggleReminder = { s -> scope.launch { library.toggleReminder(s.id) } },
                         onOpen = { selected = it },
                     )
                     Tab.Downloads -> DownloadsScreen(
                         downloads = downloads,
                         titles = titles!!,
+                        settings = settings,
                         onPlayDownload = { item ->
                             titles!!.firstOrNull { it.id == item.titleId }?.let { t ->
                                 val entry = history.firstOrNull {
@@ -241,6 +306,8 @@ private fun AppRoot(
                             }
                         },
                         onDeleteDownload = { item -> downloader.delete(item) },
+                        onSmartChange = { v -> scope.launch { library.setSmartDownloads(v) } },
+                        onWifiOnlyChange = { v -> scope.launch { library.setWifiOnlyDownloads(v) } },
                         onBrowse = { tab = Tab.Home },
                     )
                     Tab.Profile -> ProfileScreen(

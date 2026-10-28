@@ -23,9 +23,11 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Search
@@ -51,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.app.rea.data.DownloadItem
 import com.app.rea.data.ReaSettings
+import com.app.rea.data.SoonTitle
 import com.app.rea.data.Title
 
 // ---------------- Cari ----------------
@@ -189,6 +193,9 @@ private fun GridPoster(t: Title, onClick: () -> Unit) {
 @Composable
 fun NewScreen(
     titles: List<Title>,
+    soon: List<SoonTitle>,
+    reminders: Set<String>,
+    onToggleReminder: (SoonTitle) -> Unit,
     onOpen: (Title) -> Unit,
 ) {
     LazyColumn(Modifier.fillMaxSize()) {
@@ -199,7 +206,18 @@ fun NewScreen(
                 modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
             )
         }
-        items(titles) { t ->
+        if (soon.isNotEmpty()) {
+            item { SectionTitle("Segera Tayang") }
+            items(soon) { s ->
+                SoonCard(
+                    s = s,
+                    reminded = reminders.contains(s.id),
+                    onToggleReminder = { onToggleReminder(s) },
+                )
+            }
+            item { SectionTitle("Baru Ditambahkan") }
+        }
+        items(titles.reversed()) { t ->
             Column(
                 Modifier.fillMaxWidth().clickable { onOpen(t) }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -245,17 +263,102 @@ fun NewScreen(
     }
 }
 
+/** Kartu "Segera Tayang": judul masih disalin ke gudang; tombol Ingatkan Saya. */
+@Composable
+private fun SoonCard(
+    s: SoonTitle,
+    reminded: Boolean,
+    onToggleReminder: () -> Unit,
+) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Box(
+            Modifier.fillMaxWidth().aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(8.dp)).background(ReaSurface),
+        ) {
+            AsyncImage(
+                model = s.banner ?: s.poster,
+                contentDescription = s.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Text(
+                "SEGERA", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black,
+                modifier = Modifier.align(Alignment.TopStart)
+                    .background(ReaAccent, RoundedCornerShape(bottomEnd = 6.dp))
+                    .padding(horizontal = 6.dp, vertical = 3.dp),
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                s.title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            s.matchPercent?.let {
+                Text("$it%", color = Color(0xFF46D369), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        val meta = listOfNotNull(
+            s.year?.toString(),
+            if (s.totalEpisodes > 0) "${s.totalEpisodes} Episode" else null,
+            if (s.genres.isNotEmpty()) s.genres.joinToString(", ") else null,
+        ).joinToString("  •  ")
+        if (meta.isNotBlank()) Text(meta, color = ReaTextDim, fontSize = 12.sp)
+        if (!s.synopsis.isNullOrBlank()) {
+            Text(
+                s.synopsis, color = ReaTextDim, fontSize = 12.sp,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(
+            Modifier.clip(RoundedCornerShape(6.dp))
+                .background(if (reminded) ReaAccent else Color.White.copy(alpha = 0.14f))
+                .clickable(onClick = onToggleReminder)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                if (reminded) Icons.Filled.Check else Icons.Filled.Notifications,
+                contentDescription = null, tint = Color.White, modifier = Modifier.size(17.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                if (reminded) "Diingatkan" else "Ingatkan Saya",
+                color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
 // ---------------- Unduhan ----------------
 
 @Composable
 fun DownloadsScreen(
     downloads: List<DownloadItem>,
     titles: List<Title>,
+    settings: ReaSettings,
     onPlayDownload: (DownloadItem) -> Unit,
     onDeleteDownload: (DownloadItem) -> Unit,
+    onSmartChange: (Boolean) -> Unit,
+    onWifiOnlyChange: (Boolean) -> Unit,
     onBrowse: () -> Unit,
 ) {
     val byId = titles.associateBy { it.id }
+    val context = LocalContext.current
+    val storage = remember {
+        try {
+            val stat = android.os.StatFs(context.filesDir.absolutePath)
+            val total = stat.totalBytes
+            val free = stat.availableBytes
+            total to free
+        } catch (e: Exception) {
+            0L to 0L
+        }
+    }
     LazyColumn(Modifier.fillMaxSize()) {
         item {
             Text(
@@ -270,6 +373,58 @@ fun DownloadsScreen(
                     color = ReaTextDim, fontSize = 13.sp,
                     modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
                 )
+            }
+            if (storage.first > 0) {
+                val usedFrac = 1f - storage.second.toFloat() / storage.first.toFloat()
+                Text(
+                    "Penyimpanan perangkat: " + formatSize(storage.second) + " bebas dari " +
+                        formatSize(storage.first),
+                    color = ReaTextDim, fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
+                )
+                Box(
+                    Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(4.dp)
+                        .background(Color.White.copy(alpha = 0.25f), RoundedCornerShape(2.dp)),
+                ) {
+                    Box(
+                        Modifier.fillMaxWidth(usedFrac.coerceIn(0f, 1f)).height(4.dp)
+                            .background(ReaAccent, RoundedCornerShape(2.dp)),
+                    )
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Column(
+                Modifier.padding(horizontal = 16.dp).fillMaxWidth()
+                    .background(ReaSurface, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Unduhan Cerdas", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Episode berikutnya terunduh otomatis; episode yang selesai ditonton terhapus sendiri.",
+                            color = ReaTextDim, fontSize = 12.sp,
+                        )
+                    }
+                    Switch(
+                        checked = settings.smartDownloads,
+                        onCheckedChange = onSmartChange,
+                        colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = ReaAccent),
+                    )
+                }
+                if (settings.smartDownloads) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Hanya lewat Wi-Fi", color = Color.White, fontSize = 13.sp)
+                            Text("Unduhan Cerdas berhenti saat memakai data seluler.", color = ReaTextDim, fontSize = 12.sp)
+                        }
+                        Switch(
+                            checked = settings.wifiOnlyDownloads,
+                            onCheckedChange = onWifiOnlyChange,
+                            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = ReaAccent),
+                        )
+                    }
+                }
             }
         }
         if (downloads.isEmpty()) {
@@ -523,7 +678,7 @@ fun ProfileScreen(
             }
             Column(Modifier.padding(horizontal = 16.dp)) {
                 Spacer(Modifier.height(28.dp))
-                Text("REA versi 2.2.0", color = ReaTextDim, fontSize = 12.sp)
+                Text("REA versi 2.3.0", color = ReaTextDim, fontSize = 12.sp)
                 Spacer(Modifier.height(24.dp))
             }
         }

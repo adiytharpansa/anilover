@@ -131,6 +131,54 @@ object CatalogApi {
     }
 
     suspend fun fetchCatalog(): List<Title> = parseCatalog(fetchRawCatalog())
+
+    /** Daftar "Segera Tayang": judul antrean gudang yang belum terbit. */
+    suspend fun fetchSoon(): List<SoonTitle> = withContext(Dispatchers.IO) {
+        val conn = URL("$API_BASE/api/soon").openConnection() as HttpURLConnection
+        conn.connectTimeout = 20000
+        conn.readTimeout = 20000
+        conn.setRequestProperty("Accept", "application/json")
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (REA Android)")
+        val body = conn.inputStream.bufferedReader().use { it.readText() }
+        val root = JSONObject(body)
+        val arr = root.optJSONArray("titles") ?: JSONArray()
+        val out = ArrayList<SoonTitle>()
+        for (i in 0 until arr.length()) {
+            val t = arr.getJSONObject(i)
+            val genres = ArrayList<String>()
+            val ga = t.optJSONArray("genres") ?: JSONArray()
+            for (j in 0 until ga.length()) genres.add(ga.optString(j))
+            out.add(
+                SoonTitle(
+                    id = t.optString("id"),
+                    title = t.optString("title"),
+                    poster = t.optString("poster").ifBlank { null },
+                    banner = t.optString("banner").ifBlank { null },
+                    synopsis = t.optString("synopsis").ifBlank { null },
+                    year = if (t.has("year") && !t.isNull("year")) t.optInt("year") else null,
+                    score = if (t.has("score") && !t.isNull("score")) t.optDouble("score") else null,
+                    genres = genres,
+                    totalEpisodes = t.optInt("totalEpisodes"),
+                )
+            )
+        }
+        out
+    }
+}
+
+/** Judul yang sedang disalin ke gudang dan akan segera tayang (tab Baru). */
+data class SoonTitle(
+    val id: String,
+    val title: String,
+    val poster: String? = null,
+    val banner: String? = null,
+    val synopsis: String? = null,
+    val year: Int? = null,
+    val score: Double? = null,
+    val genres: List<String> = emptyList(),
+    val totalEpisodes: Int = 0,
+) {
+    val matchPercent: Int? get() = score?.let { (it * 10).toInt().coerceIn(0, 100) }
 }
 
 /** Satu riwayat tonton per (judul, episode) — bahan baris "Lanjutkan Menonton". */
@@ -156,6 +204,10 @@ private val AUTOPLAY_KEY = booleanPreferencesKey("autoplay_next")
 private val SUBTITLE_KEY = stringPreferencesKey("subtitle_default")
 private val SUBSIZE_KEY = stringPreferencesKey("subtitle_size")
 private val SUBCOLOR_KEY = stringPreferencesKey("subtitle_color")
+private val REMINDERS_KEY = stringPreferencesKey("reminders_json")
+private val KNOWN_IDS_KEY = stringPreferencesKey("known_catalog_ids")
+private val SMART_KEY = booleanPreferencesKey("smart_downloads")
+private val WIFIONLY_KEY = booleanPreferencesKey("wifi_only_downloads")
 private val CACHE_KEY = stringPreferencesKey("catalog_cache")
 private val DOWNLOADS_KEY = stringPreferencesKey("downloads_json")
 
@@ -228,6 +280,10 @@ data class ReaSettings(
     val subtitleSize: String = "sedang",
     /** Warna teks subtitle: putih | kuning | hijau. */
     val subtitleColor: String = "putih",
+    /** Unduhan Cerdas: unduh episode berikutnya otomatis + hapus yang sudah ditonton. */
+    val smartDownloads: Boolean = false,
+    /** Unduhan Cerdas hanya berjalan saat Wi-Fi. */
+    val wifiOnlyDownloads: Boolean = false,
 )
 
 /** Daftarku, nilai, sembunyikan-dari-Lanjutkan, pengaturan, cache katalog, unduhan. */
@@ -248,7 +304,12 @@ class LibraryStore(private val context: Context) {
             subtitleDefault = prefs[SUBTITLE_KEY] ?: "id",
             subtitleSize = prefs[SUBSIZE_KEY] ?: "sedang",
             subtitleColor = prefs[SUBCOLOR_KEY] ?: "putih",
+            smartDownloads = prefs[SMART_KEY] ?: false,
+            wifiOnlyDownloads = prefs[WIFIONLY_KEY] ?: false,
         )
+    }
+    val reminders: Flow<Set<String>> = context.dataStore.data.map { prefs ->
+        parseStringSet(prefs[REMINDERS_KEY])
     }
     val downloads: Flow<List<DownloadItem>> = context.dataStore.data.map { prefs ->
         parseDownloads(prefs[DOWNLOADS_KEY])
@@ -293,6 +354,43 @@ class LibraryStore(private val context: Context) {
             prefs[SUBSIZE_KEY] = size
             prefs[SUBCOLOR_KEY] = color
         }
+    }
+
+    suspend fun toggleReminder(id: String) {
+        context.dataStore.edit { prefs ->
+            val set = parseStringSet(prefs[REMINDERS_KEY]).toMutableSet()
+            if (!set.add(id)) set.remove(id)
+            prefs[REMINDERS_KEY] = writeStringSet(set)
+        }
+    }
+
+    suspend fun remindersNow(): Set<String> =
+        parseStringSet(context.dataStore.data.first()[REMINDERS_KEY])
+
+    suspend fun removeReminders(ids: Set<String>) {
+        context.dataStore.edit { prefs ->
+            val set = parseStringSet(prefs[REMINDERS_KEY]).toMutableSet()
+            set.removeAll(ids)
+            prefs[REMINDERS_KEY] = writeStringSet(set)
+        }
+    }
+
+    /** Id katalog yang terakhir diketahui pemeriksa latar; null = belum pernah jalan. */
+    suspend fun knownIdsNow(): Set<String>? {
+        val raw = context.dataStore.data.first()[KNOWN_IDS_KEY] ?: return null
+        return parseStringSet(raw)
+    }
+
+    suspend fun setKnownIds(ids: Set<String>) {
+        context.dataStore.edit { it[KNOWN_IDS_KEY] = writeStringSet(ids) }
+    }
+
+    suspend fun setSmartDownloads(value: Boolean) {
+        context.dataStore.edit { it[SMART_KEY] = value }
+    }
+
+    suspend fun setWifiOnlyDownloads(value: Boolean) {
+        context.dataStore.edit { it[WIFIONLY_KEY] = value }
     }
 
     suspend fun saveCatalogCache(raw: String) {
