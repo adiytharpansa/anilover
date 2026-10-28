@@ -10,4 +10,6 @@ Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
   gestur kecerahan/volume/geser posisi, zoom layar (pas/isi/zoom), sisa waktu "-mm:ss"
 - Video diputar sebagai HLS dari salinan segmen di repo project-X lewat jsDelivr (pin commit)
 
+**Unduh APK:** [REA-1.0.0.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-1.0.0.apk) (juga ada di halaman [Releases](https://github.com/adiytharpansa/rea-app/releases)).
+
 Build: GitHub Actions (`assembleDebug`) — artefak `REA-debug-apk`.
