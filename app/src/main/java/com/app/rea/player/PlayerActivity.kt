@@ -88,7 +88,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
-import androidx.media3.ui.SubtitleView
 import com.app.rea.data.HistoryStore
 import com.app.rea.data.LibraryStore
 import com.app.rea.data.ReaSettings
@@ -266,13 +265,12 @@ private fun PlayerScreen(
                 null,
             )
         )
-        sv.setViewTextSize(
-            SubtitleView.TEXT_SIZE_TYPE_FRACTIONAL,
+        sv.setFractionalTextSize(
             when (reaSettings.subtitleSize) {
                 "kecil" -> 0.040f
                 "besar" -> 0.075f
                 else -> 0.0533f
-            },
+            }
         )
     }
 
