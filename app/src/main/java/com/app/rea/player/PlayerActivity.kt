@@ -512,7 +512,7 @@ private fun PlayerScreen(
                             dragAccumX = 0f
                             dragAccumY = 0f
                             dragStartPos = player.currentPosition
-                            val act = context as ComponentActivity
+                            val act = context as android.app.Activity
                             val b = act.window.attributes.screenBrightness
                             startBrightness = if (b < 0) 0.5f else b
                             startVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
@@ -540,7 +540,7 @@ private fun PlayerScreen(
                                     scrubPreview = target
                                 }
                                 2 -> {
-                                    val act = context as ComponentActivity
+                                    val act = context as android.app.Activity
                                     val frac = (startBrightness - dragAccumY / size.height).coerceIn(0.05f, 1f)
                                     act.window.attributes = act.window.attributes.apply { screenBrightness = frac }
                                     gestureHint = "Kecerahan ${(frac * 100).toInt()}%"
