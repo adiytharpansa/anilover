@@ -3,7 +3,23 @@
 Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
 **api.anime** (https://api-anime.adiyth-arpansa.workers.dev).
 
-**Unduh APK:** [REA-2.1.0.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.1.0.apk)
+**Unduh APK:** [REA-2.2.0.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.2.0.apk)
+
+## REA 2.2.0 — baris & rasa Netflix
+
+- **10 Teratas di REA Hari Ini**: baris peringkat dengan angka raksasa bergaris
+  tepi khas Netflix (peringkat dari skor katalog).
+- **Karena Anda Menonton …**: rekomendasi dari judul terakhirmu (genre sama;
+  judul yang kamu nilai Tidak Suka dikeluarkan).
+- **Baru Ditambahkan** + lencana **BARU** di kartu judul terbaru.
+- **Menu tekan-lama** di kartu: Putar, Detail, Daftarku, Unduh Episode 1.
+- Penilaian ala Netflix di Detail: **Tidak Suka / Suka / Sangat Suka**
+  (ketuk jempol atas berurutan).
+- Tab Cari: bagian **Sedang Tren Sekarang** saat kolom kosong.
+- **Tampilan Subtitle** di Profil: ukuran (Kecil/Sedang/Besar) + warna
+  (Putih/Kuning/Hijau) teks subtitle di pemutar.
+- Dukungan data API: judul/sinopsis/gambar cuplikan per episode, lencana 18+,
+  dan trailer billboard — tampil otomatis bila gudang menyediakan datanya.
 
 ## REA 2.1.0 — fondasi profesional
 
