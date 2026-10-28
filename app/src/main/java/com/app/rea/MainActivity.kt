@@ -108,7 +108,7 @@ class MainActivity : ComponentActivity() {
                     val eps = JSONArray()
                     for (e in title.episodes) {
                         val uri = downloader.localPlaylistUri(title.id, e.number) ?: e.playlist
-                        eps.put(JSONObject().put("n", e.number).put("p", uri))
+                        eps.put(JSONObject().put("n", e.number).put("p", uri).put("i", e.introEnd ?: 0L))
                     }
                     startActivity(
                         Intent(this, PlayerActivity::class.java).apply {

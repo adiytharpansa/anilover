@@ -44,7 +44,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -315,6 +323,36 @@ fun PosterRow(
     }
 }
 
+/**
+ * Pemutar trailer billboard: video bisu berputar otomatis (gaya Netflix).
+ * Aktif hanya bila katalog menyediakan URL trailer untuk judul billboard;
+ * tanpa data trailer, billboard memakai gambar banner seperti biasa.
+ */
+@Composable
+private fun TrailerPlayer(url: String) {
+    val context = LocalContext.current
+    val exo = remember(url) {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(url))
+            volume = 0f
+            repeatMode = Player.REPEAT_MODE_ONE
+            playWhenReady = true
+            prepare()
+        }
+    }
+    DisposableEffect(url) { onDispose { exo.release() } }
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                player = exo
+                useController = false
+                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            }
+        },
+        modifier = Modifier.fillMaxSize(),
+    )
+}
+
 /** Kartu Top 10 gaya Netflix: angka peringkat raksasa bergaris tepi + poster. */
 @Composable
 fun Top10Card(rank: Int, t: Title, onClick: () -> Unit) {
@@ -357,12 +395,16 @@ private fun Billboard(
         Modifier.fillMaxWidth().aspectRatio(16f / 11f)
             .background(ReaSurface),
     ) {
-        AsyncImage(
-            model = t.banner ?: t.poster,
-            contentDescription = t.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
+        if (!t.trailer.isNullOrBlank()) {
+            TrailerPlayer(url = t.trailer!!)
+        } else {
+            AsyncImage(
+                model = t.banner ?: t.poster,
+                contentDescription = t.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(

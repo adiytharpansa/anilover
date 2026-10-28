@@ -678,7 +678,7 @@ fun ProfileScreen(
             }
             Column(Modifier.padding(horizontal = 16.dp)) {
                 Spacer(Modifier.height(28.dp))
-                Text("REA versi 2.3.0", color = ReaTextDim, fontSize = 12.sp)
+                Text("REA versi 2.4.0", color = ReaTextDim, fontSize = 12.sp)
                 Spacer(Modifier.height(24.dp))
             }
         }

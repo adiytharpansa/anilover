@@ -7,8 +7,9 @@ import android.media.AudioManager
 import android.os.Bundle
 import android.util.Rational
 import android.view.WindowManager
-import androidx.activity.ComponentActivity
+import android.widget.Toast
 import androidx.activity.compose.setContent
+import androidx.fragment.app.FragmentActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -65,6 +66,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,6 +90,13 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
+import androidx.mediarouter.app.MediaRouteButton
+import com.google.android.gms.cast.MediaInfo
+import com.google.android.gms.cast.MediaMetadata
+import com.google.android.gms.cast.framework.CastButtonFactory
+import com.google.android.gms.cast.framework.CastContext
+import com.google.android.gms.cast.framework.CastSession
+import com.google.android.gms.cast.framework.SessionManagerListener
 import com.app.rea.data.HistoryStore
 import com.app.rea.data.LibraryStore
 import com.app.rea.data.ReaSettings
@@ -103,9 +112,9 @@ import java.util.Locale
 
 private val SPEEDS = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f)
 
-data class EpRef(val number: Int, val playlist: String)
+data class EpRef(val number: Int, val playlist: String, val introEndSec: Long = 0L)
 
-class PlayerActivity : ComponentActivity() {
+class PlayerActivity : FragmentActivity() {
 
     companion object {
         const val EXTRA_TITLE_ID = "title_id"
@@ -168,7 +177,7 @@ class PlayerActivity : ComponentActivity() {
         val out = ArrayList<EpRef>()
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
-            out.add(EpRef(o.optInt("n"), o.optString("p")))
+            out.add(EpRef(o.optInt("n"), o.optString("p"), o.optLong("i")))
         }
         out.sortedBy { it.number }
     } catch (e: Exception) {
@@ -246,6 +255,68 @@ private fun PlayerScreen(
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
     val library = remember { LibraryStore(context) }
     val reaSettings by library.settings.collectAsState(initial = ReaSettings())
+
+    // ---- Cast ke TV (Google Cast, Default Media Receiver) ----
+    val castContext = remember {
+        try { CastContext.getSharedInstance(context) } catch (e: Exception) { null }
+    }
+    var casting by remember { mutableStateOf(false) }
+    val latestPlaylist by rememberUpdatedState(currentPlaylist)
+    val latestEp by rememberUpdatedState(currentEp)
+    val latestTitle by rememberUpdatedState(title)
+
+    fun loadToCast(session: CastSession) {
+        val url = latestPlaylist
+        if (!url.startsWith("http")) {
+            Toast.makeText(
+                context,
+                "Cast hanya untuk streaming — episode unduhan tidak bisa dikirim ke TV",
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
+        val remote = session.remoteMediaClient ?: return
+        val meta = MediaMetadata(MediaMetadata.MEDIA_TYPE_MOVIE)
+        meta.putString(MediaMetadata.KEY_TITLE, "$latestTitle — Episode $latestEp")
+        val info = MediaInfo.Builder(url)
+            .setContentType("application/x-mpegURL")
+            .setStreamType(MediaInfo.STREAM_TYPE_BUFFERED)
+            .setMetadata(meta)
+            .build()
+        remote.load(info, true, player.currentPosition)
+        player.playWhenReady = false
+        casting = true
+        Toast.makeText(context, "Memutar di TV", Toast.LENGTH_SHORT).show()
+    }
+
+    DisposableEffect(castContext) {
+        val sm = castContext?.sessionManager
+        if (sm == null) return@DisposableEffect onDispose { }
+        val listener = object : SessionManagerListener<CastSession> {
+            override fun onSessionStarted(session: CastSession, sessionId: String) = loadToCast(session)
+            override fun onSessionResumed(session: CastSession, wasSuspended: Boolean) {
+                casting = true
+                player.playWhenReady = false
+            }
+            override fun onSessionEnded(session: CastSession, error: Int) {
+                val pos = try {
+                    session.remoteMediaClient?.approximateStreamPosition ?: -1L
+                } catch (e: Exception) { -1L }
+                casting = false
+                if (pos > 0) player.seekTo(pos)
+                player.playWhenReady = true
+            }
+            override fun onSessionStarting(session: CastSession) { }
+            override fun onSessionStartFailed(session: CastSession, error: Int) { }
+            override fun onSessionEnding(session: CastSession) { }
+            override fun onSessionResuming(session: CastSession, sessionId: String) { }
+            override fun onSessionResumeFailed(session: CastSession, error: Int) { }
+            override fun onSessionSuspended(session: CastSession, reason: Int) { }
+        }
+        sm.addSessionManagerListener(listener, CastSession::class.java)
+        if (sm.currentCastSession != null) casting = true
+        onDispose { sm.removeSessionManagerListener(listener, CastSession::class.java) }
+    }
 
     // Terapkan gaya subtitle pilihan pengguna (warna + ukuran) ke tampilan subtitle.
     LaunchedEffect(playerViewRef, reaSettings.subtitleSize, reaSettings.subtitleColor) {
@@ -561,7 +632,22 @@ private fun PlayerScreen(
                     }
                     Column(Modifier.weight(1f)) {
                         Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                        Text("Episode $currentEp dari ${episodes.size}", color = Color(0xFFCCCCCC), fontSize = 12.sp)
+                        Text(
+                            "Episode $currentEp dari ${episodes.size}" + if (casting) " · Diputar di TV" else "",
+                            color = Color(0xFFCCCCCC), fontSize = 12.sp,
+                        )
+                    }
+                    if (castContext != null) {
+                        AndroidView(
+                            factory = { ctx ->
+                                MediaRouteButton(ctx).also { btn ->
+                                    try {
+                                        CastButtonFactory.setUpMediaRouteButton(ctx, btn)
+                                    } catch (e: Exception) { }
+                                }
+                            },
+                            modifier = Modifier.size(48.dp),
+                        )
                     }
                     IconButton(onClick = { panel = Panel.Tracks }) {
                         Icon(Icons.Filled.Subtitles, contentDescription = "Audio & subtitle", tint = Color.White)
@@ -647,15 +733,20 @@ private fun PlayerScreen(
             }
         }
 
-        // Lewati Intro: muncul di awal episode (intro umumnya < 90 detik)
-        if (!ended && !inPip && !locked && durationMs > 180_000 && positionMs > 0 && positionMs <= 85_000) {
+        // Lewati Intro: batas dari data katalog bila ada (introEnd), selain itu
+        // heuristik awal episode (intro umumnya < 90 detik).
+        val introDataMs = (episodes.firstOrNull { it.number == currentEp }?.introEndSec ?: 0L) * 1000
+        val skipTargetMs = if (introDataMs > 0) introDataMs else 90_000L
+        val skipVisible = !ended && !inPip && !locked && durationMs > 180_000 && positionMs > 0 &&
+            positionMs <= (if (introDataMs > 0) introDataMs else 85_000L)
+        if (skipVisible) {
             Surface(
                 color = Color.Black.copy(alpha = 0.65f),
                 shape = RoundedCornerShape(6.dp),
                 modifier = Modifier.align(Alignment.BottomEnd)
                     .padding(end = 22.dp, bottom = 108.dp)
                     .clickable {
-                        val target = minOf(90_000L, (durationMs - 5_000).coerceAtLeast(0L))
+                        val target = minOf(skipTargetMs, (durationMs - 5_000).coerceAtLeast(0L))
                         player.seekTo(target)
                         showControls = false
                     },

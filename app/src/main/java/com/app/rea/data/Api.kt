@@ -30,6 +30,8 @@ data class Episode(
     val thumb: String? = null,
     /** Sinopsis episode dari API bila ada. */
     val synopsis: String? = null,
+    /** Detik akhir intro dari API bila ada; null = heuristik Lewati Intro 90 dtk. */
+    val introEnd: Long? = null,
 )
 
 data class Title(
@@ -95,6 +97,7 @@ object CatalogApi {
                         title = e.optString("title").ifBlank { null },
                         thumb = e.optString("thumb").ifBlank { null },
                         synopsis = e.optString("synopsis").ifBlank { null },
+                        introEnd = if (e.has("introEnd") && !e.isNull("introEnd")) e.optLong("introEnd") else null,
                     )
                 )
             }
