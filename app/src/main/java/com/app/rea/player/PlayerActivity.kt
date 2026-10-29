@@ -108,6 +108,7 @@ import com.google.android.gms.cast.framework.CastButtonFactory
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManagerListener
+import com.app.rea.R
 import com.app.rea.data.HistoryStore
 import com.app.rea.data.LibraryStore
 import com.app.rea.data.ReaSettings
@@ -817,10 +818,15 @@ private fun PlayerScreen(
                     if (castContext != null) {
                         AndroidView(
                             factory = { ctx ->
-                                MediaRouteButton(ctx).also { btn ->
-                                    try {
+                                // Tema khusus + try/catch: kegagalan tombol Cast
+                                // tidak boleh sampai menutup aplikasi.
+                                try {
+                                    val themed = android.view.ContextThemeWrapper(ctx, R.style.Theme_REA_Cast)
+                                    MediaRouteButton(themed).also { btn ->
                                         CastButtonFactory.setUpMediaRouteButton(ctx, btn)
-                                    } catch (e: Throwable) { }
+                                    }
+                                } catch (e: Throwable) {
+                                    android.view.View(ctx)
                                 }
                             },
                             modifier = Modifier.size(48.dp),

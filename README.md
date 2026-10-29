@@ -1,6 +1,6 @@
 # REA
 
-**Unduh APK terbaru:** [REA-2.7.0.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.7.0.apk)
+**Unduh APK terbaru:** [REA-2.7.1.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.7.1.apk)
 
 Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
 **api.anime** (https://api-anime.adiyth-arpansa.workers.dev).
@@ -33,3 +33,6 @@ Build: GitHub Actions (`assembleDebug`) — artefak `REA-debug-apk`.
 - Suara tetap jalan saat layar mati/aplikasi ditutup; kini dijeda di onStop. Ditambah fokus audio + jeda saat headset dicabut.
 - Jaringan: User-Agent, timeout 15/20 dtk, redirect lintas-protokol, retry segmen 6x, buffer lebih besar, mime HLS dipaksa, dan coba ulang otomatis 3x (1/2/4 dtk) dari posisi terakhir. Pesan galat kini jelas + kode galat + tombol Kembali.
 - Unduhan: playlist lokal dulu ditulis di AWAL, jadi episode setengah-unduh/gagal diputar dari berkas lalu error. Kini playlist ditulis terakhir, segmen lewat berkas .part, nama berkas dinormalkan (subfolder/query/init fMP4/kunci), master playlist ditangani, dan unduhan yang tertinggal "mengunduh" ditandai gagal saat app dibuka.
+
+## 2.7.1
+- Crash "background can not be translucent: #0" saat pemutar dibuka: tombol Cast (`MediaRouteButton`) dibuat dengan tema yang tidak punya `colorPrimary` opak. Ditambah tema `Theme.REA.Cast`, `colorPrimary` di tema pemutar, dan try/catch agar kegagalan Cast tidak menutup aplikasi.
