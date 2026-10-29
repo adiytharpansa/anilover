@@ -1,5 +1,7 @@
 # REA
 
+**Unduh APK terbaru:** [REA-2.7.0.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.7.0.apk)
+
 Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
 **api.anime** (https://api-anime.adiyth-arpansa.workers.dev).
 
