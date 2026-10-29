@@ -25,6 +25,8 @@ val ReaBackground = Color(0xFF141414)
 val ReaSurface = Color(0xFF1F1F1F)
 val ReaAccent = Color(0xFFE50914)
 val ReaTextDim = Color(0xFFB3B3B3)
+val ReaSurfaceHigh = Color(0xFF2B2B2B)
+val ReaGreen = Color(0xFF46D369)
 
 private val ReaColors = darkColorScheme(
     primary = ReaAccent,

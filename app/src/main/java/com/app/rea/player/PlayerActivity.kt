@@ -69,9 +69,11 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -83,7 +85,14 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.MimeTypes
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -211,6 +220,13 @@ class PlayerActivity : FragmentActivity() {
         if (!isChangingConfigurations) saveProgress(p)
     }
 
+    override fun onStop() {
+        super.onStop()
+        // Layar mati / pindah aplikasi / jendela PiP ditutup: jeda agar suara
+        // tidak terus berjalan di latar belakang.
+        playerRef?.pause()
+    }
+
     override fun onDestroy() {
         playerRef?.release()
         playerRef = null
@@ -229,6 +245,51 @@ class PlayerActivity : FragmentActivity() {
 }
 
 private enum class Panel { None, Speed, Tracks, Episodes, Quality }
+
+/**
+ * Pemutar dengan jaringan yang lebih tahan banting untuk HLS dari jsDelivr:
+ * User-Agent jelas, timeout longgar, redirect lintas-protokol, percobaan ulang
+ * segmen 6x, buffer lebih besar, fokus audio & jeda saat headset dicabut.
+ */
+private fun buildPlayer(context: Context): ExoPlayer {
+    val http = DefaultHttpDataSource.Factory()
+        .setUserAgent("Mozilla/5.0 (Linux; Android) REA/2.7")
+        .setConnectTimeoutMs(15_000)
+        .setReadTimeoutMs(20_000)
+        .setAllowCrossProtocolRedirects(true)
+    val sources = DefaultMediaSourceFactory(DefaultDataSource.Factory(context, http))
+        .setLoadErrorHandlingPolicy(DefaultLoadErrorHandlingPolicy(6))
+    val load = DefaultLoadControl.Builder()
+        .setBufferDurationsMs(25_000, 60_000, 2_000, 4_000)
+        .build()
+    return ExoPlayer.Builder(context)
+        .setMediaSourceFactory(sources)
+        .setLoadControl(load)
+        .setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                .build(),
+            true,
+        )
+        .setHandleAudioBecomingNoisy(true)
+        .build()
+}
+
+private fun friendlyError(e: PlaybackException): String = when (e.errorCode) {
+    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ->
+        "Koneksi terputus atau terlalu lambat. Periksa internet lalu coba lagi."
+    PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ->
+        "Berkas video tidak ditemukan di server."
+    PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ->
+        "Server video menolak permintaan. Coba lagi beberapa saat."
+    PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+    PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED,
+    PlaybackException.ERROR_CODE_DECODING_FAILED ->
+        "Format video tidak bisa diputar di perangkat ini."
+    else -> "Gagal memutar. Periksa koneksi lalu coba lagi."
+}
 
 @Composable
 private fun PlayerScreen(
@@ -253,8 +314,9 @@ private fun PlayerScreen(
     val currentPlaylist = episodes.firstOrNull { it.number == currentEp }?.playlist ?: ""
 
     val player = remember {
-        ExoPlayer.Builder(context).build().also { onPlayerCreated(it) }
+        buildPlayer(context).also { onPlayerCreated(it) }
     }
+    val scope = rememberCoroutineScope()
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
     val library = remember { LibraryStore(context) }
     val reaSettings by library.settings.collectAsState(initial = ReaSettings())
@@ -367,6 +429,9 @@ private fun PlayerScreen(
     var hudFraction by remember { mutableFloatStateOf(0f) }
     var scrubPreview by remember { mutableStateOf<Long?>(null) }
     var postPlayIn by remember { mutableStateOf<Int?>(null) }
+    var errorDetail by remember { mutableStateOf<String?>(null) }
+    var autoRetry by remember { mutableIntStateOf(0) }
+    var retryNonce by remember { mutableIntStateOf(0) }
     // State gestur seret — di tingkat atas, BUKAN di blok kondisional (slot Compose).
     var dragMode by remember { mutableIntStateOf(0) } // 0=belum, 1=geser posisi, 2=kecerahan, 3=volume
     var dragStartPos by remember { mutableLongStateOf(0L) }
@@ -375,7 +440,20 @@ private fun PlayerScreen(
     var startBrightness by remember { mutableFloatStateOf(0.5f) }
     var startVolume by remember { mutableIntStateOf(0) }
 
-    val nextEp = episodes.firstOrNull { it.number == (episodes.filter { it.number > currentEp }.minOfOrNull { it.number } ?: -1) }
+    val nextEp = episodes.filter { it.number > currentEp }.minByOrNull { it.number }
+    // Pendengar pemutar dibuat sekali; nilai terbaru dibaca lewat state ini
+    // (dulu pendengar memegang nextEp/ended basi -> autoplay salah episode).
+    val latestNext by rememberUpdatedState(nextEp)
+    val latestAutoplay by rememberUpdatedState(autoplayNext)
+    val latestEnded by rememberUpdatedState(ended)
+
+    fun saveNow(finished: Boolean = false) {
+        val d = player.duration
+        if (d == C.TIME_UNSET || d <= 0) return
+        val pos = if (finished) d else player.currentPosition
+        val ep = currentEp
+        scope.launch { store.save(WatchEntry(titleId, ep, pos, d, System.currentTimeMillis())) }
+    }
 
     fun loadEpisode(ep: Int, playlist: String, pos: Long) {
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
@@ -386,12 +464,30 @@ private fun PlayerScreen(
                 setPreferredTextLanguage(subtitleDefault)
             }
         }.build()
-        player.setMediaItem(MediaItem.fromUri(playlist))
+        player.setMediaItem(
+            MediaItem.Builder().setUri(playlist).setMimeType(MimeTypes.APPLICATION_M3U8).build()
+        )
         player.prepare()
         if (pos > 0) player.seekTo(pos)
         player.playWhenReady = true
+        // Reset keadaan episode sebelumnya (dulu durasi lama membuat tombol
+        // "Episode Berikutnya" muncul sesaat di episode baru).
         ended = false
         errorMsg = null
+        errorDetail = null
+        autoRetry = 0
+        postPlayIn = null
+        positionMs = pos
+        bufferedMs = 0L
+        durationMs = 0L
+        isBuffering = true
+    }
+
+    fun switchTo(ep: EpRef) {
+        saveNow()
+        currentEp = ep.number
+        onEpisodeChanged(ep.number)
+        loadEpisode(ep.number, ep.playlist, 0L)
     }
 
     // Muat episode awal
@@ -402,24 +498,54 @@ private fun PlayerScreen(
     // Dengarkan keadaan pemutar
     DisposableEffect(player) {
         val listener = object : Player.Listener {
-            override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
+            override fun onIsPlayingChanged(playing: Boolean) {
+                isPlaying = playing
+                // Putar ulang setelah selesai: bersihkan tanda "selesai".
+                if (playing) ended = false
+            }
             override fun onPlaybackStateChanged(state: Int) {
                 isBuffering = state == Player.STATE_BUFFERING
                 if (state == Player.STATE_ENDED) {
                     ended = true
-                    if (nextEp != null && autoplayNext) postPlayIn = 10
+                    saveNow(finished = true)
+                    if (latestNext != null && latestAutoplay) postPlayIn = 10
                 }
                 if (state == Player.STATE_READY) {
                     durationMs = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L
+                    autoRetry = 0
+                    ended = false
                 }
             }
             override fun onPlayerError(error: PlaybackException) {
-                errorMsg = "Gagal memutar. Periksa koneksi lalu coba lagi."
-                isBuffering = false
+                if (error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
+                    player.seekToDefaultPosition()
+                    player.prepare()
+                    return
+                }
+                // Galat jaringan/IO (2xxx): coba otomatis 3x dengan jeda 1s, 2s, 4s
+                // dan lanjut dari posisi terakhir sebelum menyerah ke tombol manual.
+                val isIo = error.errorCode in 2000..2999
+                if (isIo && autoRetry < 3) {
+                    autoRetry += 1
+                    isBuffering = true
+                    retryNonce += 1
+                } else {
+                    errorMsg = friendlyError(error)
+                    errorDetail = error.errorCodeName
+                    isBuffering = false
+                }
             }
         }
         player.addListener(listener)
         onDispose { player.removeListener(listener) }
+    }
+
+    // Coba ulang otomatis setelah galat jaringan (backoff 1s/2s/4s).
+    LaunchedEffect(retryNonce) {
+        if (retryNonce == 0) return@LaunchedEffect
+        delay(1000L shl (autoRetry - 1).coerceIn(0, 3))
+        player.prepare()
+        player.playWhenReady = true
     }
 
     // Polling posisi + simpan progres berkala
@@ -450,12 +576,9 @@ private fun PlayerScreen(
             if (postPlayIn == null) return@LaunchedEffect
             postPlayIn = v
         }
-        val nx = nextEp
-        if (nx != null && ended) {
-            currentEp = nx.number
-            onEpisodeChanged(nx.number)
-            loadEpisode(nx.number, nx.playlist, 0L)
-            postPlayIn = null
+        val nx = latestNext
+        if (nx != null && latestEnded) {
+            switchTo(nx)
         }
     }
 
@@ -498,7 +621,9 @@ private fun PlayerScreen(
         )
 
         if (!inPip && !locked) {
-            // Lapisan gestur: ketuk & ketuk-dua-kali
+            // Satu lapisan gestur: ketuk, ketuk-dua-kali, dan seret. (Dulu dua Box
+            // bertumpuk: Box atas menelan semua sentuhan, sehingga ketuk untuk
+            // menampilkan kontrol & ketuk-dua-kali ±10 dtk tidak pernah jalan.)
             Box(
                 Modifier.fillMaxSize().pointerInput(Unit) {
                     detectTapGestures(
@@ -507,11 +632,7 @@ private fun PlayerScreen(
                             if (off.x < size.width / 2) seekBy(-10_000) else seekBy(10_000)
                         },
                     )
-                }
-            )
-            // Lapisan gestur: seret (kecerahan/volume/loncat)
-            Box(
-                Modifier.fillMaxSize().pointerInput(Unit) {
+                }.pointerInput(Unit) {
                     detectDragGestures(
                         onDragStart = { off ->
                             dragMode = 0
@@ -574,17 +695,33 @@ private fun PlayerScreen(
             CircularProgressIndicator(color = Color.White, modifier = Modifier.align(Alignment.Center))
         }
         if (errorMsg != null) {
-            Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(errorMsg!!, color = Color.White)
-                Spacer(Modifier.height(8.dp))
-                Surface(
-                    color = ReaAccent, shape = RoundedCornerShape(6.dp),
-                    modifier = Modifier.clickable {
-                        errorMsg = null
-                        loadEpisode(currentEp, currentPlaylist, positionMs)
-                    },
-                ) {
-                    Text("Coba Lagi", color = Color.White, modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp))
+            Column(
+                Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(errorMsg!!, color = Color.White, fontWeight = FontWeight.Medium)
+                if (errorDetail != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Text("Kode: $errorDetail", color = Color(0xFF999999), fontSize = 11.sp)
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Surface(
+                        color = Color.White, shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.clickable {
+                            loadEpisode(currentEp, currentPlaylist, positionMs)
+                        },
+                    ) {
+                        Text("Coba Lagi", color = Color.Black, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp))
+                    }
+                    Surface(
+                        color = Color(0xFF333333), shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.clickable(onClick = onBack),
+                    ) {
+                        Text("Kembali", color = Color.White,
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp))
+                    }
                 }
             }
         }
@@ -650,7 +787,18 @@ private fun PlayerScreen(
             visible = showControls && !locked && !inPip && errorMsg == null,
             enter = fadeIn(), exit = fadeOut(),
         ) {
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f))) {
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Black.copy(alpha = 0.78f),
+                            Color.Black.copy(alpha = 0.28f),
+                            Color.Black.copy(alpha = 0.28f),
+                            Color.Black.copy(alpha = 0.85f),
+                        )
+                    )
+                )
+            ) {
                 // Bar atas
                 Row(
                     Modifier.align(Alignment.TopStart).fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
@@ -737,11 +885,7 @@ private fun PlayerScreen(
                             Icon(Icons.Filled.Audiotrack, contentDescription = "Audio", tint = Color.White)
                         }
                         if (nextEp != null) {
-                            IconButton(onClick = {
-                                currentEp = nextEp.number
-                                onEpisodeChanged(nextEp.number)
-                                loadEpisode(nextEp.number, nextEp.playlist, 0L)
-                            }) {
+                            IconButton(onClick = { switchTo(nextEp) }) {
                                 Icon(Icons.Filled.SkipNext, contentDescription = "Episode berikutnya", tint = Color.White)
                             }
                         }
@@ -796,11 +940,7 @@ private fun PlayerScreen(
                 shape = RoundedCornerShape(6.dp),
                 modifier = Modifier.align(Alignment.BottomEnd)
                     .padding(end = 22.dp, bottom = 108.dp)
-                    .clickable {
-                        currentEp = nextEp.number
-                        onEpisodeChanged(nextEp.number)
-                        loadEpisode(nextEp.number, nextEp.playlist, 0L)
-                    },
+                    .clickable { switchTo(nextEp) },
             ) {
                 Text(
                     "Episode Berikutnya", color = Color.Black, fontWeight = FontWeight.Bold,
@@ -832,12 +972,7 @@ private fun PlayerScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Surface(
                             color = Color.White, shape = RoundedCornerShape(6.dp),
-                            modifier = Modifier.clickable {
-                                postPlayIn = null
-                                currentEp = nextEp.number
-                                onEpisodeChanged(nextEp.number)
-                                loadEpisode(nextEp.number, nextEp.playlist, 0L)
-                            },
+                            modifier = Modifier.clickable { switchTo(nextEp) },
                         ) {
                             Text("Putar Sekarang", color = Color.Black, fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
@@ -888,11 +1023,7 @@ private fun PlayerScreen(
                         Row(
                             Modifier.fillMaxWidth().clickable {
                                 panel = Panel.None
-                                if (ep.number != currentEp) {
-                                    currentEp = ep.number
-                                    onEpisodeChanged(ep.number)
-                                    loadEpisode(ep.number, ep.playlist, 0L)
-                                }
+                                if (ep.number != currentEp) switchTo(ep)
                             }.padding(vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -1062,7 +1193,14 @@ private fun NetflixSeekBar(
     val played = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     val buffered = if (durationMs > 0) (bufferedMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     Box(
-        Modifier.fillMaxWidth().height(22.dp).pointerInput(durationMs) {
+        Modifier.fillMaxWidth().height(32.dp).pointerInput(durationMs) {
+            detectTapGestures { off ->
+                if (durationMs > 0) {
+                    val f = (off.x / size.width).coerceIn(0f, 1f)
+                    onScrub((f * durationMs).toLong())
+                }
+            }
+        }.pointerInput(durationMs) {
             detectDragGestures(
                 onDragStart = { off -> scrubFrac = (off.x / size.width).coerceIn(0f, 1f) },
                 onDrag = { change, _ -> scrubFrac = (change.position.x / size.width).coerceIn(0f, 1f) },
@@ -1073,7 +1211,7 @@ private fun NetflixSeekBar(
                 },
                 onDragCancel = { scrubFrac = null },
             )
-        }.clickable { /* ketuk ditangani lewat drag nol */ },
+        },
         contentAlignment = Alignment.CenterStart,
     ) {
         Box(Modifier.fillMaxWidth().height(4.dp).background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(2.dp)))

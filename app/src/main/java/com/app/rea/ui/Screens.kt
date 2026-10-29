@@ -156,11 +156,14 @@ fun SearchScreen(
             }),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
-                focusedBorderColor = ReaAccent,
-                unfocusedBorderColor = Color.White.copy(alpha = 0.4f),
+                focusedContainerColor = ReaSurfaceHigh,
+                unfocusedContainerColor = ReaSurface,
+                focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                unfocusedBorderColor = Color.Transparent,
                 cursorColor = ReaAccent,
             ),
         )
@@ -674,6 +677,7 @@ fun ProfileScreen(
     onClearHistory: () -> Unit,
 ) {
     var cleared by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     LazyColumn(Modifier.fillMaxSize()) {
         item {
             Column(
@@ -835,7 +839,12 @@ fun ProfileScreen(
             }
             Column(Modifier.padding(horizontal = 16.dp)) {
                 Spacer(Modifier.height(28.dp))
-                Text("REA versi 2.5.0", color = ReaTextDim, fontSize = 12.sp)
+                val versionName = remember {
+                    try {
+                        context.packageManager.getPackageInfo(context.packageName, 0).versionName
+                    } catch (e: Exception) { null }
+                }
+                Text("REA versi ${versionName ?: "-"}", color = ReaTextDim, fontSize = 12.sp)
                 Spacer(Modifier.height(24.dp))
             }
         }

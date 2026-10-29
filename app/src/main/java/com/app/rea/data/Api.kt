@@ -631,20 +631,64 @@ data class DownloadItem(
         get() = if (totalSegs > 0) (doneSegs.toFloat() / totalSegs).coerceIn(0f, 1f) else 0f
 }
 
+private val URI_ATTR = Regex("URI=\"([^\"]+)\"")
+private val BANDWIDTH_ATTR = Regex("BANDWIDTH=(\\d+)")
+
 /**
- * Unduhan offline sederhana: salin playlist + semua segmennya ke penyimpanan
- * aplikasi, lalu pemutar memutar playlist lokal yang sama (nama segmen relatif).
+ * Unduhan offline: salin playlist HLS + semua berkasnya (segmen, init fMP4, kunci)
+ * ke penyimpanan aplikasi. Playlist lokal ditulis ULANG dengan nama berkas
+ * lokal dan baru disimpan setelah SEMUA berkas selesai, sehingga episode yang
+ * belum lengkap tidak pernah diputar dari berkas (dulu playlist ditulis di
+ * awal -> episode setengah unduh/gagal diputar lokal lalu error).
  */
 class DownloadManager(private val context: Context, private val library: LibraryStore) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val running = HashSet<String>()
 
+    init {
+        // Unduhan yang tertinggal berstatus "mengunduh" karena aplikasi dimatikan
+        // paksa ditandai gagal agar bisa dicoba lagi (bukan berputar selamanya).
+        scope.launch {
+            try {
+                for (d in library.downloadsNow()) {
+                    val key = "${d.titleId}|${d.episode}"
+                    val active = synchronized(running) { running.contains(key) }
+                    if (d.state == "mengunduh" && !active) {
+                        library.upsertDownload(d.copy(state = "gagal"))
+                    }
+                }
+            } catch (e: Exception) { /* abaikan */ }
+        }
+    }
+
     fun dirFor(titleId: String, episode: Int): File =
         File(context.filesDir, "downloads/$titleId/ep$episode")
 
+    /** URI playlist lokal hanya bila SEMUA berkas yang dirujuknya ada dan tidak kosong. */
     fun localPlaylistUri(titleId: String, episode: Int): String? {
-        val f = File(dirFor(titleId, episode), "playlist.m3u8")
-        return if (f.exists() && f.length() > 0) "file://" + f.absolutePath else null
+        val dir = dirFor(titleId, episode)
+        val f = File(dir, "playlist.m3u8")
+        if (!f.exists() || f.length() == 0L) return null
+        return try {
+            fun present(name: String): Boolean {
+                val x = File(dir, name)
+                return x.exists() && x.length() > 0
+            }
+            val ok = f.readLines().all { raw ->
+                val line = raw.trim()
+                when {
+                    line.isEmpty() -> true
+                    line.startsWith("#") -> {
+                        val m = URI_ATTR.find(line)
+                        m == null || present(m.groupValues[1])
+                    }
+                    else -> present(line)
+                }
+            }
+            if (ok) "file://" + f.absolutePath else null
+        } catch (e: Exception) {
+            null
+        }
     }
 
     fun start(title: Title, episode: Episode) {
@@ -660,34 +704,67 @@ class DownloadManager(private val context: Context, private val library: Library
                 library.upsertDownload(item)
                 val dir = dirFor(title.id, episode.number)
                 dir.mkdirs()
-                val playlistText = httpGetText(episode.playlist)
-                val base = episode.playlist.substringBeforeLast("/") + "/"
-                val segLines = playlistText.lineSequence()
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() && !it.startsWith("#") }
-                    .toList()
-                File(dir, "playlist.m3u8").writeText(playlistText)
-                item = item.copy(totalSegs = segLines.size)
+                File(dir, "playlist.m3u8").delete()
+
+                var playlistUrl = episode.playlist
+                var text = httpGetText(playlistUrl)
+                // Master playlist: ambil satu varian (bitrate tertinggi).
+                if (text.contains("#EXT-X-STREAM-INF")) {
+                    playlistUrl = pickVariant(playlistUrl, text)
+                    text = httpGetText(playlistUrl)
+                }
+
+                val urlToName = LinkedHashMap<String, String>()
+                fun nameFor(ref: String): String {
+                    val abs = resolveUrl(playlistUrl, ref)
+                    return urlToName.getOrPut(abs) {
+                        val path = abs.substringBefore("?").substringBefore("#")
+                        val last = path.substringAfterLast("/")
+                        val ext = if (last.contains(".")) last.substringAfterLast(".").take(5) else ""
+                        "f" + "%05d".format(urlToName.size) + if (ext.isNotEmpty()) ".$ext" else ""
+                    }
+                }
+
+                val rewritten = StringBuilder()
+                for (raw in text.lines()) {
+                    val line = raw.trim()
+                    when {
+                        line.isEmpty() -> Unit
+                        line.startsWith("#") -> {
+                            val m = URI_ATTR.find(line)
+                            val out = if (m != null) {
+                                line.replace(m.value, "URI=\"" + nameFor(m.groupValues[1]) + "\"")
+                            } else line
+                            rewritten.append(out).append('\n')
+                        }
+                        else -> rewritten.append(nameFor(line)).append('\n')
+                    }
+                }
+
+                val total = urlToName.size
+                item = item.copy(totalSegs = total)
                 library.upsertDownload(item)
                 var bytes = 0L
                 var done = 0
-                for (line in segLines) {
-                    val segUrl = when {
-                        line.startsWith("http") -> line
-                        line.startsWith("/") -> URL(episode.playlist).let { "${it.protocol}://${it.host}$line" }
-                        else -> base + line
-                    }
-                    val name = line.substringBefore("?").substringAfterLast("/")
+                for ((url, name) in urlToName) {
                     val outFile = File(dir, name)
-                    if (!outFile.exists() || outFile.length() == 0L) {
-                        httpDownload(segUrl, outFile)
-                    }
+                    if (!outFile.exists() || outFile.length() == 0L) httpDownload(url, outFile)
                     bytes += outFile.length()
                     done++
-                    item = item.copy(doneSegs = done, sizeBytes = bytes, updatedAt = System.currentTimeMillis())
-                    library.upsertDownload(item)
+                    if (done % 3 == 0 || done == total) {
+                        item = item.copy(doneSegs = done, sizeBytes = bytes, updatedAt = System.currentTimeMillis())
+                        library.upsertDownload(item)
+                    }
                 }
-                item = item.copy(state = "selesai", updatedAt = System.currentTimeMillis())
+
+                // Playlist lokal ditulis TERAKHIR (atomik lewat berkas sementara).
+                val tmp = File(dir, "playlist.tmp")
+                tmp.writeText(rewritten.toString())
+                if (!tmp.renameTo(File(dir, "playlist.m3u8"))) {
+                    File(dir, "playlist.m3u8").writeText(rewritten.toString())
+                    tmp.delete()
+                }
+                item = item.copy(state = "selesai", doneSegs = total, sizeBytes = bytes, updatedAt = System.currentTimeMillis())
                 library.upsertDownload(item)
             } catch (e: Exception) {
                 try {
@@ -708,21 +785,70 @@ class DownloadManager(private val context: Context, private val library: Library
         }
     }
 
-    private fun httpGetText(url: String): String {
-        val conn = URL(url).openConnection() as HttpURLConnection
-        conn.connectTimeout = 20000
-        conn.readTimeout = 30000
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (REA Android)")
-        return conn.inputStream.bufferedReader().use { it.readText() }
+    private fun resolveUrl(base: String, ref: String): String {
+        if (ref.startsWith("http://") || ref.startsWith("https://")) return ref
+        return try {
+            java.net.URI(base).resolve(ref).toString()
+        } catch (e: Exception) {
+            if (ref.startsWith("/")) URL(base).let { "${it.protocol}://${it.host}$ref" }
+            else base.substringBeforeLast("/") + "/" + ref
+        }
     }
 
-    private fun httpDownload(url: String, outFile: File) {
+    private fun pickVariant(masterUrl: String, master: String): String {
+        var bestBw = -1L
+        var best: String? = null
+        var pendingBw = 0L
+        var expectUri = false
+        for (raw in master.lines()) {
+            val line = raw.trim()
+            if (line.startsWith("#EXT-X-STREAM-INF")) {
+                pendingBw = BANDWIDTH_ATTR.find(line)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+                expectUri = true
+            } else if (expectUri && line.isNotEmpty() && !line.startsWith("#")) {
+                if (pendingBw > bestBw) { bestBw = pendingBw; best = line }
+                expectUri = false
+            }
+        }
+        return resolveUrl(masterUrl, best ?: throw java.io.IOException("master playlist tanpa varian"))
+    }
+
+    private fun connect(url: String, readTimeout: Int): HttpURLConnection {
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout = 20000
-        conn.readTimeout = 60000
+        conn.readTimeout = readTimeout
         conn.setRequestProperty("User-Agent", "Mozilla/5.0 (REA Android)")
-        conn.inputStream.use { input ->
-            outFile.outputStream().use { output -> input.copyTo(output, 64 * 1024) }
+        if (conn.responseCode !in 200..299) {
+            val code = conn.responseCode
+            conn.disconnect()
+            throw java.io.IOException("HTTP $code dari $url")
+        }
+        return conn
+    }
+
+    private fun httpGetText(url: String): String {
+        val conn = connect(url, 30000)
+        return try {
+            conn.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    /** Unduh ke berkas .part lalu ganti nama: berkas terpotong tak dianggap utuh. */
+    private fun httpDownload(url: String, outFile: File) {
+        val part = File(outFile.parentFile, outFile.name + ".part")
+        val conn = connect(url, 60000)
+        try {
+            conn.inputStream.use { input ->
+                part.outputStream().use { output -> input.copyTo(output, 64 * 1024) }
+            }
+        } finally {
+            conn.disconnect()
+        }
+        if (!part.renameTo(outFile)) {
+            part.copyTo(outFile, overwrite = true)
+            part.delete()
         }
     }
 }

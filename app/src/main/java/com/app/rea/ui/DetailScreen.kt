@@ -131,12 +131,16 @@ fun DetailScreen(
                         )
                     )
                 )
-                IconButton(onClick = onBack, modifier = Modifier.padding(8.dp)) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.padding(10.dp).size(40.dp)
+                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50)),
+                ) {
                     Icon(Icons.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
                 }
                 Text(
-                    title.title, color = Color.White, fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold, maxLines = 2,
+                    title.title, color = Color.White, fontSize = 26.sp,
+                    fontWeight = FontWeight.Black, maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.align(Alignment.BottomStart).padding(16.dp),
                 )
@@ -192,7 +196,7 @@ fun DetailScreen(
                         containerColor = Color.White, contentColor = Color.Black,
                     ),
                     shape = RoundedCornerShape(6.dp),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
                 ) {
                     Icon(Icons.Filled.PlayArrow, contentDescription = null)
                     Spacer(Modifier.width(4.dp))
