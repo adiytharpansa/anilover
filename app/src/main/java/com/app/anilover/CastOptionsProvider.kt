@@ -1,4 +1,4 @@
-package com.app.rea
+package com.app.anilover
 
 import android.content.Context
 import com.google.android.gms.cast.CastMediaControlIntent
@@ -7,7 +7,7 @@ import com.google.android.gms.cast.framework.OptionsProvider
 import com.google.android.gms.cast.framework.SessionProvider
 
 /**
- * Penyedia opsi Google Cast untuk REA. Memakai Default Media Receiver
+ * Penyedia opsi Google Cast untuk Anilover. Memakai Default Media Receiver
  * (receiver bawaan Google) yang dapat memutar HLS langsung dari URL gudang,
  * jadi tidak perlu receiver khusus. Nama kelas ini dirujuk dari AndroidManifest.
  */

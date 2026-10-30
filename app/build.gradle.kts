@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.app.rea"
+    namespace = "com.app.anilover"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.app.rea"
+        applicationId = "com.app.anilover"
         minSdk = 24
         targetSdk = 34
         versionCode = 14

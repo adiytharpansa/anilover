@@ -1,4 +1,4 @@
-package com.app.rea.ui
+package com.app.anilover.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -78,8 +78,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.app.rea.data.Title
-import com.app.rea.data.WatchEntry
+import com.app.anilover.data.Title
+import com.app.anilover.data.WatchEntry
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -202,7 +202,7 @@ fun HomeScreen(
 
             if (top10.size >= 3) {
                 item {
-                    SectionTitle("10 Teratas di REA Hari Ini")
+                    SectionTitle("10 Teratas di Anilover Hari Ini")
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -288,8 +288,8 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "REA", color = ReaAccent, fontSize = 28.sp,
-                fontWeight = FontWeight.Black, letterSpacing = 2.sp,
+                "Anilover", color = AniloverAccent, fontSize = 26.sp,
+                fontWeight = FontWeight.Black, letterSpacing = 1.sp,
             )
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onSearch) {
@@ -386,7 +386,7 @@ fun Top10Card(rank: Int, t: Title, onClick: () -> Unit) {
                     drawStyle = Stroke(width = 7f, join = androidx.compose.ui.graphics.StrokeJoin.Round),
                 ),
             )
-            Text(text = rank.toString(), style = numStyle.copy(color = ReaBackground))
+            Text(text = rank.toString(), style = numStyle.copy(color = AniloverBackground))
         }
         AsyncImage(
             model = t.poster ?: t.banner,
@@ -394,7 +394,7 @@ fun Top10Card(rank: Int, t: Title, onClick: () -> Unit) {
             contentScale = ContentScale.Crop,
             modifier = Modifier.width(104.dp).aspectRatio(2f / 3f)
                 .offset(x = (-14).dp)
-                .clip(RoundedCornerShape(4.dp)).background(ReaSurface),
+                .clip(RoundedCornerShape(4.dp)).background(AniloverSurface),
         )
     }
 }
@@ -430,7 +430,7 @@ private fun Billboard(
     // Billboard potret ala Netflix seluler: poster penuh (bukan banner yang
     // dipotong sampai buram), judul di tengah bawah, dua tombol sejajar.
     Box(
-        modifier.fillMaxWidth().aspectRatio(0.82f).background(ReaSurface)
+        modifier.fillMaxWidth().aspectRatio(0.82f).background(AniloverSurface)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -454,8 +454,8 @@ private fun Billboard(
                     0f to Color.Black.copy(alpha = 0.55f),
                     0.25f to Color.Transparent,
                     0.50f to Color.Transparent,
-                    0.78f to ReaBackground.copy(alpha = 0.88f),
-                    1f to ReaBackground,
+                    0.78f to AniloverBackground.copy(alpha = 0.88f),
+                    1f to AniloverBackground,
                 )
             )
         )
@@ -486,7 +486,7 @@ private fun Billboard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 t.matchPercent?.let {
-                    Text("$it% Cocok", color = ReaGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("$it% Cocok", color = AniloverGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
                 t.year?.let { Text(it.toString(), color = Color(0xFFD9D9D9), fontSize = 13.sp) }
                 t.statusLabel?.let {
@@ -578,7 +578,7 @@ fun CardTitles(t: Title) {
                 t.year?.toString(),
                 if (t.episodes.isNotEmpty()) "${t.episodes.size} Episode" else null,
             ).joinToString(" · "),
-            color = ReaTextDim, fontSize = 11.sp,
+            color = AniloverTextDim, fontSize = 11.sp,
             maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
     }
@@ -605,7 +605,7 @@ fun PosterCard(
                 contentDescription = t.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)
-                    .clip(RoundedCornerShape(4.dp)).background(ReaSurface)
+                    .clip(RoundedCornerShape(4.dp)).background(AniloverSurface)
                     .pressScaleFx(pressSource)
                     .combinedClickable(
                         interactionSource = pressSource,
@@ -618,7 +618,7 @@ fun PosterCard(
                 Text(
                     badge, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Black,
                     modifier = Modifier.align(Alignment.TopStart)
-                        .background(ReaAccent, RoundedCornerShape(bottomEnd = 6.dp))
+                        .background(AniloverAccent, RoundedCornerShape(bottomEnd = 6.dp))
                         .padding(horizontal = 5.dp, vertical = 2.dp),
                 )
             }
@@ -664,7 +664,7 @@ fun EpisodeCard(t: Title, episode: Int, entry: WatchEntry?, onClick: () -> Unit)
     Column(Modifier.width(170.dp).clickable(onClick = onClick)) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(6.dp)).background(ReaSurface),
+                .clip(RoundedCornerShape(6.dp)).background(AniloverSurface),
         ) {
             AsyncImage(
                 model = t.banner ?: t.poster,
@@ -686,7 +686,7 @@ fun EpisodeCard(t: Title, episode: Int, entry: WatchEntry?, onClick: () -> Unit)
                 ) {
                     Box(
                         Modifier.fillMaxWidth(entry.fraction).height(4.dp)
-                            .background(ReaAccent),
+                            .background(AniloverAccent),
                     )
                 }
             }
@@ -703,7 +703,7 @@ fun EpisodeCard(t: Title, episode: Int, entry: WatchEntry?, onClick: () -> Unit)
                     "Sisa " + formatRemainingPlain(entry.positionMs, entry.durationMs)
                 else -> t.seriesName
             },
-            color = ReaTextDim, fontSize = 11.sp,
+            color = AniloverTextDim, fontSize = 11.sp,
             maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
     }
@@ -721,7 +721,7 @@ fun LandscapeCard(t: Title, onClick: () -> Unit) {
             contentDescription = t.title,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(6.dp)).background(ReaSurface),
+                .clip(RoundedCornerShape(6.dp)).background(AniloverSurface),
         )
         CardTitles(t)
     }
@@ -739,7 +739,7 @@ private fun ContinueCard(
     Column(Modifier.width(190.dp)) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(6.dp)).background(ReaSurface)
+                .clip(RoundedCornerShape(6.dp)).background(AniloverSurface)
                 .clickable(onClick = onClick),
         ) {
             AsyncImage(
@@ -764,7 +764,7 @@ private fun ContinueCard(
             ) {
                 Box(
                     Modifier.fillMaxWidth(entry.fraction)
-                        .height(4.dp).background(ReaAccent),
+                        .height(4.dp).background(AniloverAccent),
                 )
             }
         }
@@ -777,7 +777,7 @@ private fun ContinueCard(
                 )
                 Text(
                     "E${entry.episode} · Sisa " + formatRemainingPlain(entry.positionMs, entry.durationMs),
-                    color = ReaTextDim, fontSize = 11.sp,
+                    color = AniloverTextDim, fontSize = 11.sp,
                 )
             }
             Box {

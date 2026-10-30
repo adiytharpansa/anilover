@@ -1,4 +1,4 @@
-package com.app.rea.ui
+package com.app.anilover.ui
 
 import android.content.Intent
 import androidx.compose.foundation.background
@@ -60,10 +60,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.app.rea.data.DownloadItem
-import com.app.rea.data.Episode
-import com.app.rea.data.Title
-import com.app.rea.data.WatchEntry
+import com.app.anilover.data.DownloadItem
+import com.app.anilover.data.Episode
+import com.app.anilover.data.Title
+import com.app.anilover.data.WatchEntry
 
 @Composable
 fun DetailScreen(
@@ -112,7 +112,7 @@ fun DetailScreen(
         contentPadding = PaddingValues(bottom = 84.dp),
     ) {
         item(key = "hero") {
-            Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(ReaSurface)) {
+            Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(AniloverSurface)) {
                 if (hasTrailer) {
                     // Trailer inline ala Netflix: bisu, mutar otomatis di hero.
                     TrailerPlayer(title.trailer!!)
@@ -127,7 +127,7 @@ fun DetailScreen(
                 Box(
                     Modifier.fillMaxSize().background(
                         Brush.verticalGradient(
-                            listOf(Color.Black.copy(alpha = 0.3f), Color.Transparent, ReaBackground)
+                            listOf(Color.Black.copy(alpha = 0.3f), Color.Transparent, AniloverBackground)
                         )
                     )
                 )
@@ -184,7 +184,7 @@ fun DetailScreen(
                 }
                 if (title.genres.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
-                    Text(title.genres.joinToString(" · "), color = ReaTextDim, fontSize = 12.sp)
+                    Text(title.genres.joinToString(" · "), color = AniloverTextDim, fontSize = 12.sp)
                 }
                 Spacer(Modifier.height(12.dp))
                 Button(
@@ -249,7 +249,7 @@ fun DetailScreen(
                         onClick = {
                             val send = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "Tonton ${title.title} di REA")
+                                putExtra(Intent.EXTRA_TEXT, "Tonton ${title.title} di Anilover")
                             }
                             context.startActivity(Intent.createChooser(send, "Bagikan"))
                         },
@@ -283,13 +283,13 @@ fun DetailScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             if (activeTab == key) {
-                                Box(Modifier.fillMaxWidth().height(3.dp).background(ReaAccent))
+                                Box(Modifier.fillMaxWidth().height(3.dp).background(AniloverAccent))
                             } else {
                                 Spacer(Modifier.height(3.dp))
                             }
                             Text(
                                 label,
-                                color = if (activeTab == key) Color.White else ReaTextDim,
+                                color = if (activeTab == key) Color.White else AniloverTextDim,
                                 fontSize = 13.sp,
                                 fontWeight = if (activeTab == key) FontWeight.Bold else FontWeight.Normal,
                                 modifier = Modifier.padding(vertical = 8.dp),
@@ -319,7 +319,7 @@ fun DetailScreen(
                     )
                     Box(
                         Modifier.width(118.dp).aspectRatio(16f / 9f)
-                            .clip(RoundedCornerShape(6.dp)).background(ReaSurface),
+                            .clip(RoundedCornerShape(6.dp)).background(AniloverSurface),
                     ) {
                         AsyncImage(
                             model = ep.thumb ?: title.banner ?: title.poster,
@@ -341,7 +341,7 @@ fun DetailScreen(
                             ) {
                                 Box(
                                     Modifier.fillMaxWidth(prog.fraction).height(3.dp)
-                                        .background(ReaAccent),
+                                        .background(AniloverAccent),
                                 )
                             }
                         }
@@ -355,28 +355,28 @@ fun DetailScreen(
                         )
                         if (!ep.synopsis.isNullOrBlank()) {
                             Text(
-                                ep.synopsis, color = ReaTextDim, fontSize = 12.sp,
+                                ep.synopsis, color = AniloverTextDim, fontSize = 12.sp,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis,
                             )
                         }
                         when {
                             prog != null && prog.isFinished ->
-                                Text("Selesai ditonton", color = ReaTextDim, fontSize = 12.sp)
+                                Text("Selesai ditonton", color = AniloverTextDim, fontSize = 12.sp)
                             prog != null && prog.isStarted ->
                                 Text(
                                     formatClock(prog.durationMs) + " · sisa " +
                                         formatRemainingPlain(prog.positionMs, prog.durationMs),
-                                    color = ReaTextDim, fontSize = 12.sp,
+                                    color = AniloverTextDim, fontSize = 12.sp,
                                 )
                             dl?.state == "selesai" ->
-                                Text("Terunduh · " + formatSize(dl.sizeBytes), color = ReaTextDim, fontSize = 12.sp)
+                                Text("Terunduh · " + formatSize(dl.sizeBytes), color = AniloverTextDim, fontSize = 12.sp)
                         }
                     }
                     when (dl?.state) {
                         "mengunduh" -> Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(
                                 progress = { dl.fraction },
-                                color = ReaAccent, modifier = Modifier.size(26.dp),
+                                color = AniloverAccent, modifier = Modifier.size(26.dp),
                                 trackColor = Color.White.copy(alpha = 0.25f),
                             )
                         }
@@ -391,7 +391,7 @@ fun DetailScreen(
                 if (dl?.state == "gagal") {
                     Text(
                         "Unduhan gagal — ketuk ikon unduh untuk mencoba lagi.",
-                        color = ReaAccent, fontSize = 11.sp,
+                        color = AniloverAccent, fontSize = 11.sp,
                         modifier = Modifier.padding(start = 42.dp, top = 2.dp),
                     )
                 }
@@ -403,7 +403,7 @@ fun DetailScreen(
                 Column(Modifier.padding(16.dp)) {
                     Box(
                         Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-                            .clip(RoundedCornerShape(8.dp)).background(ReaSurface),
+                            .clip(RoundedCornerShape(8.dp)).background(AniloverSurface),
                     ) {
                         TrailerPlayer(title.trailer!!, controls = true)
                     }
@@ -413,8 +413,8 @@ fun DetailScreen(
                         fontSize = 14.sp, fontWeight = FontWeight.Medium,
                     )
                     Text(
-                        "Cuplikan resmi dari katalog gudang REA.",
-                        color = ReaTextDim, fontSize = 12.sp,
+                        "Cuplikan resmi dari katalog gudang Anilover.",
+                        color = AniloverTextDim, fontSize = 12.sp,
                     )
                 }
             }
@@ -443,7 +443,7 @@ fun DetailScreen(
                 )
                 Text(
                     if (resume != null) "Lanjutkan E${resume.episode}" else "${title.episodes.size} episode",
-                    color = ReaTextDim, fontSize = 12.sp,
+                    color = AniloverTextDim, fontSize = 12.sp,
                 )
             }
             Button(
@@ -479,7 +479,7 @@ private fun DetailAction(
     ) {
         Icon(
             icon, contentDescription = label,
-            tint = if (active) ReaAccent else Color.White,
+            tint = if (active) AniloverAccent else Color.White,
             modifier = Modifier.size(26.dp),
         )
         Text(label, color = Color.White, fontSize = 11.sp)

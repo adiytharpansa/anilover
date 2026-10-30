@@ -1,4 +1,4 @@
-# REA
+# Anilover
 
 **Unduh APK terbaru:** [REA-2.7.1.apk](https://github.com/adiytharpansa/rea-app/raw/main/REA-2.7.1.apk)
 
@@ -12,7 +12,7 @@ Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
   gestur kecerahan/volume/geser posisi, zoom layar (pas/isi/zoom), sisa waktu "-mm:ss"
 - Video diputar sebagai HLS dari salinan segmen di repo project-X lewat jsDelivr (pin commit)
 
-Build: GitHub Actions (`assembleDebug`) — artefak `REA-debug-apk`.
+Build: GitHub Actions (`assembleDebug`) — artefak `Anilover-debug-apk`.
 
 ## Perubahan 2.7.0
 
@@ -35,4 +35,4 @@ Build: GitHub Actions (`assembleDebug`) — artefak `REA-debug-apk`.
 - Unduhan: playlist lokal dulu ditulis di AWAL, jadi episode setengah-unduh/gagal diputar dari berkas lalu error. Kini playlist ditulis terakhir, segmen lewat berkas .part, nama berkas dinormalkan (subfolder/query/init fMP4/kunci), master playlist ditangani, dan unduhan yang tertinggal "mengunduh" ditandai gagal saat app dibuka.
 
 ## 2.7.1
-- Crash "background can not be translucent: #0" saat pemutar dibuka: tombol Cast (`MediaRouteButton`) dibuat dengan tema yang tidak punya `colorPrimary` opak. Ditambah tema `Theme.REA.Cast`, `colorPrimary` di tema pemutar, dan try/catch agar kegagalan Cast tidak menutup aplikasi.
+- Crash "background can not be translucent: #0" saat pemutar dibuka: tombol Cast (`MediaRouteButton`) dibuat dengan tema yang tidak punya `colorPrimary` opak. Ditambah tema `Theme.Anilover.Cast`, `colorPrimary` di tema pemutar, dan try/catch agar kegagalan Cast tidak menutup aplikasi.

@@ -1,4 +1,4 @@
-package com.app.rea.ui
+package com.app.anilover.ui
 
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -21,24 +21,24 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 
-val ReaBackground = Color(0xFF141414)
-val ReaSurface = Color(0xFF1F1F1F)
-val ReaAccent = Color(0xFFE50914)
-val ReaTextDim = Color(0xFFB3B3B3)
-val ReaSurfaceHigh = Color(0xFF2B2B2B)
-val ReaGreen = Color(0xFF46D369)
+val AniloverBackground = Color(0xFF141414)
+val AniloverSurface = Color(0xFF1F1F1F)
+val AniloverAccent = Color(0xFFE50914)
+val AniloverTextDim = Color(0xFFB3B3B3)
+val AniloverSurfaceHigh = Color(0xFF2B2B2B)
+val AniloverGreen = Color(0xFF46D369)
 
-private val ReaColors = darkColorScheme(
-    primary = ReaAccent,
-    background = ReaBackground,
-    surface = ReaSurface,
+private val AniloverColors = darkColorScheme(
+    primary = AniloverAccent,
+    background = AniloverBackground,
+    surface = AniloverSurface,
     onBackground = Color.White,
     onSurface = Color.White,
 )
 
 @Composable
-fun ReaTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = ReaColors, content = content)
+fun AniloverTheme(content: @Composable () -> Unit) {
+    MaterialTheme(colorScheme = AniloverColors, content = content)
 }
 
 /** Kotak rangka berkilau (shimmer) untuk keadaan memuat, gaya Netflix. */

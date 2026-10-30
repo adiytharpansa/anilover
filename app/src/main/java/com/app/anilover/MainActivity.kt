@@ -1,4 +1,4 @@
-package com.app.rea
+package com.app.anilover
 
 import android.Manifest
 import android.content.Intent
@@ -69,34 +69,34 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.app.rea.data.CatalogApi
-import com.app.rea.data.CatalogCheckWorker
-import com.app.rea.data.DownloadManager
-import com.app.rea.data.HistoryStore
-import com.app.rea.data.LibraryStore
-import com.app.rea.data.ReaSettings
-import com.app.rea.data.SoonTitle
-import com.app.rea.data.Title
-import com.app.rea.player.PlayerActivity
-import com.app.rea.ui.CategoryScreen
-import com.app.rea.ui.DetailScreen
-import com.app.rea.ui.DownloadsScreen
-import com.app.rea.ui.HomeScreen
-import com.app.rea.ui.NewScreen
-import com.app.rea.ui.ProfileScreen
-import com.app.rea.ui.ReaAccent
-import com.app.rea.ui.ReaBackground
-import com.app.rea.ui.ReaSurface
-import com.app.rea.ui.ReaTheme
-import com.app.rea.ui.ShimmerBox
-import com.app.rea.ui.SearchScreen
+import com.app.anilover.data.CatalogApi
+import com.app.anilover.data.CatalogCheckWorker
+import com.app.anilover.data.DownloadManager
+import com.app.anilover.data.HistoryStore
+import com.app.anilover.data.LibraryStore
+import com.app.anilover.data.AniloverSettings
+import com.app.anilover.data.SoonTitle
+import com.app.anilover.data.Title
+import com.app.anilover.player.PlayerActivity
+import com.app.anilover.ui.CategoryScreen
+import com.app.anilover.ui.DetailScreen
+import com.app.anilover.ui.DownloadsScreen
+import com.app.anilover.ui.HomeScreen
+import com.app.anilover.ui.NewScreen
+import com.app.anilover.ui.ProfileScreen
+import com.app.anilover.ui.AniloverAccent
+import com.app.anilover.ui.AniloverBackground
+import com.app.anilover.ui.AniloverSurface
+import com.app.anilover.ui.AniloverTheme
+import com.app.anilover.ui.ShimmerBox
+import com.app.anilover.ui.SearchScreen
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        com.app.rea.data.CrashReporter.install(applicationContext)
+        com.app.anilover.data.CrashReporter.install(applicationContext)
         val splashScreen = installSplashScreen()
         // Animasi keluar splash: logo membesar memudar (rasa pembuka Netflix).
         // iconView BISA null di sebagian perangkat/kondisi luncur (NPE terbukti
@@ -131,14 +131,14 @@ class MainActivity : ComponentActivity() {
                 Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
             ).build()
             WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
-                "rea-catalog-check", ExistingPeriodicWorkPolicy.KEEP, checkRequest,
+                "anilover-catalog-check", ExistingPeriodicWorkPolicy.KEEP, checkRequest,
             )
         } catch (e: Exception) { /* notifikasi latar bersifat tambahan */ }
         val store = HistoryStore(applicationContext)
         val library = LibraryStore(applicationContext)
         val downloader = DownloadManager(applicationContext, library)
         setContent {
-            ReaTheme {
+            AniloverTheme {
                 AppRoot(store, library, downloader) { title, episode, startPos, autoplay, subtitle ->
                     val eps = JSONArray()
                     for (e in title.episodes) {
@@ -184,7 +184,7 @@ private fun AppRoot(
     val myList by library.myList.collectAsState(initial = emptySet())
     val ratings by library.ratings.collectAsState(initial = emptyMap())
     val hidden by library.hiddenContinue.collectAsState(initial = emptySet())
-    val settings by library.settings.collectAsState(initial = ReaSettings())
+    val settings by library.settings.collectAsState(initial = AniloverSettings())
     val downloads by library.downloads.collectAsState(initial = emptyList())
     val reminders by library.reminders.collectAsState(initial = emptySet())
     val recents by library.recentSearches.collectAsState(initial = emptyList())
@@ -192,7 +192,7 @@ private fun AppRoot(
 
     // Laporan galat terakhir (dari CrashReporter): tampilkan agar bisa dibagikan
     // untuk diagnosis, lalu hapus.
-    var crashText by remember { mutableStateOf(com.app.rea.data.CrashReporter.read(context)) }
+    var crashText by remember { mutableStateOf(com.app.anilover.data.CrashReporter.read(context)) }
     if (crashText != null) {
         AlertDialog(
             onDismissRequest = { },
@@ -213,7 +213,7 @@ private fun AppRoot(
             },
             dismissButton = {
                 TextButton(onClick = {
-                    com.app.rea.data.CrashReporter.clear(context)
+                    com.app.anilover.data.CrashReporter.clear(context)
                     crashText = null
                 }) { Text("Tutup") }
             },
@@ -273,7 +273,7 @@ private fun AppRoot(
     BackHandler(enabled = selected == null && genreSel != null) { genreSel = null }
 
     Scaffold(
-        containerColor = ReaBackground,
+        containerColor = AniloverBackground,
         bottomBar = {
             if (selected == null && genreSel == null) {
                 NavigationBar(containerColor = Color(0xFF0B0B0B)) {
@@ -286,7 +286,7 @@ private fun AppRoot(
             }
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding).background(ReaBackground)) {
+        Box(Modifier.fillMaxSize().padding(padding).background(AniloverBackground)) {
             when {
                 selected != null -> {
                     val t = titles?.firstOrNull { it.id == selected!!.id } ?: selected!!
@@ -336,7 +336,7 @@ private fun AppRoot(
                     Button(
                         onClick = { error = null; reloadKey++ },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = ReaAccent, contentColor = Color.White,
+                            containerColor = AniloverAccent, contentColor = Color.White,
                         ),
                     ) { Text("Coba Lagi") }
                 }

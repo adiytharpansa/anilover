@@ -1,4 +1,4 @@
-package com.app.rea.data
+package com.app.anilover.data
 
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -98,7 +98,7 @@ object CatalogApi {
         conn.connectTimeout = timeoutMs
         conn.readTimeout = timeoutMs
         conn.setRequestProperty("Accept", "application/json")
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (REA Android)")
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Anilover Android)")
         if (conn.responseCode !in 200..299) {
             throw java.io.IOException("HTTP " + conn.responseCode + " dari " + url)
         }
@@ -253,7 +253,7 @@ data class WatchEntry(
     val isFinished: Boolean get() = fraction > 0.95f
 }
 
-private val Context.dataStore by preferencesDataStore(name = "rea_store")
+private val Context.dataStore by preferencesDataStore(name = "anilover_store")
 private val HISTORY_KEY = stringPreferencesKey("history_json")
 private val MYLIST_KEY = stringPreferencesKey("mylist_json")
 private val RATINGS_KEY = stringPreferencesKey("ratings_json")
@@ -364,7 +364,7 @@ class HistoryStore(private val context: Context) {
     }
 }
 
-data class ReaSettings(
+data class AniloverSettings(
     val autoplayNext: Boolean = true,
     val subtitleDefault: String = "id",
     /** Ukuran teks subtitle: kecil | sedang | besar. */
@@ -389,8 +389,8 @@ class LibraryStore(private val context: Context) {
     val hiddenContinue: Flow<Set<String>> = context.dataStore.data.map { prefs ->
         parseStringSet(prefs[HIDDEN_KEY])
     }
-    val settings: Flow<ReaSettings> = context.dataStore.data.map { prefs ->
-        ReaSettings(
+    val settings: Flow<AniloverSettings> = context.dataStore.data.map { prefs ->
+        AniloverSettings(
             autoplayNext = prefs[AUTOPLAY_KEY] ?: true,
             subtitleDefault = prefs[SUBTITLE_KEY] ?: "id",
             subtitleSize = prefs[SUBSIZE_KEY] ?: "sedang",
@@ -817,7 +817,7 @@ class DownloadManager(private val context: Context, private val library: Library
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout = 20000
         conn.readTimeout = readTimeout
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (REA Android)")
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Anilover Android)")
         if (conn.responseCode !in 200..299) {
             val code = conn.responseCode
             conn.disconnect()

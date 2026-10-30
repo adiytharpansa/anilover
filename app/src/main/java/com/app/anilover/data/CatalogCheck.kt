@@ -1,4 +1,4 @@
-package com.app.rea.data
+package com.app.anilover.data
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,8 +9,8 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.app.rea.MainActivity
-import com.app.rea.R
+import com.app.anilover.MainActivity
+import com.app.anilover.R
 
 /**
  * Pemeriksa katalog berkala (WorkManager): membandingkan katalog api.anime
@@ -42,7 +42,7 @@ class CatalogCheckWorker(context: Context, params: WorkerParameters) :
             val others = newTitles.filter { !reminders.contains(it.id) }
             if (reminded.isNotEmpty()) {
                 notify(
-                    "Sudah tayang di REA",
+                    "Sudah tayang di Anilover",
                     reminded.joinToString(", ") { it.seriesName } +
                         " — yang kamu tunggu sudah bisa ditonton.",
                     1001,
@@ -52,7 +52,7 @@ class CatalogCheckWorker(context: Context, params: WorkerParameters) :
             if (others.isNotEmpty()) {
                 val names = others.take(3).joinToString(", ") { it.seriesName }
                 val suffix = if (others.size > 3) " dan ${others.size - 3} judul lain" else ""
-                notify("Judul baru di REA", names + suffix, 1002)
+                notify("Judul baru di Anilover", names + suffix, 1002)
             }
         }
         library.setKnownIds(freshIds)
@@ -76,7 +76,7 @@ class CatalogCheckWorker(context: Context, params: WorkerParameters) :
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val notif = NotificationCompat.Builder(ctx, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_rea)
+            .setSmallIcon(R.drawable.ic_stat_anilover)
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
@@ -87,6 +87,6 @@ class CatalogCheckWorker(context: Context, params: WorkerParameters) :
     }
 
     companion object {
-        const val CHANNEL_ID = "rea_updates"
+        const val CHANNEL_ID = "anilover_updates"
     }
 }

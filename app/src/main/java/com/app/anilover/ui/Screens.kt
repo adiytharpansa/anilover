@@ -1,4 +1,4 @@
-package com.app.rea.ui
+package com.app.anilover.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -72,10 +72,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.app.rea.data.DownloadItem
-import com.app.rea.data.ReaSettings
-import com.app.rea.data.SoonTitle
-import com.app.rea.data.Title
+import com.app.anilover.data.DownloadItem
+import com.app.anilover.data.AniloverSettings
+import com.app.anilover.data.SoonTitle
+import com.app.anilover.data.Title
 
 // ---------------- Cari ----------------
 
@@ -129,7 +129,7 @@ fun SearchScreen(
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            placeholder = { Text("Cari judul atau genre…", color = ReaTextDim) },
+            placeholder = { Text("Cari judul atau genre…", color = AniloverTextDim) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = Color.White) },
             trailingIcon = {
                 IconButton(onClick = {
@@ -160,11 +160,11 @@ fun SearchScreen(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
-                focusedContainerColor = ReaSurfaceHigh,
-                unfocusedContainerColor = ReaSurface,
+                focusedContainerColor = AniloverSurfaceHigh,
+                unfocusedContainerColor = AniloverSurface,
                 focusedBorderColor = Color.White.copy(alpha = 0.6f),
                 unfocusedBorderColor = Color.Transparent,
-                cursorColor = ReaAccent,
+                cursorColor = AniloverAccent,
             ),
         )
         if (genres.isNotEmpty()) {
@@ -176,7 +176,7 @@ fun SearchScreen(
                         onClick = { genre = if (genre == g) null else g },
                         label = { Text(g) },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = ReaAccent,
+                            selectedContainerColor = AniloverAccent,
                             selectedLabelColor = Color.White,
                             labelColor = Color.White,
                         ),
@@ -192,7 +192,7 @@ fun SearchScreen(
                     fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
                 )
                 Text(
-                    "Hapus", color = ReaAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                    "Hapus", color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                     modifier = Modifier.clickable { onClearRecents() }.padding(4.dp),
                 )
             }
@@ -224,7 +224,7 @@ fun SearchScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "${idx + 1}", color = ReaAccent, fontSize = 17.sp, fontWeight = FontWeight.Black,
+                        "${idx + 1}", color = AniloverAccent, fontSize = 17.sp, fontWeight = FontWeight.Black,
                         modifier = Modifier.width(30.dp),
                     )
                     AsyncImage(
@@ -232,7 +232,7 @@ fun SearchScreen(
                         contentDescription = t.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.width(40.dp).aspectRatio(2f / 3f)
-                            .clip(RoundedCornerShape(4.dp)).background(ReaSurface),
+                            .clip(RoundedCornerShape(4.dp)).background(AniloverSurface),
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
@@ -250,7 +250,7 @@ fun SearchScreen(
         if (results.isEmpty()) {
             if (query.isBlank()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Tidak ada judul untuk filter ini.", color = ReaTextDim, fontSize = 14.sp)
+                    Text("Tidak ada judul untuk filter ini.", color = AniloverTextDim, fontSize = 14.sp)
                 }
             } else {
                 // Hasil kosong yang membantu: pesan + saran judul (skor tertinggi).
@@ -261,7 +261,7 @@ fun SearchScreen(
                     )
                     Text(
                         "Periksa ejaan, atau coba salah satu judul populer ini:",
-                        color = ReaTextDim, fontSize = 13.sp,
+                        color = AniloverTextDim, fontSize = 13.sp,
                     )
                     Spacer(Modifier.height(12.dp))
                     LazyVerticalGrid(
@@ -301,7 +301,7 @@ private fun GridPoster(t: Title, onClick: () -> Unit) {
             contentDescription = t.title,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)
-                .clip(RoundedCornerShape(6.dp)).background(ReaSurface),
+                .clip(RoundedCornerShape(6.dp)).background(AniloverSurface),
         )
         CardTitles(t)
     }
@@ -327,7 +327,7 @@ fun CategoryScreen(
             Text(genre, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(6.dp))
             Text(
-                "${titles.size} judul", color = ReaTextDim, fontSize = 13.sp,
+                "${titles.size} judul", color = AniloverTextDim, fontSize = 13.sp,
                 modifier = Modifier.padding(top = 3.dp),
             )
         }
@@ -379,7 +379,7 @@ fun NewScreen(
             ) {
                 Box(
                     Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-                        .clip(RoundedCornerShape(8.dp)).background(ReaSurface),
+                        .clip(RoundedCornerShape(8.dp)).background(AniloverSurface),
                 ) {
                     AsyncImage(
                         model = t.banner ?: t.poster,
@@ -411,7 +411,7 @@ fun NewScreen(
                     if (t.episodes.isNotEmpty()) "${t.episodes.size} Episode" else null,
                     if (t.genres.isNotEmpty()) t.genres.joinToString(", ") else null,
                 ).joinToString("  •  ")
-                if (meta.isNotBlank()) Text(meta, color = ReaTextDim, fontSize = 12.sp)
+                if (meta.isNotBlank()) Text(meta, color = AniloverTextDim, fontSize = 12.sp)
             }
         }
         item { Spacer(Modifier.height(24.dp)) }
@@ -430,7 +430,7 @@ private fun SoonCard(
     ) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(8.dp)).background(ReaSurface),
+                .clip(RoundedCornerShape(8.dp)).background(AniloverSurface),
         ) {
             AsyncImage(
                 model = s.banner ?: s.poster,
@@ -441,7 +441,7 @@ private fun SoonCard(
             Text(
                 "SEGERA", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black,
                 modifier = Modifier.align(Alignment.TopStart)
-                    .background(ReaAccent, RoundedCornerShape(bottomEnd = 6.dp))
+                    .background(AniloverAccent, RoundedCornerShape(bottomEnd = 6.dp))
                     .padding(horizontal = 6.dp, vertical = 3.dp),
             )
         }
@@ -461,17 +461,17 @@ private fun SoonCard(
             if (s.totalEpisodes > 0) "${s.totalEpisodes} Episode" else null,
             if (s.genres.isNotEmpty()) s.genres.joinToString(", ") else null,
         ).joinToString("  •  ")
-        if (meta.isNotBlank()) Text(meta, color = ReaTextDim, fontSize = 12.sp)
+        if (meta.isNotBlank()) Text(meta, color = AniloverTextDim, fontSize = 12.sp)
         if (!s.synopsis.isNullOrBlank()) {
             Text(
-                s.synopsis, color = ReaTextDim, fontSize = 12.sp,
+                s.synopsis, color = AniloverTextDim, fontSize = 12.sp,
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
         }
         Spacer(Modifier.height(8.dp))
         Row(
             Modifier.clip(RoundedCornerShape(6.dp))
-                .background(if (reminded) ReaAccent else Color.White.copy(alpha = 0.14f))
+                .background(if (reminded) AniloverAccent else Color.White.copy(alpha = 0.14f))
                 .clickable(onClick = onToggleReminder)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -495,7 +495,7 @@ private fun SoonCard(
 fun DownloadsScreen(
     downloads: List<DownloadItem>,
     titles: List<Title>,
-    settings: ReaSettings,
+    settings: AniloverSettings,
     onPlayDownload: (DownloadItem) -> Unit,
     onDeleteDownload: (DownloadItem) -> Unit,
     onSmartChange: (Boolean) -> Unit,
@@ -525,7 +525,7 @@ fun DownloadsScreen(
             if (done.isNotEmpty()) {
                 Text(
                     "${done.size} episode terunduh · " + formatSize(done.sumOf { it.sizeBytes }),
-                    color = ReaTextDim, fontSize = 13.sp,
+                    color = AniloverTextDim, fontSize = 13.sp,
                     modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
                 )
             }
@@ -534,7 +534,7 @@ fun DownloadsScreen(
                 Text(
                     "Penyimpanan perangkat: " + formatSize(storage.second) + " bebas dari " +
                         formatSize(storage.first),
-                    color = ReaTextDim, fontSize = 12.sp,
+                    color = AniloverTextDim, fontSize = 12.sp,
                     modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
                 )
                 Box(
@@ -543,14 +543,14 @@ fun DownloadsScreen(
                 ) {
                     Box(
                         Modifier.fillMaxWidth(usedFrac.coerceIn(0f, 1f)).height(4.dp)
-                            .background(ReaAccent, RoundedCornerShape(2.dp)),
+                            .background(AniloverAccent, RoundedCornerShape(2.dp)),
                     )
                 }
             }
             Spacer(Modifier.height(10.dp))
             Column(
                 Modifier.padding(horizontal = 16.dp).fillMaxWidth()
-                    .background(ReaSurface, RoundedCornerShape(10.dp))
+                    .background(AniloverSurface, RoundedCornerShape(10.dp))
                     .padding(horizontal = 14.dp, vertical = 6.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -558,25 +558,25 @@ fun DownloadsScreen(
                         Text("Unduhan Cerdas", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         Text(
                             "Episode berikutnya terunduh otomatis; episode yang selesai ditonton terhapus sendiri.",
-                            color = ReaTextDim, fontSize = 12.sp,
+                            color = AniloverTextDim, fontSize = 12.sp,
                         )
                     }
                     Switch(
                         checked = settings.smartDownloads,
                         onCheckedChange = onSmartChange,
-                        colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = ReaAccent),
+                        colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = AniloverAccent),
                     )
                 }
                 if (settings.smartDownloads) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Hanya lewat Wi-Fi", color = Color.White, fontSize = 13.sp)
-                            Text("Unduhan Cerdas berhenti saat memakai data seluler.", color = ReaTextDim, fontSize = 12.sp)
+                            Text("Unduhan Cerdas berhenti saat memakai data seluler.", color = AniloverTextDim, fontSize = 12.sp)
                         }
                         Switch(
                             checked = settings.wifiOnlyDownloads,
                             onCheckedChange = onWifiOnlyChange,
-                            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = ReaAccent),
+                            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = AniloverAccent),
                         )
                     }
                 }
@@ -589,21 +589,21 @@ fun DownloadsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Box(
-                        Modifier.size(88.dp).background(ReaSurface, androidx.compose.foundation.shape.CircleShape),
+                        Modifier.size(88.dp).background(AniloverSurface, androidx.compose.foundation.shape.CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Filled.Download, contentDescription = null, tint = ReaTextDim, modifier = Modifier.size(40.dp))
+                        Icon(Icons.Filled.Download, contentDescription = null, tint = AniloverTextDim, modifier = Modifier.size(40.dp))
                     }
                     Spacer(Modifier.height(14.dp))
                     Text("Belum ada unduhan", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
                     Text(
                         "Unduh episode dari halaman detail judul untuk menonton tanpa internet.",
-                        color = ReaTextDim, fontSize = 13.sp,
+                        color = AniloverTextDim, fontSize = 13.sp,
                     )
                     Spacer(Modifier.height(14.dp))
                     Text(
-                        "Jelajahi judul", color = ReaAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                        "Jelajahi judul", color = AniloverAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.clickable { onBrowse() },
                     )
                 }
@@ -622,7 +622,7 @@ fun DownloadsScreen(
                     contentDescription = d.titleName,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.width(52.dp).aspectRatio(2f / 3f)
-                        .clip(RoundedCornerShape(6.dp)).background(ReaSurface),
+                        .clip(RoundedCornerShape(6.dp)).background(AniloverSurface),
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
@@ -636,7 +636,7 @@ fun DownloadsScreen(
                             "mengunduh" -> "mengunduh ${(d.fraction * 100).toInt()}%"
                             else -> "gagal — buka detail untuk coba lagi"
                         },
-                        color = ReaTextDim, fontSize = 12.sp,
+                        color = AniloverTextDim, fontSize = 12.sp,
                     )
                     if (d.state == "mengunduh") {
                         Spacer(Modifier.height(4.dp))
@@ -644,12 +644,12 @@ fun DownloadsScreen(
                             Modifier.fillMaxWidth().height(4.dp)
                                 .background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(2.dp)),
                         ) {
-                            Box(Modifier.fillMaxWidth(d.fraction).height(4.dp).background(ReaAccent, RoundedCornerShape(2.dp)))
+                            Box(Modifier.fillMaxWidth(d.fraction).height(4.dp).background(AniloverAccent, RoundedCornerShape(2.dp)))
                         }
                     }
                 }
                 if (d.state == "mengunduh") {
-                    CircularProgressIndicator(color = ReaAccent, modifier = Modifier.size(22.dp))
+                    CircularProgressIndicator(color = AniloverAccent, modifier = Modifier.size(22.dp))
                 } else {
                     IconButton(onClick = { onDeleteDownload(d) }) {
                         Icon(Icons.Filled.Delete, contentDescription = "Hapus unduhan", tint = Color.White)
@@ -669,7 +669,7 @@ fun ProfileScreen(
     historyCount: Int,
     finishedEpisodes: Int,
     watchedTitles: Int,
-    settings: ReaSettings,
+    settings: AniloverSettings,
     onOpenTitle: (Title) -> Unit,
     onAutoplayChange: (Boolean) -> Unit,
     onSubtitleChange: (String) -> Unit,
@@ -688,7 +688,7 @@ fun ProfileScreen(
                     Modifier.size(76.dp)
                         .background(
                             androidx.compose.ui.graphics.Brush.linearGradient(
-                                listOf(ReaAccent, Color(0xFFFF7A18))
+                                listOf(AniloverAccent, Color(0xFFFF7A18))
                             ),
                             RoundedCornerShape(50),
                         ),
@@ -698,7 +698,7 @@ fun ProfileScreen(
                 }
                 Spacer(Modifier.height(10.dp))
                 Text("Adiyth", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                Text("Akun lokal di perangkat ini", color = ReaTextDim, fontSize = 12.sp)
+                Text("Akun lokal di perangkat ini", color = AniloverTextDim, fontSize = 12.sp)
             }
             Spacer(Modifier.height(18.dp))
             Row(
@@ -722,12 +722,12 @@ fun ProfileScreen(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Autoplay episode berikutnya", color = Color.White, fontSize = 14.sp)
-                    Text("Hitung mundur lalu putar otomatis", color = ReaTextDim, fontSize = 12.sp)
+                    Text("Hitung mundur lalu putar otomatis", color = AniloverTextDim, fontSize = 12.sp)
                 }
                 Switch(
                     checked = settings.autoplayNext,
                     onCheckedChange = onAutoplayChange,
-                    colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = ReaAccent),
+                    colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = AniloverAccent),
                 )
             }
             HorizontalDivider(
@@ -742,7 +742,7 @@ fun ProfileScreen(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Subtitle bawaan", color = Color.White, fontSize = 14.sp)
-                    Text("Dipilih otomatis saat episode mulai diputar", color = ReaTextDim, fontSize = 12.sp)
+                    Text("Dipilih otomatis saat episode mulai diputar", color = AniloverTextDim, fontSize = 12.sp)
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         for ((value, label) in listOf("id" to "Indonesia", "en" to "Inggris", "off" to "Nonaktif")) {
@@ -751,7 +751,7 @@ fun ProfileScreen(
                                 onClick = { onSubtitleChange(value) },
                                 label = { Text(label) },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = ReaAccent,
+                                    selectedContainerColor = AniloverAccent,
                                     selectedLabelColor = Color.White,
                                     labelColor = Color.White,
                                 ),
@@ -772,9 +772,9 @@ fun ProfileScreen(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Tampilan Subtitle", color = Color.White, fontSize = 14.sp)
-                    Text("Ukuran dan warna teks subtitle di pemutar", color = ReaTextDim, fontSize = 12.sp)
+                    Text("Ukuran dan warna teks subtitle di pemutar", color = AniloverTextDim, fontSize = 12.sp)
                     Spacer(Modifier.height(8.dp))
-                    Text("Ukuran", color = ReaTextDim, fontSize = 12.sp)
+                    Text("Ukuran", color = AniloverTextDim, fontSize = 12.sp)
                     Spacer(Modifier.height(4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         for ((value, label) in listOf("kecil" to "Kecil", "sedang" to "Sedang", "besar" to "Besar")) {
@@ -783,7 +783,7 @@ fun ProfileScreen(
                                 onClick = { onSubtitleStyleChange(value, settings.subtitleColor) },
                                 label = { Text(label) },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = ReaAccent,
+                                    selectedContainerColor = AniloverAccent,
                                     selectedLabelColor = Color.White,
                                     labelColor = Color.White,
                                 ),
@@ -791,7 +791,7 @@ fun ProfileScreen(
                         }
                     }
                     Spacer(Modifier.height(8.dp))
-                    Text("Warna", color = ReaTextDim, fontSize = 12.sp)
+                    Text("Warna", color = AniloverTextDim, fontSize = 12.sp)
                     Spacer(Modifier.height(4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         for ((value, label) in listOf("putih" to "Putih", "kuning" to "Kuning", "hijau" to "Hijau")) {
@@ -800,7 +800,7 @@ fun ProfileScreen(
                                 onClick = { onSubtitleStyleChange(settings.subtitleSize, value) },
                                 label = { Text(label) },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = ReaAccent,
+                                    selectedContainerColor = AniloverAccent,
                                     selectedLabelColor = Color.White,
                                     labelColor = Color.White,
                                 ),
@@ -825,11 +825,11 @@ fun ProfileScreen(
                             historyCount == 0 -> "Belum ada riwayat tonton."
                             else -> "$historyCount riwayat tonton tersimpan."
                         },
-                        color = ReaTextDim, fontSize = 13.sp,
+                        color = AniloverTextDim, fontSize = 13.sp,
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Bersihkan riwayat tonton", color = ReaAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                        "Bersihkan riwayat tonton", color = AniloverAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.clickable {
                             onClearHistory()
                             cleared = true
@@ -844,7 +844,7 @@ fun ProfileScreen(
                         context.packageManager.getPackageInfo(context.packageName, 0).versionName
                     } catch (e: Exception) { null }
                 }
-                Text("REA versi ${versionName ?: "-"}", color = ReaTextDim, fontSize = 12.sp)
+                Text("Anilover versi ${versionName ?: "-"}", color = AniloverTextDim, fontSize = 12.sp)
                 Spacer(Modifier.height(24.dp))
             }
         }
@@ -855,14 +855,14 @@ fun ProfileScreen(
 private fun StatColumn(value: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-        Text(label, color = ReaTextDim, fontSize = 11.sp)
+        Text(label, color = AniloverTextDim, fontSize = 11.sp)
     }
 }
 
 @Composable
 private fun SettingsIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Box(
-        Modifier.size(38.dp).background(ReaSurface, RoundedCornerShape(8.dp)),
+        Modifier.size(38.dp).background(AniloverSurface, RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(21.dp))
@@ -881,16 +881,16 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
-            Modifier.size(88.dp).background(ReaSurface, androidx.compose.foundation.shape.CircleShape),
+            Modifier.size(88.dp).background(AniloverSurface, androidx.compose.foundation.shape.CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, tint = ReaTextDim, modifier = Modifier.size(40.dp))
+            Icon(icon, contentDescription = null, tint = AniloverTextDim, modifier = Modifier.size(40.dp))
         }
         Spacer(Modifier.height(14.dp))
         Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(4.dp))
         Text(
-            subtitle, color = ReaTextDim, fontSize = 13.sp,
+            subtitle, color = AniloverTextDim, fontSize = 13.sp,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
     }

@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "REA"
+rootProject.name = "Anilover"
 include(":app")

@@ -1,4 +1,4 @@
-package com.app.rea.player
+package com.app.anilover.player
 
 import android.app.PictureInPictureParams
 import android.content.Context
@@ -108,15 +108,15 @@ import com.google.android.gms.cast.framework.CastButtonFactory
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManagerListener
-import com.app.rea.R
-import com.app.rea.data.HistoryStore
-import com.app.rea.data.LibraryStore
-import com.app.rea.data.ReaSettings
-import com.app.rea.data.WatchEntry
-import com.app.rea.ui.ReaAccent
-import com.app.rea.ui.ReaTheme
-import com.app.rea.ui.formatClock
-import com.app.rea.ui.formatRemaining
+import com.app.anilover.R
+import com.app.anilover.data.HistoryStore
+import com.app.anilover.data.LibraryStore
+import com.app.anilover.data.AniloverSettings
+import com.app.anilover.data.WatchEntry
+import com.app.anilover.ui.AniloverAccent
+import com.app.anilover.ui.AniloverTheme
+import com.app.anilover.ui.formatClock
+import com.app.anilover.ui.formatRemaining
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -145,7 +145,7 @@ class PlayerActivity : FragmentActivity() {
     private var inPip by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        com.app.rea.data.CrashReporter.install(applicationContext)
+        com.app.anilover.data.CrashReporter.install(applicationContext)
         super.onCreate(savedInstanceState)
         store = HistoryStore(applicationContext)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
@@ -165,7 +165,7 @@ class PlayerActivity : FragmentActivity() {
         val episodes = parseEpisodes(intent.getStringExtra(EXTRA_EPISODES) ?: "[]")
 
         setContent {
-            ReaTheme {
+            AniloverTheme {
                 PlayerScreen(
                     titleId = titleId,
                     title = title,
@@ -254,7 +254,7 @@ private enum class Panel { None, Speed, Tracks, Episodes, Quality }
  */
 private fun buildPlayer(context: Context): ExoPlayer {
     val http = DefaultHttpDataSource.Factory()
-        .setUserAgent("Mozilla/5.0 (Linux; Android) REA/2.7")
+        .setUserAgent("Mozilla/5.0 (Linux; Android) Anilover/2.7")
         .setConnectTimeoutMs(15_000)
         .setReadTimeoutMs(20_000)
         .setAllowCrossProtocolRedirects(true)
@@ -320,7 +320,7 @@ private fun PlayerScreen(
     val scope = rememberCoroutineScope()
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
     val library = remember { LibraryStore(context) }
-    val reaSettings by library.settings.collectAsState(initial = ReaSettings())
+    val aniloverSettings by library.settings.collectAsState(initial = AniloverSettings())
 
     // ---- Cast ke TV (Google Cast, Default Media Receiver) ----
     val castContext = remember {
@@ -385,9 +385,9 @@ private fun PlayerScreen(
     }
 
     // Terapkan gaya subtitle pilihan pengguna (warna + ukuran) ke tampilan subtitle.
-    LaunchedEffect(playerViewRef, reaSettings.subtitleSize, reaSettings.subtitleColor) {
+    LaunchedEffect(playerViewRef, aniloverSettings.subtitleSize, aniloverSettings.subtitleColor) {
         val sv = playerViewRef?.subtitleView ?: return@LaunchedEffect
-        val fg = when (reaSettings.subtitleColor) {
+        val fg = when (aniloverSettings.subtitleColor) {
             "kuning" -> android.graphics.Color.YELLOW
             "hijau" -> android.graphics.Color.GREEN
             else -> android.graphics.Color.WHITE
@@ -403,7 +403,7 @@ private fun PlayerScreen(
             )
         )
         sv.setFractionalTextSize(
-            when (reaSettings.subtitleSize) {
+            when (aniloverSettings.subtitleSize) {
                 "kecil" -> 0.040f
                 "besar" -> 0.075f
                 else -> 0.0533f
@@ -821,7 +821,7 @@ private fun PlayerScreen(
                                 // Tema khusus + try/catch: kegagalan tombol Cast
                                 // tidak boleh sampai menutup aplikasi.
                                 try {
-                                    val themed = android.view.ContextThemeWrapper(ctx, R.style.Theme_REA_Cast)
+                                    val themed = android.view.ContextThemeWrapper(ctx, R.style.Theme_Anilover_Cast)
                                     MediaRouteButton(themed).also { btn ->
                                         CastButtonFactory.setUpMediaRouteButton(ctx, btn)
                                     }
@@ -1015,7 +1015,7 @@ private fun PlayerScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(speedLabel(s) + if (s == 1.0f) " (Normal)" else "", color = Color.White, modifier = Modifier.weight(1f))
-                        if (s == speed) Icon(Icons.Filled.Check, contentDescription = null, tint = ReaAccent)
+                        if (s == speed) Icon(Icons.Filled.Check, contentDescription = null, tint = AniloverAccent)
                     }
                 }
             }
@@ -1033,8 +1033,8 @@ private fun PlayerScreen(
                             }.padding(vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("Episode ${ep.number}", color = if (ep.number == currentEp) ReaAccent else Color.White, modifier = Modifier.weight(1f))
-                            if (ep.number == currentEp) Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = ReaAccent)
+                            Text("Episode ${ep.number}", color = if (ep.number == currentEp) AniloverAccent else Color.White, modifier = Modifier.weight(1f))
+                            if (ep.number == currentEp) Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = AniloverAccent)
                         }
                     }
                 }
@@ -1077,7 +1077,7 @@ private fun TracksPanel(player: ExoPlayer, onClose: () -> Unit) {
             Text("Tidak ada trek audio/subtitle tambahan pada episode ini.", color = Color(0xFFAAAAAA), fontSize = 13.sp)
         }
         if (audio.isNotEmpty()) {
-            Text("Audio", color = ReaAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text("Audio", color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             for (g in audio) {
                 for (i in 0 until g.length) {
                     val f = g.getTrackFormat(i)
@@ -1091,14 +1091,14 @@ private fun TracksPanel(player: ExoPlayer, onClose: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(label, color = Color.White, modifier = Modifier.weight(1f))
-                        if (g.isTrackSelected(i)) Icon(Icons.Filled.Check, contentDescription = null, tint = ReaAccent)
+                        if (g.isTrackSelected(i)) Icon(Icons.Filled.Check, contentDescription = null, tint = AniloverAccent)
                     }
                 }
             }
         }
         if (text.isNotEmpty()) {
             Spacer(Modifier.height(6.dp))
-            Text("Subtitle", color = ReaAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text("Subtitle", color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             Row(
                 Modifier.fillMaxWidth().clickable {
                     player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
@@ -1123,7 +1123,7 @@ private fun TracksPanel(player: ExoPlayer, onClose: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(label, color = Color.White, modifier = Modifier.weight(1f))
-                        if (g.isTrackSelected(i)) Icon(Icons.Filled.Check, contentDescription = null, tint = ReaAccent)
+                        if (g.isTrackSelected(i)) Icon(Icons.Filled.Check, contentDescription = null, tint = AniloverAccent)
                     }
                 }
             }
@@ -1169,7 +1169,7 @@ private fun QualityPanel(player: ExoPlayer, onClose: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(label, color = Color.White, modifier = Modifier.weight(1f))
-                    if (g.isTrackSelected(i)) Icon(Icons.Filled.Check, contentDescription = null, tint = ReaAccent)
+                    if (g.isTrackSelected(i)) Icon(Icons.Filled.Check, contentDescription = null, tint = AniloverAccent)
                 }
             }
         }
@@ -1222,12 +1222,12 @@ private fun NetflixSeekBar(
     ) {
         Box(Modifier.fillMaxWidth().height(4.dp).background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(2.dp)))
         Box(Modifier.fillMaxWidth(buffered).height(4.dp).background(Color.White.copy(alpha = 0.45f), RoundedCornerShape(2.dp)))
-        Box(Modifier.fillMaxWidth(scrubFrac ?: played).height(4.dp).background(ReaAccent, RoundedCornerShape(2.dp)))
+        Box(Modifier.fillMaxWidth(scrubFrac ?: played).height(4.dp).background(AniloverAccent, RoundedCornerShape(2.dp)))
         Box(
             Modifier.fillMaxWidth(scrubFrac ?: played),
             contentAlignment = Alignment.CenterEnd,
         ) {
-            Box(Modifier.size(13.dp).background(ReaAccent, RoundedCornerShape(50)))
+            Box(Modifier.size(13.dp).background(AniloverAccent, RoundedCornerShape(50)))
         }
     }
 }

@@ -1,8 +1,8 @@
-# REA — aturan R8 rilis
+# Anilover — aturan R8 rilis
 # Model data aplikasi (dibaca/ditulis lewat refleksi ringan & org.json manual)
--keep class com.app.rea.data.** { *; }
+-keep class com.app.anilover.data.** { *; }
 # Aktivitas yang dirujuk manifest
--keep class com.app.rea.MainActivity { *; }
--keep class com.app.rea.player.PlayerActivity { *; }
+-keep class com.app.anilover.MainActivity { *; }
+-keep class com.app.anilover.player.PlayerActivity { *; }
 # Atribut anotasi untuk library Compose/Media3
 -keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod
