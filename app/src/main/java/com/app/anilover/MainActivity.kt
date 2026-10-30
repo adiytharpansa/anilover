@@ -85,6 +85,7 @@ import com.app.anilover.ui.HomeScreen
 import com.app.anilover.ui.NewScreen
 import com.app.anilover.ui.ProfileScreen
 import com.app.anilover.ui.AniloverAccent
+import com.app.anilover.ui.AniloverOnAccent
 import com.app.anilover.ui.AniloverBackground
 import com.app.anilover.ui.AniloverSurface
 import com.app.anilover.ui.AniloverTheme
@@ -276,7 +277,7 @@ private fun AppRoot(
         containerColor = AniloverBackground,
         bottomBar = {
             if (selected == null && genreSel == null) {
-                NavigationBar(containerColor = Color(0xFF0B0B0B)) {
+                NavigationBar(containerColor = Color(0xFF111111)) {
                     NavItem(Tab.Home, tab, Icons.Filled.Home, "Beranda") { tab = it }
                     NavItem(Tab.Search, tab, Icons.Filled.Search, "Cari") { tab = it }
                     NavItem(Tab.New, tab, Icons.Filled.Whatshot, "Baru") { tab = it }
@@ -336,7 +337,7 @@ private fun AppRoot(
                     Button(
                         onClick = { error = null; reloadKey++ },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = AniloverAccent, contentColor = Color.White,
+                            containerColor = AniloverAccent, contentColor = AniloverOnAccent,
                         ),
                     ) { Text("Coba Lagi") }
                 }
@@ -439,11 +440,11 @@ private fun androidx.compose.foundation.layout.RowScope.NavItem(
         icon = { Icon(icon, contentDescription = label) },
         label = { Text(label, fontSize = 11.sp) },
         colors = NavigationBarItemDefaults.colors(
-            selectedIconColor = Color.White,
-            selectedTextColor = Color.White,
-            unselectedIconColor = Color(0xFF8C8C8C),
-            unselectedTextColor = Color(0xFF8C8C8C),
-            indicatorColor = Color.Transparent,
+            selectedIconColor = AniloverAccent,
+            selectedTextColor = AniloverAccent,
+            unselectedIconColor = Color(0xFF9A9A9A),
+            unselectedTextColor = Color(0xFF9A9A9A),
+            indicatorColor = AniloverAccent.copy(alpha = 0.16f),
         ),
     )
 }

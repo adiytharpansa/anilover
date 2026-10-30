@@ -177,7 +177,7 @@ fun SearchScreen(
                         label = { Text(g) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = AniloverAccent,
-                            selectedLabelColor = Color.White,
+                            selectedLabelColor = AniloverOnAccent,
                             labelColor = Color.White,
                         ),
                     )
@@ -439,7 +439,7 @@ private fun SoonCard(
                 modifier = Modifier.fillMaxSize(),
             )
             Text(
-                "SEGERA", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black,
+                "SEGERA", color = AniloverOnAccent, fontSize = 10.sp, fontWeight = FontWeight.Black,
                 modifier = Modifier.align(Alignment.TopStart)
                     .background(AniloverAccent, RoundedCornerShape(bottomEnd = 6.dp))
                     .padding(horizontal = 6.dp, vertical = 3.dp),
@@ -478,12 +478,12 @@ private fun SoonCard(
         ) {
             Icon(
                 if (reminded) Icons.Filled.Check else Icons.Filled.Notifications,
-                contentDescription = null, tint = Color.White, modifier = Modifier.size(17.dp),
+                contentDescription = null, tint = if (reminded) AniloverOnAccent else Color.White, modifier = Modifier.size(17.dp),
             )
             Spacer(Modifier.width(6.dp))
             Text(
                 if (reminded) "Diingatkan" else "Ingatkan Saya",
-                color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                color = if (reminded) AniloverOnAccent else Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
             )
         }
     }
@@ -688,7 +688,7 @@ fun ProfileScreen(
                     Modifier.size(76.dp)
                         .background(
                             androidx.compose.ui.graphics.Brush.linearGradient(
-                                listOf(AniloverAccent, Color(0xFFFF7A18))
+                                listOf(AniloverAccent, Color(0xFF1FA67A))
                             ),
                             RoundedCornerShape(50),
                         ),
@@ -752,7 +752,7 @@ fun ProfileScreen(
                                 label = { Text(label) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = AniloverAccent,
-                                    selectedLabelColor = Color.White,
+                                    selectedLabelColor = AniloverOnAccent,
                                     labelColor = Color.White,
                                 ),
                             )
@@ -784,7 +784,7 @@ fun ProfileScreen(
                                 label = { Text(label) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = AniloverAccent,
-                                    selectedLabelColor = Color.White,
+                                    selectedLabelColor = AniloverOnAccent,
                                     labelColor = Color.White,
                                 ),
                             )
@@ -801,7 +801,7 @@ fun ProfileScreen(
                                 label = { Text(label) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = AniloverAccent,
-                                    selectedLabelColor = Color.White,
+                                    selectedLabelColor = AniloverOnAccent,
                                     labelColor = Color.White,
                                 ),
                             )

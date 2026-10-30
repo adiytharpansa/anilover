@@ -1,6 +1,7 @@
 package com.app.anilover.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,6 +26,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -57,6 +61,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -78,10 +83,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.app.anilover.R
 import com.app.anilover.data.Title
 import com.app.anilover.data.WatchEntry
 
-@OptIn(ExperimentalFoundationApi::class)
+/**
+ * Beranda bersih: header kecil + kisi poster 3 kolom, tanpa baris/billboard.
+ * Judul yang sedang ditonton tampil paling depan dengan bilah progres tipis di poster.
+ */
 @Composable
 fun HomeScreen(
     titles: List<Title>,
@@ -99,197 +108,34 @@ fun HomeScreen(
     onGenre: (String) -> Unit,
 ) {
     val byId = titles.associateBy { it.id }
-    val continueWatching = history
+    val resume: Map<String, WatchEntry> = history
         .filter {
             it.isStarted && !it.isFinished && byId.containsKey(it.titleId) &&
                 !hiddenContinue.contains("${it.titleId}|${it.episode}")
         }
         .sortedByDescending { it.updatedAt }
-    val featured = titles.maxByOrNull { it.score ?: 0.0 } ?: titles.firstOrNull()
-    val myListTitles = titles.filter { myList.contains(it.id) }
+        .distinctBy { it.titleId }
+        .associateBy { it.titleId }
     // Urutan katalog = urutan terbit di gudang; yang terakhir masuk = terbaru.
     val newIds = if (titles.size >= 4) titles.takeLast(3).map { it.id }.toSet() else emptySet()
-    val top10 = titles.sortedByDescending { it.score ?: 0.0 }.take(10)
-    // Chip kategori ala Netflix: genre terlaris di katalog, urut jumlah judul.
-    val homeGenres = remember(titles) {
-        titles.flatMap { it.genres }.groupingBy { it }.eachCount().entries
-            .sortedByDescending { it.value }.map { it.key }.take(14)
-    }
-    // "Karena Anda menonton X": X = judul terakhir ditonton; rekomendasi = genre sama,
-    // judul yang dinilai tidak suka dikeluarkan.
-    val becauseBase = history.filter { it.isStarted }
-        .maxByOrNull { it.updatedAt }?.let { byId[it.titleId] }
-    val becauseList = becauseBase?.let { base ->
-        titles.filter { other ->
-            other.id != base.id && ratings[other.id] != -1 &&
-                other.genres.any { g -> base.genres.contains(g) }
-        }.sortedByDescending { other ->
-            other.genres.count { g -> base.genres.contains(g) } * 100 + (other.score ?: 0.0)
-        }.take(10)
-    } ?: emptyList()
-
-    val listState = rememberLazyListState()
-    val solidHeader by remember {
-        derivedStateOf {
-            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 260
-        }
-    }
-    val headerAlpha by animateFloatAsState(
-        targetValue = if (solidHeader) 0.97f else 0f,
-        animationSpec = tween(220), label = "headerAlpha",
-    )
+    val ordered = resume.keys.mapNotNull { byId[it] } +
+        titles.reversed().filter { !resume.containsKey(it.id) }
     val playFirst: (Title) -> Unit = { t -> onPlay(t, t.episodes.firstOrNull()?.number ?: 1, 0L) }
 
-    @Composable
-    fun RowOf(name: String, list: List<Title>) = PosterRow(
-        name, list, onOpen,
-        newIds = newIds, myList = myList,
-        onPlayFirst = playFirst,
-        onToggleMyList = onToggleMyList,
-        onDownloadFirst = onDownloadFirst,
-    )
-
-    Box(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.fillMaxSize(), state = listState) {
-            // Hindari baris berisi judul yang sama persis (katalog kecil membuat
-            // "Di Gudang", "Action", "Drama" tampak berulang).
-            val shownSets = HashSet<Set<String>>()
-            fun fresh(list: List<Title>): Boolean =
-                list.size >= 3 && shownSets.add(list.map { it.id }.toSet())
-
-            if (featured != null) {
-                item {
-                    Billboard(
-                        t = featured,
-                        history = history,
-                        inMyList = myList.contains(featured.id),
-                        genres = homeGenres,
-                        onGenre = onGenre,
-                        onOpen = { onOpen(featured) },
-                        onPlay = { ep, pos -> onPlay(featured, ep, pos) },
-                        onToggleMyList = { onToggleMyList(featured) },
-                        modifier = Modifier.graphicsLayer {
-                            // Parallax halus: billboard tertinggal + memudar saat digeser.
-                            val off = if (listState.firstVisibleItemIndex == 0) {
-                                listState.firstVisibleItemScrollOffset.toFloat()
-                            } else 1200f
-                            translationY = off * 0.3f
-                            alpha = (1f - off / 1300f).coerceIn(0.25f, 1f)
-                        },
-                    )
-                }
-            }
-
-            if (continueWatching.isNotEmpty()) {
-                item {
-                    SectionTitle("Lanjutkan Menonton")
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        items(continueWatching) { entry ->
-                            val t = byId.getValue(entry.titleId)
-                            ContinueCard(
-                                t = t, entry = entry,
-                                onClick = { onPlay(t, entry.episode, entry.positionMs) },
-                                onInfo = { onOpen(t) },
-                                onRemove = { onRemoveContinue(entry) },
-                            )
-                        }
-                    }
-                }
-            }
-
-            if (top10.size >= 3) {
-                item {
-                    SectionTitle("10 Teratas di Anilover Hari Ini")
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        items(top10.size) { idx ->
-                            Top10Card(rank = idx + 1, t = top10[idx]) { onOpen(top10[idx]) }
-                        }
-                    }
-                }
-            }
-
-            if (becauseBase != null && becauseList.size >= 3) {
-                shownSets.add(becauseList.map { it.id }.toSet())
-                item { RowOf("Karena Anda Menonton ${becauseBase.seriesName}", becauseList) }
-            }
-
-            if (titles.size >= 2) {
-                val latest = titles.reversed().take(10)
-                shownSets.add(latest.map { it.id }.toSet())
-                item { RowOf("Baru Ditambahkan", latest) }
-            }
-
-            if (myListTitles.isNotEmpty()) {
-                item { RowOf("Daftarku", myListTitles) }
-            }
-
-            val releasing = titles.filter { it.status == "RELEASING" }
-            if (fresh(releasing)) item { RowOf("Sedang Tayang", releasing) }
-
-            for (g in homeGenres.take(6)) {
-                val inGenre = titles.filter { it.genres.contains(g) }
-                    .sortedByDescending { it.score ?: 0.0 }
-                if (fresh(inGenre)) item { RowOf(g, inGenre) }
-            }
-
-            val finished = titles.filter { it.status == "FINISHED" }
-            if (finished.size != titles.size && fresh(finished)) {
-                item { RowOf("Serial Tamat", finished) }
-            }
-
-            if (featured != null && featured.episodes.size > 1) {
-                item {
-                    SectionTitle("Episode " + featured.seriesName)
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        items(featured.episodes) { ep ->
-                            val entry = history.firstOrNull {
-                                it.titleId == featured.id && it.episode == ep.number
-                            }
-                            EpisodeCard(featured, ep.number, entry) {
-                                onPlay(
-                                    featured, ep.number,
-                                    if (entry != null && entry.isStarted && !entry.isFinished) entry.positionMs else 0L,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (titles.size > 10) {
-                item { RowOf("Jelajahi Semua Judul", titles.sortedBy { it.title }) }
-            }
-
-            item { Spacer(Modifier.height(28.dp)) }
-        }
-
-        // Bilah atas melayang di atas billboard: gradasi gelap di posisi awal,
-        // menghitam pekat saat daftar digeser (gaya Netflix).
+    Column(Modifier.fillMaxSize().background(AniloverBackground)) {
         Row(
-            Modifier.align(Alignment.TopStart).fillMaxWidth().height(56.dp)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0xFF0B0B0B).copy(alpha = maxOf(headerAlpha, 0.72f)),
-                            Color(0xFF0B0B0B).copy(alpha = headerAlpha),
-                        )
-                    )
-                )
-                .padding(horizontal = 16.dp),
+            Modifier.fillMaxWidth().height(56.dp).padding(start = 16.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Image(
+                painter = painterResource(R.drawable.anilover_logo),
+                contentDescription = null,
+                modifier = Modifier.size(width = 22.dp, height = 27.dp),
+            )
+            Spacer(Modifier.width(10.dp))
             Text(
-                "Anilover", color = AniloverAccent, fontSize = 26.sp,
-                fontWeight = FontWeight.Black, letterSpacing = 1.sp,
+                "Anilover", color = Color.White, fontSize = 22.sp,
+                fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp,
             )
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onSearch) {
@@ -297,6 +143,27 @@ fun HomeScreen(
             }
             IconButton(onClick = onProfile) {
                 Icon(Icons.Filled.AccountCircle, contentDescription = "Profil", tint = Color.White, modifier = Modifier.size(28.dp))
+            }
+        }
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            items(ordered, key = { it.id }) { t ->
+                PosterCard(
+                    t = t,
+                    modifier = Modifier.fillMaxWidth(),
+                    badge = if (newIds.contains(t.id)) "BARU" else null,
+                    progress = resume[t.id]?.fraction,
+                    inMyList = myList.contains(t.id),
+                    onPlayFirst = { playFirst(t) },
+                    onToggleMyList = { onToggleMyList(t) },
+                    onDownloadFirst = { onDownloadFirst(t) },
+                    onClick = { onOpen(t) },
+                )
             }
         }
     }
@@ -588,7 +455,9 @@ fun CardTitles(t: Title) {
 @Composable
 fun PosterCard(
     t: Title,
+    modifier: Modifier = Modifier.width(116.dp),
     badge: String? = null,
+    progress: Float? = null,
     inMyList: Boolean = false,
     onPlayFirst: (() -> Unit)? = null,
     onToggleMyList: (() -> Unit)? = null,
@@ -598,14 +467,14 @@ fun PosterCard(
     var menuOpen by remember { mutableStateOf(false) }
     val hasMenu = onPlayFirst != null || onToggleMyList != null || onDownloadFirst != null
     val pressSource = remember { MutableInteractionSource() }
-    Column(Modifier.width(116.dp)) {
+    Column(modifier) {
         Box {
             AsyncImage(
                 model = t.poster ?: t.banner,
                 contentDescription = t.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)
-                    .clip(RoundedCornerShape(4.dp)).background(AniloverSurface)
+                    .clip(RoundedCornerShape(10.dp)).background(AniloverSurface)
                     .pressScaleFx(pressSource)
                     .combinedClickable(
                         interactionSource = pressSource,
@@ -616,11 +485,24 @@ fun PosterCard(
             )
             if (badge != null) {
                 Text(
-                    badge, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Black,
+                    badge, color = AniloverOnAccent, fontSize = 10.sp, fontWeight = FontWeight.Black,
                     modifier = Modifier.align(Alignment.TopStart)
-                        .background(AniloverAccent, RoundedCornerShape(bottomEnd = 6.dp))
-                        .padding(horizontal = 5.dp, vertical = 2.dp),
+                        .padding(6.dp)
+                        .background(AniloverAccent, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
                 )
+            }
+            if (progress != null) {
+                Box(
+                    Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp)
+                        .clip(RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp))
+                        .background(Color.White.copy(alpha = 0.3f)),
+                ) {
+                    Box(
+                        Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).height(4.dp)
+                            .background(AniloverAccent),
+                    )
+                }
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 if (onPlayFirst != null) {

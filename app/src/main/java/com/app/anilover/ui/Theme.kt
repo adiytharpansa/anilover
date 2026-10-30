@@ -21,15 +21,18 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 
-val AniloverBackground = Color(0xFF141414)
-val AniloverSurface = Color(0xFF1F1F1F)
-val AniloverAccent = Color(0xFFE50914)
+val AniloverBackground = Color(0xFF0B0B0B)
+val AniloverSurface = Color(0xFF151515)
+val AniloverAccent = Color(0xFF72FB44)
+/** Warna teks/ikon di atas aksen hijau (putih tidak cukup kontras di atas hijau neon). */
+val AniloverOnAccent = Color(0xFF08130A)
 val AniloverTextDim = Color(0xFFB3B3B3)
-val AniloverSurfaceHigh = Color(0xFF2B2B2B)
+val AniloverSurfaceHigh = Color(0xFF1E1E1E)
 val AniloverGreen = Color(0xFF46D369)
 
 private val AniloverColors = darkColorScheme(
     primary = AniloverAccent,
+    onPrimary = AniloverOnAccent,
     background = AniloverBackground,
     surface = AniloverSurface,
     onBackground = Color.White,
