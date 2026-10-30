@@ -21,6 +21,12 @@ import java.net.URL
 
 const val API_BASE = "https://api-anime.adiyth-arpansa.workers.dev"
 
+// Sumber katalog utama: Cloudflare Pages (aset statis — tanpa jatah harian
+// seperti Worker; katalog disinkronkan otomatis dari repo project-X).
+private const val CATALOG_PAGES =
+    "https://anilover-catalog.pages.dev/catalog.json"
+private const val SOON_PAGES =
+    "https://anilover-catalog.pages.dev/coming-soon.json"
 // Cermin katalog gudang (dipakai bila API utama kena batas kuota Cloudflare).
 private const val CATALOG_MIRROR =
     "https://cdn.jsdelivr.net/gh/adiytharpansa/project-X@main/catalog.json"
@@ -165,16 +171,17 @@ object CatalogApi {
     }
 
     /**
-     * Ambil katalog mentah: API utama dulu; bila gagal (mis. kuota Worker
-     * Cloudflare habis — galat 1027/429), jatuh ke cermin jsDelivr lalu
-     * raw.githubusercontent dari repo gudang yang sama.
+     * Ambil katalog mentah: Cloudflare Pages dulu (tanpa jatah harian),
+     * lalu API Worker; bila gagal (mis. kuota Worker Cloudflare habis —
+     * galat 1027/429), jatuh ke cermin jsDelivr lalu raw.githubusercontent
+     * dari repo gudang yang sama. Timeout diperpanjang untuk jaringan lambat.
      */
     suspend fun fetchRawCatalog(): String = withContext(Dispatchers.IO) {
-        val sources = listOf("$API_BASE/api/catalog", CATALOG_MIRROR, CATALOG_MIRROR2)
+        val sources = listOf(CATALOG_PAGES, "$API_BASE/api/catalog", CATALOG_MIRROR, CATALOG_MIRROR2)
         var last: Exception? = null
         for (u in sources) {
             try {
-                return@withContext httpGetText(u)
+                return@withContext httpGetText(u, 30000)
             } catch (e: Exception) {
                 last = e
             }
@@ -189,7 +196,11 @@ object CatalogApi {
         val body = try {
             httpGetText("$API_BASE/api/soon")
         } catch (e: Exception) {
-            httpGetText(SOON_MIRROR)
+            try {
+                httpGetText(SOON_PAGES)
+            } catch (e2: Exception) {
+                httpGetText(SOON_MIRROR)
+            }
         }
         // API membungkus {titles:[...]}; berkas cermin adalah array telanjang.
         val trimmed = body.trimStart()
