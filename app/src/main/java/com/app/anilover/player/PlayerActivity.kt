@@ -15,6 +15,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -118,6 +119,11 @@ import com.app.anilover.data.WatchEntry
 import com.app.anilover.ui.AniloverAccent
 import com.app.anilover.ui.AniloverOnAccent
 import com.app.anilover.ui.AniloverTheme
+import com.app.anilover.ui.AniloverOutline
+import com.app.anilover.ui.AniloverShapes
+import com.app.anilover.ui.AniloverTextDim
+import com.app.anilover.ui.AniloverSurfaceHigh
+import com.app.anilover.ui.AniloverSurface
 import com.app.anilover.ui.formatClock
 import com.app.anilover.ui.formatRemaining
 import kotlinx.coroutines.delay
@@ -721,21 +727,21 @@ private fun PlayerScreen(
                 Text(errorMsg!!, color = Color.White, fontWeight = FontWeight.Medium)
                 if (errorDetail != null) {
                     Spacer(Modifier.height(4.dp))
-                    Text("Kode: $errorDetail", color = Color(0xFF999999), fontSize = 11.sp)
+                    Text("Kode: $errorDetail", color = AniloverTextDim, fontSize = 11.sp)
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Surface(
-                        color = Color.White, shape = RoundedCornerShape(6.dp),
+                        color = AniloverAccent, shape = AniloverShapes.Button,
                         modifier = Modifier.clickable {
                             loadEpisode(currentEp, currentPlaylist, positionMs)
                         },
                     ) {
-                        Text("Coba Lagi", color = Color.Black, fontWeight = FontWeight.Bold,
+                        Text("Coba Lagi", color = AniloverOnAccent, fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp))
                     }
                     Surface(
-                        color = Color(0xFF333333), shape = RoundedCornerShape(6.dp),
+                        color = AniloverSurfaceHigh, shape = AniloverShapes.Button,
                         modifier = Modifier.clickable(onClick = onBack),
                     ) {
                         Text("Kembali", color = Color.White,
@@ -770,11 +776,11 @@ private fun PlayerScreen(
                 Spacer(Modifier.height(6.dp))
                 Box(
                     Modifier.width(150.dp).height(5.dp)
-                        .background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(3.dp)),
+                        .background(Color.White.copy(alpha = 0.3f), AniloverShapes.Pill),
                 ) {
                     Box(
                         Modifier.fillMaxWidth(hudFraction.coerceIn(0f, 1f)).height(5.dp)
-                            .background(Color.White, RoundedCornerShape(3.dp)),
+                            .background(AniloverAccent, AniloverShapes.Pill),
                     )
                 }
                 Spacer(Modifier.height(4.dp))
@@ -830,7 +836,7 @@ private fun PlayerScreen(
                         Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                         Text(
                             "Episode $currentEp dari ${episodes.size}" + if (casting) " · Diputar di TV" else "",
-                            color = Color(0xFFCCCCCC), fontSize = 12.sp,
+                            color = AniloverTextDim, fontSize = 12.sp,
                         )
                     }
                     if (castContext != null) {
@@ -895,8 +901,8 @@ private fun PlayerScreen(
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(formatClock(positionMs), color = Color.White, fontSize = 12.sp)
-                        Text(" / ", color = Color(0xFF999999), fontSize = 12.sp)
-                        Text(formatRemaining(positionMs, durationMs), color = Color(0xFF999999), fontSize = 12.sp)
+                        Text(" / ", color = AniloverTextDim, fontSize = 12.sp)
+                        Text(formatRemaining(positionMs, durationMs), color = AniloverTextDim, fontSize = 12.sp)
                         Spacer(Modifier.weight(1f))
                         IconButton(onClick = { panel = Panel.Speed }) {
                             Icon(Icons.Filled.Speed, contentDescription = "Kecepatan", tint = Color.White)
@@ -939,7 +945,7 @@ private fun PlayerScreen(
         if (skipVisible) {
             Surface(
                 color = AniloverAccent,
-                shape = RoundedCornerShape(10.dp),
+                shape = AniloverShapes.Button,
                 modifier = Modifier.align(Alignment.BottomEnd)
                     .padding(end = 22.dp, bottom = 108.dp)
                     .clickable {
@@ -960,14 +966,14 @@ private fun PlayerScreen(
             (durationMs - positionMs) > 0 && (durationMs - positionMs) <= 45_000
         ) {
             Surface(
-                color = Color.White,
-                shape = RoundedCornerShape(6.dp),
+                color = AniloverSurface,
+                shape = AniloverShapes.Button,
                 modifier = Modifier.align(Alignment.BottomEnd)
                     .padding(end = 22.dp, bottom = 108.dp)
                     .clickable { switchTo(nextEp) },
             ) {
                 Text(
-                    "Episode Berikutnya", color = Color.Black, fontWeight = FontWeight.Bold,
+                    "Episode Berikutnya", color = Color.White, fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
                 )
             }
@@ -977,11 +983,12 @@ private fun PlayerScreen(
         if (ended && nextEp != null && !inPip) {
             Box(
                 Modifier.align(Alignment.BottomEnd).padding(22.dp).width(300.dp)
-                    .background(Color(0xFF1A1A1A), RoundedCornerShape(10.dp))
+                    .background(AniloverSurface, AniloverShapes.Card)
+                    .border(1.dp, AniloverOutline, AniloverShapes.Card)
                     .padding(16.dp),
             ) {
                 Column {
-                    Text("Episode Berikutnya", color = Color(0xFFAAAAAA), fontSize = 12.sp)
+                    Text("Episode Berikutnya", color = AniloverTextDim, fontSize = 12.sp)
                     Text("Episode ${nextEp.number}", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
                     Text(
@@ -990,19 +997,19 @@ private fun PlayerScreen(
                             autoplayNext -> ""
                             else -> "Autoplay nonaktif — putar manual bila siap."
                         },
-                        color = Color(0xFFAAAAAA), fontSize = 12.sp,
+                        color = AniloverTextDim, fontSize = 12.sp,
                     )
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Surface(
-                            color = Color.White, shape = RoundedCornerShape(6.dp),
+                            color = AniloverAccent, shape = AniloverShapes.Button,
                             modifier = Modifier.clickable { switchTo(nextEp) },
                         ) {
-                            Text("Putar Sekarang", color = Color.Black, fontWeight = FontWeight.Bold,
+                            Text("Putar Sekarang", color = AniloverOnAccent, fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
                         }
                         Surface(
-                            color = Color(0xFF333333), shape = RoundedCornerShape(6.dp),
+                            color = AniloverSurfaceHigh, shape = AniloverShapes.Button,
                             modifier = Modifier.clickable { postPlayIn = null },
                         ) {
                             Text("Batal", color = Color.White, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
@@ -1072,7 +1079,7 @@ private fun PanelSheet(onClose: () -> Unit, content: @Composable () -> Unit) {
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).clickable(onClick = onClose))
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                .background(Color(0xFF1A1A1A), RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
+                .background(AniloverSurface, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -1092,7 +1099,7 @@ private fun TracksPanel(player: ExoPlayer, onClose: () -> Unit) {
         val audio = groups.filter { it.type == C.TRACK_TYPE_AUDIO }
         val text = groups.filter { it.type == C.TRACK_TYPE_TEXT }
         if (audio.isEmpty() && text.isEmpty()) {
-            Text("Tidak ada trek audio/subtitle tambahan pada episode ini.", color = Color(0xFFAAAAAA), fontSize = 13.sp)
+            Text("Tidak ada trek audio/subtitle tambahan pada episode ini.", color = AniloverTextDim, fontSize = 13.sp)
         }
         if (audio.isNotEmpty()) {
             Text("Audio", color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -1168,7 +1175,7 @@ private fun QualityPanel(player: ExoPlayer, onClose: () -> Unit) {
             Text("Otomatis (disarankan)", color = Color.White, modifier = Modifier.weight(1f))
         }
         if (videoGroups.isEmpty()) {
-            Text("Hanya satu kualitas tersedia dari gudang untuk episode ini.", color = Color(0xFFAAAAAA), fontSize = 13.sp)
+            Text("Hanya satu kualitas tersedia dari gudang untuk episode ini.", color = AniloverTextDim, fontSize = 13.sp)
         }
         for (g in videoGroups) {
             for (i in 0 until g.length) {
@@ -1238,14 +1245,14 @@ private fun NetflixSeekBar(
         },
         contentAlignment = Alignment.CenterStart,
     ) {
-        Box(Modifier.fillMaxWidth().height(4.dp).background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(2.dp)))
-        Box(Modifier.fillMaxWidth(buffered).height(4.dp).background(Color.White.copy(alpha = 0.45f), RoundedCornerShape(2.dp)))
-        Box(Modifier.fillMaxWidth(scrubFrac ?: played).height(4.dp).background(AniloverAccent, RoundedCornerShape(2.dp)))
+        Box(Modifier.fillMaxWidth().height(5.dp).background(Color.White.copy(alpha = 0.25f), AniloverShapes.Pill))
+        Box(Modifier.fillMaxWidth(buffered).height(5.dp).background(Color.White.copy(alpha = 0.45f), AniloverShapes.Pill))
+        Box(Modifier.fillMaxWidth(scrubFrac ?: played).height(5.dp).background(AniloverAccent, AniloverShapes.Pill))
         Box(
             Modifier.fillMaxWidth(scrubFrac ?: played),
             contentAlignment = Alignment.CenterEnd,
         ) {
-            Box(Modifier.size(13.dp).background(AniloverAccent, RoundedCornerShape(50)))
+            Box(Modifier.size(16.dp).background(AniloverAccent, AniloverShapes.Pill).border(2.dp, Color.White, AniloverShapes.Pill))
         }
     }
 }

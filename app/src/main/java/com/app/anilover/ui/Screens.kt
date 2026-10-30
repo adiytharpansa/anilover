@@ -1,6 +1,7 @@
 package com.app.anilover.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -124,7 +125,7 @@ fun SearchScreen(
     val showTrending = query.isBlank() && genre == null && trending.size >= 3
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Spacer(Modifier.height(14.dp))
-        Text("Cari", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text("Cari", color = AniloverTextPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp)
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(
             value = query,
@@ -156,14 +157,14 @@ fun SearchScreen(
             }),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
+            shape = AniloverShapes.Button,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
                 focusedContainerColor = AniloverSurfaceHigh,
                 unfocusedContainerColor = AniloverSurface,
-                focusedBorderColor = Color.White.copy(alpha = 0.6f),
-                unfocusedBorderColor = Color.Transparent,
+                focusedBorderColor = AniloverAccent,
+                unfocusedBorderColor = AniloverOutline,
                 cursorColor = AniloverAccent,
             ),
         )
@@ -175,11 +176,7 @@ fun SearchScreen(
                         selected = genre == g,
                         onClick = { genre = if (genre == g) null else g },
                         label = { Text(g) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = AniloverAccent,
-                            selectedLabelColor = AniloverOnAccent,
-                            labelColor = Color.White,
-                        ),
+                        colors = aniloverChipColors(),
                     )
                 }
             }
@@ -188,7 +185,7 @@ fun SearchScreen(
             Spacer(Modifier.height(14.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Pencarian Terakhir", color = Color.White, fontSize = 16.sp,
+                    "Pencarian Terakhir", color = AniloverTextPrimary, fontSize = 16.sp,
                     fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
                 )
                 Text(
@@ -216,7 +213,7 @@ fun SearchScreen(
         }
         if (showTrending) {
             Spacer(Modifier.height(14.dp))
-            Text("Sedang Tren Sekarang", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text("Sedang Tren Sekarang", color = AniloverTextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
             for ((idx, t) in trending.withIndex()) {
                 Row(
@@ -236,12 +233,12 @@ fun SearchScreen(
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        t.title, color = Color.White, fontSize = 14.sp,
+                        t.title, color = AniloverTextPrimary, fontSize = 14.sp,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
                     t.matchPercent?.let {
-                        Text("$it%", color = Color(0xFF46D369), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("$it%", color = AniloverGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -257,7 +254,7 @@ fun SearchScreen(
                 Column(Modifier.fillMaxSize()) {
                     Text(
                         "Tidak ada hasil untuk \"$query\".",
-                        color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium,
+                        color = AniloverTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium,
                     )
                     Text(
                         "Periksa ejaan, atau coba salah satu judul populer ini:",
@@ -324,7 +321,7 @@ fun CategoryScreen(
             IconButton(onClick = onBack) {
                 Icon(Icons.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
             }
-            Text(genre, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(genre, color = AniloverTextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(6.dp))
             Text(
                 "${titles.size} judul", color = AniloverTextDim, fontSize = 13.sp,
@@ -355,11 +352,7 @@ fun NewScreen(
 ) {
     LazyColumn(Modifier.fillMaxSize()) {
         item {
-            Text(
-                "Baru & Populer", color = Color.White, fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
-            )
+            ScreenTitle("Baru & Populer", "Judul terbaru dan yang segera tayang")
         }
         if (soon.isNotEmpty()) {
             item { SectionTitle("Segera Tayang") }
@@ -379,7 +372,7 @@ fun NewScreen(
             ) {
                 Box(
                     Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-                        .clip(RoundedCornerShape(8.dp)).background(AniloverSurface),
+                        .clip(AniloverShapes.Card).background(AniloverSurface),
                 ) {
                     AsyncImage(
                         model = t.banner ?: t.poster,
@@ -398,12 +391,12 @@ fun NewScreen(
                 Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        t.title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                        t.title, color = AniloverTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
                     t.matchPercent?.let {
-                        Text("$it%", color = Color(0xFF46D369), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("$it%", color = AniloverGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 val meta = listOfNotNull(
@@ -430,7 +423,7 @@ private fun SoonCard(
     ) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(8.dp)).background(AniloverSurface),
+                .clip(AniloverShapes.Card).background(AniloverSurface),
         ) {
             AsyncImage(
                 model = s.banner ?: s.poster,
@@ -441,19 +434,19 @@ private fun SoonCard(
             Text(
                 "SEGERA", color = AniloverOnAccent, fontSize = 10.sp, fontWeight = FontWeight.Black,
                 modifier = Modifier.align(Alignment.TopStart)
-                    .background(AniloverAccent, RoundedCornerShape(bottomEnd = 6.dp))
+                    .background(AniloverGold, RoundedCornerShape(bottomEnd = 8.dp))
                     .padding(horizontal = 6.dp, vertical = 3.dp),
             )
         }
         Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                s.title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                s.title, color = AniloverTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
             s.matchPercent?.let {
-                Text("$it%", color = Color(0xFF46D369), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("$it%", color = AniloverGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
         val meta = listOfNotNull(
@@ -470,8 +463,8 @@ private fun SoonCard(
         }
         Spacer(Modifier.height(8.dp))
         Row(
-            Modifier.clip(RoundedCornerShape(6.dp))
-                .background(if (reminded) AniloverAccent else Color.White.copy(alpha = 0.14f))
+            Modifier.clip(AniloverShapes.Button)
+                .background(if (reminded) AniloverAccent else AniloverSurfaceHigh)
                 .clickable(onClick = onToggleReminder)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -516,11 +509,7 @@ fun DownloadsScreen(
     }
     LazyColumn(Modifier.fillMaxSize()) {
         item {
-            Text(
-                "Unduhan", color = Color.White, fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
-            )
+            ScreenTitle("Unduhan")
             val done = downloads.filter { it.state == "selesai" }
             if (done.isNotEmpty()) {
                 Text(
@@ -538,24 +527,23 @@ fun DownloadsScreen(
                     modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
                 )
                 Box(
-                    Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(4.dp)
-                        .background(Color.White.copy(alpha = 0.25f), RoundedCornerShape(2.dp)),
+                    Modifier.padding(horizontal = 20.dp).fillMaxWidth().height(6.dp)
+                        .background(AniloverSurfaceHigh, AniloverShapes.Pill),
                 ) {
                     Box(
-                        Modifier.fillMaxWidth(usedFrac.coerceIn(0f, 1f)).height(4.dp)
-                            .background(AniloverAccent, RoundedCornerShape(2.dp)),
+                        Modifier.fillMaxWidth(usedFrac.coerceIn(0f, 1f)).height(6.dp)
+                            .background(AniloverAccent, AniloverShapes.Pill),
                     )
                 }
             }
             Spacer(Modifier.height(10.dp))
             Column(
-                Modifier.padding(horizontal = 16.dp).fillMaxWidth()
-                    .background(AniloverSurface, RoundedCornerShape(10.dp))
-                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                Modifier.padding(horizontal = 20.dp).fillMaxWidth().panel()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Unduhan Cerdas", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("Unduhan Cerdas", color = AniloverTextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         Text(
                             "Episode berikutnya terunduh otomatis; episode yang selesai ditonton terhapus sendiri.",
                             color = AniloverTextDim, fontSize = 12.sp,
@@ -564,19 +552,19 @@ fun DownloadsScreen(
                     Switch(
                         checked = settings.smartDownloads,
                         onCheckedChange = onSmartChange,
-                        colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = AniloverAccent),
+                        colors = aniloverSwitchColors(),
                     )
                 }
                 if (settings.smartDownloads) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("Hanya lewat Wi-Fi", color = Color.White, fontSize = 13.sp)
+                            Text("Hanya lewat Wi-Fi", color = AniloverTextPrimary, fontSize = 13.sp)
                             Text("Unduhan Cerdas berhenti saat memakai data seluler.", color = AniloverTextDim, fontSize = 12.sp)
                         }
                         Switch(
                             checked = settings.wifiOnlyDownloads,
                             onCheckedChange = onWifiOnlyChange,
-                            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = AniloverAccent),
+                            colors = aniloverSwitchColors(),
                         )
                     }
                 }
@@ -589,13 +577,14 @@ fun DownloadsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Box(
-                        Modifier.size(88.dp).background(AniloverSurface, androidx.compose.foundation.shape.CircleShape),
+                        Modifier.size(88.dp).background(AniloverSurface, androidx.compose.foundation.shape.CircleShape)
+                .border(1.dp, AniloverOutline, androidx.compose.foundation.shape.CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(Icons.Filled.Download, contentDescription = null, tint = AniloverTextDim, modifier = Modifier.size(40.dp))
                     }
                     Spacer(Modifier.height(14.dp))
-                    Text("Belum ada unduhan", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Belum ada unduhan", color = AniloverTextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
                     Text(
                         "Unduh episode dari halaman detail judul untuk menonton tanpa internet.",
@@ -622,12 +611,12 @@ fun DownloadsScreen(
                     contentDescription = d.titleName,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.width(52.dp).aspectRatio(2f / 3f)
-                        .clip(RoundedCornerShape(6.dp)).background(AniloverSurface),
+                        .clip(AniloverShapes.Chip).background(AniloverSurface),
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        d.titleName, color = Color.White, fontSize = 14.sp,
+                        d.titleName, color = AniloverTextPrimary, fontSize = 14.sp,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                     Text(
@@ -641,10 +630,10 @@ fun DownloadsScreen(
                     if (d.state == "mengunduh") {
                         Spacer(Modifier.height(4.dp))
                         Box(
-                            Modifier.fillMaxWidth().height(4.dp)
-                                .background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(2.dp)),
+                            Modifier.fillMaxWidth().height(5.dp)
+                                .background(AniloverSurfaceHigh, AniloverShapes.Pill),
                         ) {
-                            Box(Modifier.fillMaxWidth(d.fraction).height(4.dp).background(AniloverAccent, RoundedCornerShape(2.dp)))
+                            Box(Modifier.fillMaxWidth(d.fraction).height(5.dp).background(AniloverAccent, AniloverShapes.Pill))
                         }
                     }
                 }
@@ -688,21 +677,21 @@ fun ProfileScreen(
                     Modifier.size(76.dp)
                         .background(
                             androidx.compose.ui.graphics.Brush.linearGradient(
-                                listOf(AniloverAccent, Color(0xFF1FA67A))
+                                listOf(AniloverAccent, AniloverGold)
                             ),
                             RoundedCornerShape(50),
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("A", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+                    Text("A", color = AniloverOnAccent, fontSize = 34.sp, fontWeight = FontWeight.Black)
                 }
                 Spacer(Modifier.height(10.dp))
-                Text("Adiyth", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                Text("Adiyth", color = AniloverTextPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold)
                 Text("Akun lokal di perangkat ini", color = AniloverTextDim, fontSize = 12.sp)
             }
             Spacer(Modifier.height(18.dp))
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp).panel().padding(vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 StatColumn("$finishedEpisodes", "Episode selesai")
@@ -714,34 +703,35 @@ fun ProfileScreen(
         item { PosterRowOrEmpty(myListTitles, onOpenTitle) }
         item {
             SectionTitle("Pengaturan Putar")
+            Column(Modifier.padding(horizontal = 20.dp).panel()) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 SettingsIcon(Icons.Filled.PlayCircle)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Autoplay episode berikutnya", color = Color.White, fontSize = 14.sp)
+                    Text("Autoplay episode berikutnya", color = AniloverTextPrimary, fontSize = 14.sp)
                     Text("Hitung mundur lalu putar otomatis", color = AniloverTextDim, fontSize = 12.sp)
                 }
                 Switch(
                     checked = settings.autoplayNext,
                     onCheckedChange = onAutoplayChange,
-                    colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = AniloverAccent),
+                    colors = aniloverSwitchColors(),
                 )
             }
             HorizontalDivider(
                 Modifier.padding(horizontal = 16.dp),
-                thickness = 0.5.dp, color = Color.White.copy(alpha = 0.10f),
+                thickness = 1.dp, color = AniloverOutline,
             )
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.Top,
             ) {
                 SettingsIcon(Icons.Filled.Subtitles)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Subtitle bawaan", color = Color.White, fontSize = 14.sp)
+                    Text("Subtitle bawaan", color = AniloverTextPrimary, fontSize = 14.sp)
                     Text("Dipilih otomatis saat episode mulai diputar", color = AniloverTextDim, fontSize = 12.sp)
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -750,11 +740,7 @@ fun ProfileScreen(
                                 selected = settings.subtitleDefault == value,
                                 onClick = { onSubtitleChange(value) },
                                 label = { Text(label) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = AniloverAccent,
-                                    selectedLabelColor = AniloverOnAccent,
-                                    labelColor = Color.White,
-                                ),
+                                colors = aniloverChipColors(),
                             )
                         }
                     }
@@ -762,16 +748,16 @@ fun ProfileScreen(
             }
             HorizontalDivider(
                 Modifier.padding(horizontal = 16.dp),
-                thickness = 0.5.dp, color = Color.White.copy(alpha = 0.10f),
+                thickness = 1.dp, color = AniloverOutline,
             )
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.Top,
             ) {
                 SettingsIcon(Icons.Filled.Subtitles)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Tampilan Subtitle", color = Color.White, fontSize = 14.sp)
+                    Text("Tampilan Subtitle", color = AniloverTextPrimary, fontSize = 14.sp)
                     Text("Ukuran dan warna teks subtitle di pemutar", color = AniloverTextDim, fontSize = 12.sp)
                     Spacer(Modifier.height(8.dp))
                     Text("Ukuran", color = AniloverTextDim, fontSize = 12.sp)
@@ -782,11 +768,7 @@ fun ProfileScreen(
                                 selected = settings.subtitleSize == value,
                                 onClick = { onSubtitleStyleChange(value, settings.subtitleColor) },
                                 label = { Text(label) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = AniloverAccent,
-                                    selectedLabelColor = AniloverOnAccent,
-                                    labelColor = Color.White,
-                                ),
+                                colors = aniloverChipColors(),
                             )
                         }
                     }
@@ -799,15 +781,12 @@ fun ProfileScreen(
                                 selected = settings.subtitleColor == value,
                                 onClick = { onSubtitleStyleChange(settings.subtitleSize, value) },
                                 label = { Text(label) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = AniloverAccent,
-                                    selectedLabelColor = AniloverOnAccent,
-                                    labelColor = Color.White,
-                                ),
+                                colors = aniloverChipColors(),
                             )
                         }
                     }
                 }
+            }
             }
         }
         item {
@@ -854,7 +833,7 @@ fun ProfileScreen(
 @Composable
 private fun StatColumn(value: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+        Text(value, color = AniloverAccent, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
         Text(label, color = AniloverTextDim, fontSize = 11.sp)
     }
 }
@@ -862,7 +841,7 @@ private fun StatColumn(value: String, label: String) {
 @Composable
 private fun SettingsIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Box(
-        Modifier.size(38.dp).background(AniloverSurface, RoundedCornerShape(8.dp)),
+        Modifier.size(38.dp).background(AniloverSurfaceHigh, AniloverShapes.Chip),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(21.dp))
@@ -881,13 +860,14 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
-            Modifier.size(88.dp).background(AniloverSurface, androidx.compose.foundation.shape.CircleShape),
+            Modifier.size(88.dp).background(AniloverSurface, androidx.compose.foundation.shape.CircleShape)
+                .border(1.dp, AniloverOutline, androidx.compose.foundation.shape.CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, contentDescription = null, tint = AniloverTextDim, modifier = Modifier.size(40.dp))
         }
         Spacer(Modifier.height(14.dp))
-        Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(title, color = AniloverTextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(4.dp))
         Text(
             subtitle, color = AniloverTextDim, fontSize = 13.sp,

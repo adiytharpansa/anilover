@@ -134,12 +134,12 @@ fun DetailScreen(
                 IconButton(
                     onClick = onBack,
                     modifier = Modifier.padding(10.dp).size(40.dp)
-                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50)),
+                        .background(AniloverBackground.copy(alpha = 0.6f), AniloverShapes.Pill),
                 ) {
                     Icon(Icons.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
                 }
                 Text(
-                    title.title, color = Color.White, fontSize = 26.sp,
+                    title.title, color = AniloverTextPrimary, fontSize = 28.sp,
                     fontWeight = FontWeight.Black, maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.align(Alignment.BottomStart).padding(16.dp),
@@ -153,7 +153,7 @@ fun DetailScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     title.matchPercent?.let {
-                        Text("$it% Kecocokan", color = Color(0xFF46D369), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("$it% Kecocokan", color = AniloverGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                     title.score?.let {
                         Text("★ " + String.format("%.1f", it), color = Color.White, fontSize = 13.sp)
@@ -163,21 +163,21 @@ fun DetailScreen(
                         Text(
                             it, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier
-                                .background(Color.White.copy(alpha = 0.22f), RoundedCornerShape(4.dp))
+                                .background(AniloverSurfaceHigh, AniloverShapes.Chip)
                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                         )
                     }
                     Text(
                         "HD", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier
-                            .background(Color.White.copy(alpha = 0.22f), RoundedCornerShape(4.dp))
+                            .background(AniloverSurfaceHigh, AniloverShapes.Chip)
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     )
                     if (title.adult) {
                         Text(
                             "18+", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier
-                                .background(Color.White.copy(alpha = 0.22f), RoundedCornerShape(4.dp))
+                                .background(AniloverSurfaceHigh, AniloverShapes.Chip)
                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                         )
                     }
@@ -193,9 +193,9 @@ fun DetailScreen(
                         else onPlay(title.episodes.firstOrNull()?.number ?: 1, 0L)
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White, contentColor = Color.Black,
+                        containerColor = AniloverAccent, contentColor = AniloverOnAccent,
                     ),
-                    shape = RoundedCornerShape(6.dp),
+                    shape = AniloverShapes.Button,
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                 ) {
                     Icon(Icons.Filled.PlayArrow, contentDescription = null)
@@ -258,7 +258,7 @@ fun DetailScreen(
                 if (!title.synopsis.isNullOrBlank()) {
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        title.synopsis, color = Color(0xFFDDDDDD), fontSize = 14.sp,
+                        title.synopsis, color = AniloverTextDim, fontSize = 14.sp,
                         maxLines = if (synopsisExpanded) Int.MAX_VALUE else 3,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.clickable { synopsisExpanded = !synopsisExpanded },
@@ -431,7 +431,7 @@ fun DetailScreen(
         modifier = Modifier.align(Alignment.BottomCenter),
     ) {
         Row(
-            Modifier.fillMaxWidth().background(Color(0xFF161616))
+            Modifier.fillMaxWidth().background(AniloverSurface)
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -452,9 +452,9 @@ fun DetailScreen(
                     else onPlay(title.episodes.firstOrNull()?.number ?: 1, 0L)
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White, contentColor = Color.Black,
+                    containerColor = AniloverAccent, contentColor = AniloverOnAccent,
                 ),
-                shape = RoundedCornerShape(6.dp),
+                shape = AniloverShapes.Button,
             ) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null)
                 Spacer(Modifier.width(4.dp))

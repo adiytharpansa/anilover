@@ -36,3 +36,10 @@ Build: GitHub Actions (`assembleDebug`) — artefak `Anilover-debug-apk`.
 
 ## 2.7.1
 - Crash "background can not be translucent: #0" saat pemutar dibuka: tombol Cast (`MediaRouteButton`) dibuat dengan tema yang tidak punya `colorPrimary` opak. Ditambah tema `Theme.Anilover.Cast`, `colorPrimary` di tema pemutar, dan try/catch agar kegagalan Cast tidak menutup aplikasi.
+
+## Desain ulang UI ("Tinta")
+- Sistem desain baru di `ui/Theme.kt`: palet biru-tinta + aksen sakura, skala radius (`AniloverShapes`), skala tipografi, `ScreenTitle`, `panel()`, warna Switch/Chip seragam.
+- Beranda: hero unggulan, Lanjutkan Menonton, Baru Ditambahkan, Jelajahi Genre, Semua Judul.
+- Tab Baru, Unduhan, Profil, Cari: judul halaman, panel bergaris tepi, kontrol seragam.
+- Pemutar: tombol, panel, seek bar, dan HUD memakai token yang sama.
+- Transisi tab searah urutan tab, Detail masuk dengan skala halus, skeleton Beranda mengikuti layout baru.

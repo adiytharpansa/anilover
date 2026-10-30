@@ -7,11 +7,15 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,45 +23,118 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 
-val AniloverBackground = Color(0xFF0B0B0B)
-val AniloverSurface = Color(0xFF151515)
-val AniloverAccent = Color(0xFF72FB44)
-/** Warna teks/ikon di atas aksen hijau (putih tidak cukup kontras di atas hijau neon). */
-val AniloverOnAccent = Color(0xFF08130A)
-val AniloverTextDim = Color(0xFFB3B3B3)
-val AniloverSurfaceHigh = Color(0xFF1E1E1E)
-val AniloverGreen = Color(0xFF46D369)
+// ── Token warna: "Tinta" — dasar biru-tinta gelap, aksen sakura, emas untuk sorotan ──
+val AniloverBackground = Color(0xFF0D0E17)
+val AniloverSurface = Color(0xFF161828)
+val AniloverSurfaceHigh = Color(0xFF212438)
+val AniloverOutline = Color(0xFF2E3250)
+val AniloverAccent = Color(0xFFFF5C85)
+/** Teks/ikon di atas aksen sakura. */
+val AniloverOnAccent = Color(0xFF1C0610)
+val AniloverGold = Color(0xFFFFC857)
+val AniloverTextPrimary = Color(0xFFF3F4FA)
+val AniloverTextDim = Color(0xFF9EA3BF)
+val AniloverGreen = Color(0xFF3DD68C)
+
+/** Skala radius: kecil (lencana), sedang (poster/kartu), besar (tombol/panel). */
+object AniloverShapes {
+    val Chip = RoundedCornerShape(8.dp)
+    val Card = RoundedCornerShape(12.dp)
+    val Button = RoundedCornerShape(14.dp)
+    val Pill = RoundedCornerShape(50)
+}
 
 private val AniloverColors = darkColorScheme(
     primary = AniloverAccent,
     onPrimary = AniloverOnAccent,
+    secondary = AniloverGold,
     background = AniloverBackground,
     surface = AniloverSurface,
-    onBackground = Color.White,
-    onSurface = Color.White,
+    surfaceVariant = AniloverSurfaceHigh,
+    outline = AniloverOutline,
+    onBackground = AniloverTextPrimary,
+    onSurface = AniloverTextPrimary,
+    onSurfaceVariant = AniloverTextDim,
+)
+
+/** Skala tipografi: judul rapat & tebal, isi longgar agar nyaman dibaca. */
+private val AniloverTypography = Typography(
+    headlineLarge = TextStyle(fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp),
+    titleLarge = TextStyle(fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp),
+    titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold),
+    bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 22.sp),
+    bodyMedium = TextStyle(fontSize = 13.sp, lineHeight = 19.sp),
+    labelLarge = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
+    labelSmall = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.2.sp),
+)
+
+/** Judul halaman tab: besar, rapat, dengan subjudul opsional. */
+@Composable
+fun ScreenTitle(text: String, subtitle: String? = null) {
+    androidx.compose.foundation.layout.Column(
+        Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 12.dp),
+    ) {
+        androidx.compose.material3.Text(
+            text, color = AniloverTextPrimary,
+            style = MaterialTheme.typography.headlineLarge,
+        )
+        if (!subtitle.isNullOrBlank()) {
+            androidx.compose.material3.Text(
+                subtitle, color = AniloverTextDim,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+    }
+}
+
+/** Panel permukaan bergaris tepi halus untuk mengelompokkan isi. */
+fun Modifier.panel(): Modifier = this
+    .clip(AniloverShapes.Card)
+    .background(AniloverSurface)
+    .border(1.dp, AniloverOutline, AniloverShapes.Card)
+
+@Composable
+fun aniloverSwitchColors() = androidx.compose.material3.SwitchDefaults.colors(
+    checkedThumbColor = AniloverOnAccent,
+    checkedTrackColor = AniloverAccent,
+    uncheckedThumbColor = AniloverTextDim,
+    uncheckedTrackColor = AniloverSurfaceHigh,
+    uncheckedBorderColor = AniloverOutline,
+)
+
+@Composable
+fun aniloverChipColors() = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+    containerColor = AniloverSurface,
+    labelColor = AniloverTextPrimary,
+    selectedContainerColor = AniloverAccent,
+    selectedLabelColor = AniloverOnAccent,
 )
 
 @Composable
 fun AniloverTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = AniloverColors, content = content)
+    MaterialTheme(colorScheme = AniloverColors, typography = AniloverTypography, content = content)
 }
 
 /** Kotak rangka berkilau (shimmer) untuk keadaan memuat, gaya Netflix. */
 @Composable
-fun ShimmerBox(modifier: Modifier = Modifier, shape: Shape = RoundedCornerShape(6.dp)) {
+fun ShimmerBox(modifier: Modifier = Modifier, shape: Shape = RoundedCornerShape(10.dp)) {
     val transition = rememberInfiniteTransition(label = "shimmer")
     val alpha by transition.animateFloat(
-        initialValue = 0.18f,
-        targetValue = 0.45f,
+        initialValue = 0.35f,
+        targetValue = 0.85f,
         animationSpec = infiniteRepeatable(
             animation = tween(850),
             repeatMode = RepeatMode.Reverse,
         ),
         label = "shimmerAlpha",
     )
-    Box(modifier.background(Color.White.copy(alpha = alpha), shape))
+    Box(modifier.background(AniloverSurfaceHigh.copy(alpha = alpha), shape))
 }
 
 /** Efek memampat halus saat kartu ditekan; pasangkan dengan interactionSource klik yang sama. */
@@ -65,7 +142,7 @@ fun ShimmerBox(modifier: Modifier = Modifier, shape: Shape = RoundedCornerShape(
 fun Modifier.pressScaleFx(source: MutableInteractionSource): Modifier {
     val pressed by source.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.95f else 1f,
+        targetValue = if (pressed) 0.96f else 1f,
         animationSpec = tween(120),
         label = "pressScale",
     )

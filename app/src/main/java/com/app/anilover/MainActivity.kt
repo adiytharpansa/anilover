@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -61,6 +62,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -89,6 +92,11 @@ import com.app.anilover.ui.AniloverOnAccent
 import com.app.anilover.ui.AniloverBackground
 import com.app.anilover.ui.AniloverSurface
 import com.app.anilover.ui.AniloverTheme
+import com.app.anilover.ui.AniloverShapes
+import com.app.anilover.ui.AniloverTextDim
+import com.app.anilover.ui.AniloverOutline
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.border
 import com.app.anilover.ui.ShimmerBox
 import com.app.anilover.ui.SearchScreen
 import kotlinx.coroutines.launch
@@ -175,7 +183,6 @@ private fun AppRoot(
     var titles by remember { mutableStateOf<List<Title>?>(null) }
     var soon by remember { mutableStateOf<List<SoonTitle>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
-    var errorDetail by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableIntStateOf(0) }
     var selected by remember { mutableStateOf<Title?>(null) }
     var genreSel by remember { mutableStateOf<String?>(null) }
@@ -232,13 +239,10 @@ private fun AppRoot(
             val fresh = CatalogApi.parseCatalog(raw)
             titles = fresh
             error = null
-            errorDetail = null
             try { library.saveCatalogCache(raw) } catch (e: Exception) { }
         } catch (e: Exception) {
             if (titles.isNullOrEmpty()) {
                 error = "Tidak bisa memuat katalog. Periksa koneksi internetmu."
-                errorDetail = CatalogApi.lastCatalogError
-                    ?: (e.javaClass.simpleName + ": " + (e.message ?: ""))
             }
         }
         try { soon = CatalogApi.fetchSoon() } catch (e: Exception) { /* Segera Tayang tambahan */ }
@@ -281,7 +285,11 @@ private fun AppRoot(
         containerColor = AniloverBackground,
         bottomBar = {
             if (selected == null && genreSel == null) {
-                NavigationBar(containerColor = Color(0xFF111111)) {
+                NavigationBar(
+                    containerColor = AniloverSurface,
+                    tonalElevation = 0.dp,
+                    modifier = Modifier.border(1.dp, AniloverOutline.copy(alpha = 0.7f)),
+                ) {
                     NavItem(Tab.Home, tab, Icons.Filled.Home, "Beranda") { tab = it }
                     NavItem(Tab.Search, tab, Icons.Filled.Search, "Cari") { tab = it }
                     NavItem(Tab.New, tab, Icons.Filled.Whatshot, "Baru") { tab = it }
@@ -306,7 +314,8 @@ private fun AppRoot(
                     LaunchedEffect(t.id) { shown = true }
                     AnimatedVisibility(
                         visible = shown,
-                        enter = fadeIn(tween(230)) + slideInVertically(tween(230)) { it / 5 },
+                        enter = fadeIn(tween(260)) + slideInVertically(tween(300)) { it / 8 } +
+                            androidx.compose.animation.scaleIn(tween(300), initialScale = 0.96f),
                         exit = fadeOut(tween(150)),
                     ) {
                         DetailScreen(
@@ -337,18 +346,9 @@ private fun AppRoot(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(error!!, color = Color.White)
-                    if (!errorDetail.isNullOrBlank()) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            errorDetail!!,
-                            color = Color.Gray,
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace,
-                        )
-                    }
                     Spacer(Modifier.height(14.dp))
                     Button(
-                        onClick = { error = null; errorDetail = null; reloadKey++ },
+                        onClick = { error = null; reloadKey++ },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = AniloverAccent, contentColor = AniloverOnAccent,
                         ),
@@ -358,8 +358,10 @@ private fun AppRoot(
                 else -> AnimatedContent(
                     targetState = tab,
                     transitionSpec = {
-                        (fadeIn(tween(200)) + slideInHorizontally(tween(200)) { it / 12 }) togetherWith
-                            fadeOut(tween(130))
+                        val dir = if (targetState.ordinal >= initialState.ordinal) 1 else -1
+                        (fadeIn(tween(240, delayMillis = 60)) +
+                            slideInHorizontally(tween(260)) { dir * it / 14 }) togetherWith
+                            (fadeOut(tween(120)) + slideOutHorizontally(tween(200)) { -dir * it / 20 })
                     },
                     label = "tab",
                 ) { currentTab ->
@@ -451,37 +453,36 @@ private fun androidx.compose.foundation.layout.RowScope.NavItem(
         selected = current == item,
         onClick = { onSelect(item) },
         icon = { Icon(icon, contentDescription = label) },
-        label = { Text(label, fontSize = 11.sp) },
+        label = { Text(label, fontSize = 11.sp, fontWeight = if (current == item) FontWeight.SemiBold else FontWeight.Normal) },
         colors = NavigationBarItemDefaults.colors(
             selectedIconColor = AniloverAccent,
             selectedTextColor = AniloverAccent,
-            unselectedIconColor = Color(0xFF9A9A9A),
-            unselectedTextColor = Color(0xFF9A9A9A),
-            indicatorColor = AniloverAccent.copy(alpha = 0.16f),
+            unselectedIconColor = AniloverTextDim,
+            unselectedTextColor = AniloverTextDim,
+            indicatorColor = AniloverAccent.copy(alpha = 0.18f),
         ),
     )
 }
 
 @Composable
 private fun SkeletonHome() {
-    Column(
-        Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        ShimmerBox(Modifier.height(28.dp).width(90.dp))
-        ShimmerBox(
-            Modifier.fillMaxWidth().aspectRatio(16f / 10f),
-            androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-        )
-        ShimmerBox(Modifier.fillMaxWidth(0.45f).height(18.dp))
-        ShimmerBox(
-            Modifier.fillMaxWidth().height(110.dp),
-            androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-        )
-        ShimmerBox(Modifier.fillMaxWidth(0.35f).height(18.dp))
-        ShimmerBox(
-            Modifier.fillMaxWidth().height(170.dp),
-            androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-        )
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ShimmerBox(Modifier.height(24.dp).width(110.dp))
+            Spacer(Modifier.weight(1f))
+            ShimmerBox(Modifier.size(42.dp), androidx.compose.foundation.shape.CircleShape)
+        }
+        ShimmerBox(Modifier.fillMaxWidth().aspectRatio(0.9f), androidx.compose.ui.graphics.RectangleShape)
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            ShimmerBox(Modifier.fillMaxWidth(0.4f).height(20.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                repeat(3) {
+                    ShimmerBox(Modifier.weight(1f).aspectRatio(2f / 3f), AniloverShapes.Card)
+                }
+            }
+        }
     }
 }
