@@ -2,6 +2,7 @@ package com.app.anilover.player
 
 import android.app.PictureInPictureParams
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.media.AudioManager
 import android.os.Bundle
@@ -81,6 +82,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -114,6 +116,7 @@ import com.app.anilover.data.LibraryStore
 import com.app.anilover.data.AniloverSettings
 import com.app.anilover.data.WatchEntry
 import com.app.anilover.ui.AniloverAccent
+import com.app.anilover.ui.AniloverOnAccent
 import com.app.anilover.ui.AniloverTheme
 import com.app.anilover.ui.formatClock
 import com.app.anilover.ui.formatRemaining
@@ -143,6 +146,7 @@ class PlayerActivity : FragmentActivity() {
     private var currentEp: Int = 1
     private lateinit var store: HistoryStore
     private var inPip by mutableStateOf(false)
+    private var bgService = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         com.app.anilover.data.CrashReporter.install(applicationContext)
@@ -163,6 +167,8 @@ class PlayerActivity : FragmentActivity() {
         val autoplayNext = intent.getBooleanExtra(EXTRA_AUTOPLAY, true)
         val subtitleDefault = intent.getStringExtra(EXTRA_SUBTITLE) ?: "id"
         val episodes = parseEpisodes(intent.getStringExtra(EXTRA_EPISODES) ?: "[]")
+        PlaybackHolder.title = title
+        PlaybackHolder.episode = currentEp
 
         setContent {
             AniloverTheme {
@@ -178,8 +184,8 @@ class PlayerActivity : FragmentActivity() {
                     inPip = inPip,
                     onBack = { finish() },
                     onEnterPip = { enterPip() },
-                    onPlayerCreated = { playerRef = it },
-                    onEpisodeChanged = { currentEp = it },
+                    onPlayerCreated = { playerRef = it; PlaybackHolder.player = it; startBackgroundService() },
+                    onEpisodeChanged = { currentEp = it; PlaybackHolder.episode = it },
                 )
             }
         }
@@ -195,6 +201,16 @@ class PlayerActivity : FragmentActivity() {
         out.sortedBy { it.number }
     } catch (e: Exception) {
         emptyList()
+    }
+
+    /** Suara tetap jalan saat layar mati / pindah aplikasi, dengan notifikasi media. */
+    private fun startBackgroundService() {
+        bgService = try {
+            ContextCompat.startForegroundService(this, Intent(this, PlaybackService::class.java))
+            true
+        } catch (e: Exception) {
+            false
+        }
     }
 
     private fun enterPip() {
@@ -223,12 +239,14 @@ class PlayerActivity : FragmentActivity() {
 
     override fun onStop() {
         super.onStop()
-        // Layar mati / pindah aplikasi / jendela PiP ditutup: jeda agar suara
-        // tidak terus berjalan di latar belakang.
-        playerRef?.pause()
+        // Layar mati / pindah aplikasi: suara lanjut lewat PlaybackService.
+        // Jeda hanya bila halaman ditutup atau layanan latar gagal dimulai.
+        if (isFinishing || !bgService) playerRef?.pause()
     }
 
     override fun onDestroy() {
+        stopService(Intent(this, PlaybackService::class.java))
+        PlaybackHolder.player = null
         playerRef?.release()
         playerRef = null
         super.onDestroy()
@@ -920,8 +938,8 @@ private fun PlayerScreen(
             positionMs <= (if (introDataMs > 0) introDataMs else 85_000L)
         if (skipVisible) {
             Surface(
-                color = Color.Black.copy(alpha = 0.65f),
-                shape = RoundedCornerShape(6.dp),
+                color = AniloverAccent,
+                shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.align(Alignment.BottomEnd)
                     .padding(end = 22.dp, bottom = 108.dp)
                     .clickable {
@@ -931,7 +949,7 @@ private fun PlayerScreen(
                     },
             ) {
                 Text(
-                    "Lewati Intro", color = Color.White, fontWeight = FontWeight.Bold,
+                    "Lewati Intro", color = AniloverOnAccent, fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
                 )
             }
