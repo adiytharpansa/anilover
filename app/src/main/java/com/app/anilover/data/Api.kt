@@ -138,6 +138,7 @@ object CatalogApi {
         val arr = root.optJSONArray("titles") ?: JSONArray()
         val out = ArrayList<Title>()
         for (i in 0 until arr.length()) {
+          try {
             val t = arr.getJSONObject(i)
             // Basis media per judul (meniru Worker api.anime): repo+pin judul,
             // atau repo proyek + pin katalog global. Respons API sudah absolut.
@@ -155,17 +156,31 @@ object CatalogApi {
             val eps = ArrayList<Episode>()
             val ea = t.optJSONArray("episodes") ?: JSONArray()
             for (j in 0 until ea.length()) {
-                val e = ea.getJSONObject(j)
-                eps.add(
-                    Episode(
-                        number = e.optInt("number"),
-                        playlist = absolut(e.optString("playlist")),
-                        title = e.optString("title").ifBlank { null },
-                        thumb = e.optString("thumb").ifBlank { null }?.let { absolut(it) },
-                        synopsis = e.optString("synopsis").ifBlank { null },
-                        introEnd = if (e.has("introEnd") && !e.isNull("introEnd")) e.optLong("introEnd") else null,
+                // Gudang menulis episode dalam dua bentuk: objek lengkap
+                // {number, playlist, ...} ATAU angka saja (jalur robot) —
+                // untuk angka, jalur playlist mengikuti pola gudang
+                // <id>/ep<N>/playlist.m3u8 dari basis repo+pin judul.
+                when (val item = ea.opt(j)) {
+                    is JSONObject -> eps.add(
+                        Episode(
+                            number = item.optInt("number"),
+                            playlist = absolut(item.optString("playlist")),
+                            title = item.optString("title").ifBlank { null },
+                            thumb = item.optString("thumb").ifBlank { null }?.let { absolut(it) },
+                            synopsis = item.optString("synopsis").ifBlank { null },
+                            introEnd = if (item.has("introEnd") && !item.isNull("introEnd")) item.optLong("introEnd") else null,
+                        )
                     )
-                )
+                    is Number -> {
+                        val n = item.toInt()
+                        eps.add(
+                            Episode(
+                                number = n,
+                                playlist = absolut(t.optString("id") + "/ep" + n + "/playlist.m3u8"),
+                            )
+                        )
+                    }
+                }
             }
             val genres = ArrayList<String>()
             val ga = t.optJSONArray("genres") ?: JSONArray()
@@ -186,6 +201,10 @@ object CatalogApi {
                     trailer = t.optString("trailer").ifBlank { null },
                 )
             )
+          } catch (e: Exception) {
+            // Satu judul rusak tidak boleh menggagalkan seluruh katalog.
+            continue
+          }
         }
         lastCatalogIds = out.map { it.id }.toSet()
         return out
