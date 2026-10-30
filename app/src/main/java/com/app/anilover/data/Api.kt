@@ -22,7 +22,6 @@ import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
-const val API_BASE = "https://api-anime.adiyth-arpansa.workers.dev"
 
 // Sumber katalog utama: Cloudflare Pages (aset statis — tanpa jatah harian
 // seperti Worker; katalog disinkronkan otomatis dari repo project-X).
@@ -225,7 +224,6 @@ object CatalogApi {
     suspend fun fetchRawCatalog(): String = withContext(Dispatchers.IO) {
         val sources = listOf(
             "Pages" to CATALOG_PAGES,
-            "API" to "$API_BASE/api/catalog",
             "jsDelivr" to CATALOG_MIRROR,
             "gcore" to CATALOG_MIRROR_GCORE,
             "raw" to CATALOG_MIRROR2,
@@ -256,13 +254,9 @@ object CatalogApi {
     /** Daftar "Segera Tayang": judul antrean gudang yang belum terbit. */
     suspend fun fetchSoon(): List<SoonTitle> = withContext(Dispatchers.IO) {
         val body = try {
-            httpGetText("$API_BASE/api/soon")
+            httpGetText(SOON_PAGES)
         } catch (e: Exception) {
-            try {
-                httpGetText(SOON_PAGES)
-            } catch (e2: Exception) {
-                httpGetText(SOON_MIRROR)
-            }
+            httpGetText(SOON_MIRROR)
         }
         // API membungkus {titles:[...]}; berkas cermin adalah array telanjang.
         val trimmed = body.trimStart()
