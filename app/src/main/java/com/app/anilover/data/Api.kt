@@ -28,10 +28,6 @@ const val API_BASE = "https://api-anime.adiyth-arpansa.workers.dev"
 // seperti Worker; katalog disinkronkan otomatis dari repo project-X).
 private const val CATALOG_PAGES =
     "https://anilover-catalog.pages.dev/aaab8ea29b56fa7e10898c3c/catalog.json"
-// Jalur Pages lama (transisi penyamaran alamat — diputus sesudah
-// APK beralamat tersamar terpasang di HP pengguna).
-private const val CATALOG_PAGES_LEGACY =
-    "https://anilover-catalog.pages.dev/catalog.json"
 private const val SOON_PAGES =
     "https://anilover-catalog.pages.dev/aaab8ea29b56fa7e10898c3c/coming-soon.json"
 // Cermin katalog gudang (dipakai bila API utama kena batas kuota Cloudflare).
@@ -229,7 +225,6 @@ object CatalogApi {
     suspend fun fetchRawCatalog(): String = withContext(Dispatchers.IO) {
         val sources = listOf(
             "Pages" to CATALOG_PAGES,
-            "PagesLama" to CATALOG_PAGES_LEGACY,
             "API" to "$API_BASE/api/catalog",
             "jsDelivr" to CATALOG_MIRROR,
             "gcore" to CATALOG_MIRROR_GCORE,
