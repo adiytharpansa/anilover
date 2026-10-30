@@ -18,6 +18,9 @@ import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.TimeUnit
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 const val API_BASE = "https://api-anime.adiyth-arpansa.workers.dev"
 
@@ -30,6 +33,10 @@ private const val SOON_PAGES =
 // Cermin katalog gudang (dipakai bila API utama kena batas kuota Cloudflare).
 private const val CATALOG_MIRROR =
     "https://cdn.jsdelivr.net/gh/adiytharpansa/project-X@main/catalog.json"
+private const val CATALOG_MIRROR_GCORE =
+    "https://gcore.jsdelivr.net/gh/adiytharpansa/project-X@main/catalog.json"
+private const val CATALOG_MIRROR_FASTLY =
+    "https://fastly.jsdelivr.net/gh/adiytharpansa/project-X@main/catalog.json"
 private const val CATALOG_MIRROR2 =
     "https://raw.githubusercontent.com/adiytharpansa/project-X/main/catalog.json"
 private const val SOON_MIRROR =
@@ -99,16 +106,30 @@ object CatalogApi {
     @Volatile
     var lastCatalogIds: Set<String> = emptySet()
 
+    // OkHttp (tumpukan jaringan yang sama dengan pemutar & poster — terbukti
+    // jalan di HP pengguna) menggantikan HttpURLConnection untuk pengambilan
+    // teks katalog/soon.
+    private val httpClient = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build()
+
     private fun httpGetText(url: String, timeoutMs: Int = 15000): String {
-        val conn = URL(url).openConnection() as HttpURLConnection
-        conn.connectTimeout = timeoutMs
-        conn.readTimeout = timeoutMs
-        conn.setRequestProperty("Accept", "application/json")
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Anilover Android)")
-        if (conn.responseCode !in 200..299) {
-            throw java.io.IOException("HTTP " + conn.responseCode + " dari " + url)
+        val client = httpClient.newBuilder()
+            .connectTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+            .readTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+            .build()
+        val req = Request.Builder()
+            .url(url)
+            .header("Accept", "application/json")
+            .header("User-Agent", "Mozilla/5.0 (Anilover Android)")
+            .build()
+        client.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) {
+                throw java.io.IOException("HTTP " + resp.code + " dari " + url)
+            }
+            return resp.body?.string() ?: throw java.io.IOException("respons kosong dari " + url)
         }
-        return conn.inputStream.bufferedReader().use { it.readText() }
     }
 
     fun parseCatalog(body: String): List<Title> {
@@ -170,22 +191,44 @@ object CatalogApi {
         return out
     }
 
+    /** Rincian kegagalan terakhir tiap sumber katalog (untuk diagnosis di layar). */
+    @Volatile
+    var lastCatalogError: String? = null
+
     /**
      * Ambil katalog mentah: Cloudflare Pages dulu (tanpa jatah harian),
      * lalu API Worker; bila gagal (mis. kuota Worker Cloudflare habis —
-     * galat 1027/429), jatuh ke cermin jsDelivr lalu raw.githubusercontent
-     * dari repo gudang yang sama. Timeout diperpanjang untuk jaringan lambat.
+     * galat 1027/429), jatuh ke cermin-cermin jsDelivr (edge berbeda) lalu
+     * raw.githubusercontent dari repo gudang yang sama. Seluruh rantai
+     * dicoba dua putaran sebelum menyerah; tiap kegagalan dicatat di
+     * [lastCatalogError] agar penyebab aslinya terlihat di layar galat.
      */
     suspend fun fetchRawCatalog(): String = withContext(Dispatchers.IO) {
-        val sources = listOf(CATALOG_PAGES, "$API_BASE/api/catalog", CATALOG_MIRROR, CATALOG_MIRROR2)
+        val sources = listOf(
+            "Pages" to CATALOG_PAGES,
+            "API" to "$API_BASE/api/catalog",
+            "jsDelivr" to CATALOG_MIRROR,
+            "gcore" to CATALOG_MIRROR_GCORE,
+            "raw" to CATALOG_MIRROR2,
+            "fastly" to CATALOG_MIRROR_FASTLY,
+        )
+        val errs = ArrayList<String>()
         var last: Exception? = null
-        for (u in sources) {
-            try {
-                return@withContext httpGetText(u, 30000)
-            } catch (e: Exception) {
-                last = e
+        for (round in 1..2) {
+            for ((name, u) in sources) {
+                try {
+                    val body = httpGetText(u, 30000)
+                    lastCatalogError = null
+                    return@withContext body
+                } catch (e: Exception) {
+                    last = e
+                    if (round == 2) {
+                        errs.add("$name: ${e.javaClass.simpleName}: ${e.message?.take(90) ?: "?"}")
+                    }
+                }
             }
         }
+        lastCatalogError = errs.joinToString(" · ")
         throw last ?: java.io.IOException("semua sumber katalog gagal")
     }
 

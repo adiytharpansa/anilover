@@ -175,6 +175,7 @@ private fun AppRoot(
     var titles by remember { mutableStateOf<List<Title>?>(null) }
     var soon by remember { mutableStateOf<List<SoonTitle>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
+    var errorDetail by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableIntStateOf(0) }
     var selected by remember { mutableStateOf<Title?>(null) }
     var genreSel by remember { mutableStateOf<String?>(null) }
@@ -231,10 +232,13 @@ private fun AppRoot(
             val fresh = CatalogApi.parseCatalog(raw)
             titles = fresh
             error = null
+            errorDetail = null
             try { library.saveCatalogCache(raw) } catch (e: Exception) { }
         } catch (e: Exception) {
             if (titles.isNullOrEmpty()) {
                 error = "Tidak bisa memuat katalog. Periksa koneksi internetmu."
+                errorDetail = CatalogApi.lastCatalogError
+                    ?: (e.javaClass.simpleName + ": " + (e.message ?: ""))
             }
         }
         try { soon = CatalogApi.fetchSoon() } catch (e: Exception) { /* Segera Tayang tambahan */ }
@@ -333,9 +337,18 @@ private fun AppRoot(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(error!!, color = Color.White)
+                    if (!errorDetail.isNullOrBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            errorDetail!!,
+                            color = Color.Gray,
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                    }
                     Spacer(Modifier.height(14.dp))
                     Button(
-                        onClick = { error = null; reloadKey++ },
+                        onClick = { error = null; errorDetail = null; reloadKey++ },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = AniloverAccent, contentColor = AniloverOnAccent,
                         ),
