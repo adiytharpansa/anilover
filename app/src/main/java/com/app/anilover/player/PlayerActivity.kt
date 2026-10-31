@@ -483,19 +483,6 @@ private fun PlayerScreen(
         scope.launch { store.save(WatchEntry(titleId, ep, pos, d, System.currentTimeMillis())) }
     }
 
-    // Muat episode lewat pintu CDN terbaik: probe pintu-pintu gudang
-    // (CatalogApi.doorVariants) dan pakai yang pertama menjawab valid.
-    fun loadEpisodeViaDoors(ep: Int, playlist: String, pos: Long) {
-        activeDoors = CatalogApi.doorVariants(playlist)
-        doorIdx = 0
-        isBuffering = true
-        scope.launch {
-            val picked = CatalogApi.pickDoor(playlist)
-            doorIdx = activeDoors.indexOf(picked).let { if (it < 0) 0 else it }
-            loadEpisode(ep, picked, pos)
-        }
-    }
-
     fun loadEpisode(ep: Int, playlist: String, pos: Long) {
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
             if (subtitleDefault == "off") {
@@ -522,6 +509,19 @@ private fun PlayerScreen(
         bufferedMs = 0L
         durationMs = 0L
         isBuffering = true
+    }
+
+    // Muat episode lewat pintu CDN terbaik: probe pintu-pintu gudang
+    // (CatalogApi.doorVariants) dan pakai yang pertama menjawab valid.
+    fun loadEpisodeViaDoors(ep: Int, playlist: String, pos: Long) {
+        activeDoors = CatalogApi.doorVariants(playlist)
+        doorIdx = 0
+        isBuffering = true
+        scope.launch {
+            val picked = CatalogApi.pickDoor(playlist)
+            doorIdx = activeDoors.indexOf(picked).let { if (it < 0) 0 else it }
+            loadEpisode(ep, picked, pos)
+        }
     }
 
     fun switchTo(ep: EpRef) {
