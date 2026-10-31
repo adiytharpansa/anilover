@@ -1,6 +1,6 @@
 # Anilover
 
-**Unduh APK terbaru:** [Anilover-2.7.1.apk](https://github.com/adiytharpansa/anilover/raw/main/Anilover-2.7.1.apk)
+**Unduh APK terbaru:** [Anilover-2.8.0.apk](https://github.com/adiytharpansa/anilover/raw/main/Anilover-2.8.0.apk)
 
 Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
 **api.anime** (https://api-anime.adiyth-arpansa.workers.dev).

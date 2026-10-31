@@ -43,7 +43,7 @@ jobs:
           V=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)
           cp app/build/outputs/apk/release/app-release.apk "Anilover-$V.apk"
           git add "Anilover-$V.apk"
-          git commit -m "Arsip APK $V dari build branch (CI ${{ github.run_id }}) [skip ci]"
+          git commit -m "Arsip APK $V dari build branch (CI ${{ github.run_id }}) [skip ci]" || echo "APK sama, tidak ada commit baru"
           git push origin HEAD:arena/6ccedc94-anilover
       - uses: actions/upload-artifact@v4
         if: always()
