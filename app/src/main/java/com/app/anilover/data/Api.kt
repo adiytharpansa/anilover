@@ -251,6 +251,50 @@ object CatalogApi {
 
     suspend fun fetchCatalog(): List<Title> = parseCatalog(fetchRawCatalog())
 
+    /**
+     * Pintu-pintu CDN untuk satu URL playlist gudang: berkas yang sama di
+     * GitHub bisa diambil lewat banyak pintu gratis (keluarga jsDelivr,
+     * cermin jsDelivr, GitHack, raw GitHub, proksi, Statically). Urutan
+     * sesuai uji hidup 31 Okt 2026 atas berkas gudang bernama baru.
+     * URL non-jsDelivr dikembalikan apa adanya (satu pintu).
+     */
+    fun doorVariants(url: String): List<String> {
+        val m = Regex("""^https://[A-Za-z0-9.-]+/gh/([^/]+)/([^/@]+)@([^/]+)/(.+)$""").find(url)
+            ?: return listOf(url)
+        val (owner, repo, pin, path) = m.destructured
+        val gh = "$owner/$repo@$pin/$path"
+        val raw = "$owner/$repo/$pin/$path"
+        return listOf(
+            "https://cdn.jsdelivr.net/gh/$gh",
+            "https://fastly.jsdelivr.net/gh/$gh",
+            "https://gcore.jsdelivr.net/gh/$gh",
+            "https://quantil.jsdelivr.net/gh/$gh",
+            "https://testingcf.jsdelivr.net/gh/$gh",
+            "https://jsdelivr.b-cdn.net/gh/$gh",
+            "https://cdn.jsdmirror.com/gh/$gh",
+            "https://raw.githack.com/$raw",
+            "https://raw.githubusercontent.com/$raw",
+            "https://ghproxy.net/https://raw.githubusercontent.com/$raw",
+            "https://cdn.statically.io/gh/$gh",
+        )
+    }
+
+    /** Pilih pintu pertama yang menjawab playlist valid (#EXTM3U). */
+    suspend fun pickDoor(url: String): String = withContext(Dispatchers.IO) {
+        val doors = doorVariants(url)
+        if (doors.size == 1) return@withContext url
+        for (d in doors) {
+            try {
+                if (httpGetText(d, timeoutMs = 5000).trimStart().startsWith("#EXTM3U")) {
+                    return@withContext d
+                }
+            } catch (e: Exception) {
+                // pintu ini gagal -> coba pintu berikutnya
+            }
+        }
+        url
+    }
+
     /** Daftar "Segera Tayang": judul antrean gudang yang belum terbit. */
     suspend fun fetchSoon(): List<SoonTitle> = withContext(Dispatchers.IO) {
         val body = try {

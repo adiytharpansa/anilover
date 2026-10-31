@@ -116,6 +116,7 @@ import com.app.anilover.data.HistoryStore
 import com.app.anilover.data.LibraryStore
 import com.app.anilover.data.AniloverSettings
 import com.app.anilover.data.WatchEntry
+import com.app.anilover.data.CatalogApi
 import com.app.anilover.ui.AniloverAccent
 import com.app.anilover.ui.AniloverOnAccent
 import com.app.anilover.ui.AniloverTheme
@@ -457,6 +458,8 @@ private fun PlayerScreen(
     var errorDetail by remember { mutableStateOf<String?>(null) }
     var autoRetry by remember { mutableIntStateOf(0) }
     var retryNonce by remember { mutableIntStateOf(0) }
+    var activeDoors by remember { mutableStateOf<List<String>>(emptyList()) }
+    var doorIdx by remember { mutableIntStateOf(0) }
     // State gestur seret — di tingkat atas, BUKAN di blok kondisional (slot Compose).
     var dragMode by remember { mutableIntStateOf(0) } // 0=belum, 1=geser posisi, 2=kecerahan, 3=volume
     var dragStartPos by remember { mutableLongStateOf(0L) }
@@ -478,6 +481,19 @@ private fun PlayerScreen(
         val pos = if (finished) d else player.currentPosition
         val ep = currentEp
         scope.launch { store.save(WatchEntry(titleId, ep, pos, d, System.currentTimeMillis())) }
+    }
+
+    // Muat episode lewat pintu CDN terbaik: probe pintu-pintu gudang
+    // (CatalogApi.doorVariants) dan pakai yang pertama menjawab valid.
+    fun loadEpisodeViaDoors(ep: Int, playlist: String, pos: Long) {
+        activeDoors = CatalogApi.doorVariants(playlist)
+        doorIdx = 0
+        isBuffering = true
+        scope.launch {
+            val picked = CatalogApi.pickDoor(playlist)
+            doorIdx = activeDoors.indexOf(picked).let { if (it < 0) 0 else it }
+            loadEpisode(ep, picked, pos)
+        }
     }
 
     fun loadEpisode(ep: Int, playlist: String, pos: Long) {
@@ -512,12 +528,12 @@ private fun PlayerScreen(
         saveNow()
         currentEp = ep.number
         onEpisodeChanged(ep.number)
-        loadEpisode(ep.number, ep.playlist, 0L)
+        loadEpisodeViaDoors(ep.number, ep.playlist, 0L)
     }
 
     // Muat episode awal
     LaunchedEffect(Unit) {
-        if (currentPlaylist.isNotBlank()) loadEpisode(currentEp, currentPlaylist, startPos)
+        if (currentPlaylist.isNotBlank()) loadEpisodeViaDoors(currentEp, currentPlaylist, startPos)
     }
 
     // Dengarkan keadaan pemutar
@@ -550,7 +566,13 @@ private fun PlayerScreen(
                 // Galat jaringan/IO (2xxx): coba otomatis 3x dengan jeda 1s, 2s, 4s
                 // dan lanjut dari posisi terakhir sebelum menyerah ke tombol manual.
                 val isIo = error.errorCode in 2000..2999
-                if (isIo && autoRetry < 3) {
+                if (isIo && activeDoors.size > 1 && doorIdx + 1 < activeDoors.size) {
+                    // Pintu aktif gagal di tengah putar -> pindah pintu berikutnya
+                    // dari posisi yang sama, sebelum coba-ulang pintu yang sama.
+                    doorIdx += 1
+                    isBuffering = true
+                    loadEpisode(currentEp, activeDoors[doorIdx], player.currentPosition)
+                } else if (isIo && autoRetry < 3) {
                     autoRetry += 1
                     isBuffering = true
                     retryNonce += 1
@@ -734,7 +756,7 @@ private fun PlayerScreen(
                     Surface(
                         color = AniloverAccent, shape = AniloverShapes.Button,
                         modifier = Modifier.clickable {
-                            loadEpisode(currentEp, currentPlaylist, positionMs)
+                            loadEpisodeViaDoors(currentEp, currentPlaylist, positionMs)
                         },
                     ) {
                         Text("Coba Lagi", color = AniloverOnAccent, fontWeight = FontWeight.Bold,
