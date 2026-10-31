@@ -24,23 +24,23 @@ import okhttp3.Request
 
 
 // Sumber katalog utama: Cloudflare Pages (aset statis — tanpa jatah harian
-// seperti Worker; katalog disinkronkan otomatis dari repo project-X).
+// seperti Worker; katalog disinkronkan otomatis dari repo xjatxz2upew4).
 private const val CATALOG_PAGES =
     "https://anilover-catalog.pages.dev/aaab8ea29b56fa7e10898c3c/catalog.json"
 private const val SOON_PAGES =
     "https://anilover-catalog.pages.dev/aaab8ea29b56fa7e10898c3c/coming-soon.json"
 // Cermin katalog gudang (dipakai bila API utama kena batas kuota Cloudflare).
 private const val CATALOG_MIRROR =
-    "https://cdn.jsdelivr.net/gh/adiytharpansa/project-X@main/catalog.json"
+    "https://cdn.jsdelivr.net/gh/adiytharpansa/xjatxz2upew4@main/catalog.json"
 private const val CATALOG_MIRROR_GCORE =
-    "https://gcore.jsdelivr.net/gh/adiytharpansa/project-X@main/catalog.json"
+    "https://gcore.jsdelivr.net/gh/adiytharpansa/xjatxz2upew4@main/catalog.json"
 private const val CATALOG_MIRROR_FASTLY =
-    "https://fastly.jsdelivr.net/gh/adiytharpansa/project-X@main/catalog.json"
+    "https://fastly.jsdelivr.net/gh/adiytharpansa/xjatxz2upew4@main/catalog.json"
 private const val CATALOG_MIRROR2 =
-    "https://raw.githubusercontent.com/adiytharpansa/project-X/main/catalog.json"
+    "https://raw.githubusercontent.com/adiytharpansa/xjatxz2upew4/main/catalog.json"
 private const val SOON_MIRROR =
-    "https://cdn.jsdelivr.net/gh/adiytharpansa/project-X@main/coming-soon.json"
-private const val PROJECT_REPO = "adiytharpansa/project-X"
+    "https://cdn.jsdelivr.net/gh/adiytharpansa/xjatxz2upew4@main/coming-soon.json"
+private const val PROJECT_REPO = "adiytharpansa/xjatxz2upew4"
 
 data class Episode(
     val number: Int,
