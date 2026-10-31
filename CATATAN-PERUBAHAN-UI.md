@@ -86,3 +86,14 @@ Berkas diubah
 
 - data/Api.kt : komentar field `adult` tidak lagi menjanjikan "filter profil Anak"
   (yang memang tidak diimplementasikan); lencana 18+ tetap tampil di halaman detail.
+
+---
+# Tambahan: Closed Caption (CC) di pemutar — v2.8.0
+
+- player/PlayerActivity.kt : deteksi trek CEA-608/708 (isCeaFormat) + label ala aplikasi
+  populer (ccLabel: "CC1 (CC)" dari INSTREAM-ID); panel "Audio & Subtitle" kini memisahkan
+  bagian Subtitle dan Closed Caption (CC).
+- loadEpisode: setSelectUndeterminedTextLanguage(true) agar CC (bahasa "und") otomatis
+  terpilih bila tidak ada trek subtitle bahasa pilihan; bila pengaturan = "cc", listener
+  onTracksChanged memilih trek CC pertama secara otomatis.
+- ui/Screens.kt (Profil): opsi subtitle bawaan baru "CC bawaan" (nilai "cc").

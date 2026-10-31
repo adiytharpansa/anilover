@@ -97,7 +97,9 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.Format
 import androidx.media3.common.MimeTypes
+import androidx.media3.common.Tracks
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -555,6 +557,33 @@ private fun PlayerScreen(
     val latestNext by rememberUpdatedState(nextEp)
     val latestAutoplay by rememberUpdatedState(autoplayNext)
     val latestEnded by rememberUpdatedState(ended)
+    val latestSubtitleDefault by rememberUpdatedState(subtitleDefault)
+
+    // Bila subtitle bawaan = "cc", pilih otomatis trek CC (CEA-608/708) begitu
+    // trek tersedia pada stream — perilaku seperti aplikasi populer.
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onTracksChanged(tracks: Tracks) {
+                if (latestSubtitleDefault.value != "cc") return
+                val cea = tracks.groups
+                    .filter { it.type == C.TRACK_TYPE_TEXT }
+                    .firstNotNullOfOrNull { g ->
+                        (0 until g.length).firstNotNullOfOrNull { i ->
+                            if (isCeaFormat(g.getTrackFormat(i))) g to i else null
+                        }
+                    }
+                if (cea != null && !cea.first.isTrackSelected(cea.second)) {
+                    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                        .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                        .setOverrideForType(TrackSelectionOverride(cea.first.mediaTrackGroup, cea.second))
+                        .build()
+                }
+            }
+        }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
+    }
 
     fun saveNow(finished: Boolean = false) {
         val d = player.duration
@@ -570,7 +599,10 @@ private fun PlayerScreen(
                 setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
             } else {
                 setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                setPreferredTextLanguage(subtitleDefault)
+                // CC (CEA-608/708) biasanya berbahasa "und": ikut terpilih otomatis
+                // bila tidak ada trek subtitle bahasa pilihan — seperti aplikasi populer.
+                setSelectUndeterminedTextLanguage(true)
+                if (subtitleDefault != "cc") setPreferredTextLanguage(subtitleDefault)
             }
         }.build()
         player.setMediaItem(
@@ -1279,6 +1311,10 @@ private fun TracksPanel(player: ExoPlayer, onClose: () -> Unit) {
         }
         if (text.isNotEmpty()) {
             Spacer(Modifier.height(6.dp))
+            val subTracks = text.flatMap { g -> (0 until g.length).map { g to it } }
+                .filter { (g, i) -> !isCeaFormat(g.getTrackFormat(i)) }
+            val ccTracks = text.flatMap { g -> (0 until g.length).map { g to it } }
+                .filter { (g, i) -> isCeaFormat(g.getTrackFormat(i)) }
             Text("Subtitle", color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             Row(
                 Modifier.fillMaxWidth().clickable {
@@ -1290,10 +1326,27 @@ private fun TracksPanel(player: ExoPlayer, onClose: () -> Unit) {
             ) {
                 Text("Nonaktif", color = Color.White, modifier = Modifier.weight(1f))
             }
-            for (g in text) {
-                for (i in 0 until g.length) {
+            for ((g, i) in subTracks) {
+                val f = g.getTrackFormat(i)
+                val label = trackLabel(f.language, f.label, "Subtitle ${i + 1}")
+                Row(
+                    Modifier.fillMaxWidth().clickable {
+                        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                            .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, i)).build()
+                        refresh++
+                    }.padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(label, color = Color.White, modifier = Modifier.weight(1f))
+                    if (g.isTrackSelected(i)) Icon(Icons.Filled.Check, contentDescription = null, tint = AniloverAccent)
+                }
+            }
+            if (ccTracks.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Text("Closed Caption (CC)", color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                for ((g, i) in ccTracks) {
                     val f = g.getTrackFormat(i)
-                    val label = trackLabel(f.language, f.label, "Subtitle ${i + 1}")
                     Row(
                         Modifier.fillMaxWidth().clickable {
                             player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
@@ -1303,7 +1356,7 @@ private fun TracksPanel(player: ExoPlayer, onClose: () -> Unit) {
                         }.padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(label, color = Color.White, modifier = Modifier.weight(1f))
+                        Text(ccLabel(f), color = Color.White, modifier = Modifier.weight(1f))
                         if (g.isTrackSelected(i)) Icon(Icons.Filled.Check, contentDescription = null, tint = AniloverAccent)
                     }
                 }
@@ -1364,6 +1417,17 @@ private fun trackLabel(language: String?, label: String?, fallback: String): Str
         return Locale(language).getDisplayLanguage(Locale("id")).ifBlank { language }
     }
     return fallback
+}
+
+/** Trek closed caption bawaan stream (CEA-608/708), mis. dari #EXT-X-MEDIA TYPE=CLOSED-CAPTIONS. */
+private fun isCeaFormat(f: Format): Boolean =
+    f.sampleMimeType == MimeTypes.APPLICATION_CEA608 ||
+        f.sampleMimeType == MimeTypes.APPLICATION_CEA708
+
+/** Label ala aplikasi populer: "CC1 (CC)" dari INSTREAM-ID, fallback "Closed Caption". */
+private fun ccLabel(f: Format): String {
+    val base = f.id?.takeIf { it.isNotBlank() } ?: f.label?.takeIf { it.isNotBlank() }
+    return if (base != null) "$base (CC)" else "Closed Caption"
 }
 
 private fun speedLabel(s: Float): String =

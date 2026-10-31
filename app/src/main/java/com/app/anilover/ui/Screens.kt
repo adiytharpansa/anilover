@@ -746,7 +746,7 @@ fun ProfileScreen(
                     Text("Dipilih otomatis saat episode mulai diputar", color = AniloverTextDim, fontSize = 12.sp)
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for ((value, label) in listOf("id" to "Indonesia", "en" to "Inggris", "off" to "Nonaktif")) {
+                        for ((value, label) in listOf("id" to "Indonesia", "en" to "Inggris", "cc" to "CC bawaan", "off" to "Nonaktif")) {
                             FilterChip(
                                 selected = settings.subtitleDefault == value,
                                 onClick = { onSubtitleChange(value) },

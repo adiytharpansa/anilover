@@ -28,6 +28,11 @@ Build: GitHub Actions (`assembleDebug`) — artefak `Anilover-debug-apk`.
 - **Urutan "Baru Ditambahkan" lebih kokoh**: memakai cap waktu terbit (`addedAt`) dari
   katalog bila tersedia; bila tidak, tetap urutan katalog (terakhir masuk = terbaru).
 - Koreksi komentar kode: lencana 18+ tidak lagi dikaitkan dengan filter profil yang belum ada.
+- **Closed Caption (CC) di pemutar**: trek CEA-608/708 bawaan stream HLS (dari
+  `#EXT-X-MEDIA TYPE=CLOSED-CAPTIONS` atau in-band di segmen TS) kini tampil di panel
+  "Audio & Subtitle" sebagai bagian **Closed Caption (CC)** berlabel CC1/CC3; trek berbahasa
+  "und" otomatis terpilih bila tidak ada subtitle bahasa pilihan, dan bisa dijadikan default
+  lewat opsi baru "CC bawaan" di Profil.
 
 ## Perubahan 2.7.0
 
