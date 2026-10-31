@@ -564,7 +564,7 @@ private fun PlayerScreen(
     DisposableEffect(player) {
         val listener = object : Player.Listener {
             override fun onTracksChanged(tracks: Tracks) {
-                if (latestSubtitleDefault.value != "cc") return
+                if (latestSubtitleDefault != "cc") return
                 val cea = tracks.groups
                     .filter { it.type == C.TRACK_TYPE_TEXT }
                     .firstNotNullOfOrNull { g ->
