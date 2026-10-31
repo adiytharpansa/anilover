@@ -224,7 +224,7 @@ fun SearchScreen(
                         "${idx + 1}", color = AniloverAccent, fontSize = 17.sp, fontWeight = FontWeight.Black,
                         modifier = Modifier.width(30.dp),
                     )
-                    AsyncImage(
+                    PosterImage(
                         model = t.poster ?: t.banner,
                         contentDescription = t.title,
                         contentScale = ContentScale.Crop,
@@ -293,12 +293,12 @@ private fun GridPoster(t: Title, onClick: () -> Unit) {
         Modifier.pressScaleFx(pressSource)
             .clickable(interactionSource = pressSource, indication = LocalIndication.current, onClick = onClick),
     ) {
-        AsyncImage(
+        PosterImage(
             model = t.poster ?: t.banner,
             contentDescription = t.title,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)
-                .clip(RoundedCornerShape(6.dp)).background(AniloverSurface),
+                .clip(AniloverShapes.Poster).background(AniloverSurface),
         )
         CardTitles(t)
     }
@@ -374,7 +374,7 @@ fun NewScreen(
                     Modifier.fillMaxWidth().aspectRatio(16f / 9f)
                         .clip(AniloverShapes.Card).background(AniloverSurface),
                 ) {
-                    AsyncImage(
+                    PosterImage(
                         model = t.banner ?: t.poster,
                         contentDescription = t.title,
                         contentScale = ContentScale.Crop,
@@ -425,7 +425,7 @@ private fun SoonCard(
             Modifier.fillMaxWidth().aspectRatio(16f / 9f)
                 .clip(AniloverShapes.Card).background(AniloverSurface),
         ) {
-            AsyncImage(
+            PosterImage(
                 model = s.banner ?: s.poster,
                 contentDescription = s.title,
                 contentScale = ContentScale.Crop,
@@ -606,7 +606,7 @@ fun DownloadsScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AsyncImage(
+                PosterImage(
                     model = t?.poster ?: t?.banner,
                     contentDescription = d.titleName,
                     contentScale = ContentScale.Crop,

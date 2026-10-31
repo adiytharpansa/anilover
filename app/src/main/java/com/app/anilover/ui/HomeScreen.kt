@@ -1,11 +1,12 @@
 package com.app.anilover.ui
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -21,54 +22,42 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,21 +65,33 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import com.app.anilover.R
 import com.app.anilover.data.Title
 import com.app.anilover.data.WatchEntry
+import kotlinx.coroutines.delay
 
 /**
- * Beranda: hero unggulan, Lanjutkan Menonton, Baru Ditambahkan, genre, lalu semua judul.
- * Judul yang sedang ditonton tampil paling depan dengan bilah progres tipis di poster.
+ * Beranda: hero berputar (pager) di belakang header transparan, Lanjutkan Menonton,
+ * Top 10, Baru Ditambahkan, genre, baris pilihan per genre, lalu sisa koleksi.
+ * Setiap judul hanya muncul di satu "blok utama" supaya halaman tidak terasa berulang.
  */
 @Composable
 fun HomeScreen(
@@ -104,8 +105,7 @@ fun HomeScreen(
     onToggleMyList: (Title) -> Unit,
     onDownloadFirst: (Title) -> Unit,
     onRemoveContinue: (WatchEntry) -> Unit,
-    onSearch: () -> Unit,
-    onProfile: () -> Unit,
+    onSeeNew: () -> Unit,
     onGenre: (String) -> Unit,
 ) {
     val byId = titles.associateBy { it.id }
@@ -119,46 +119,52 @@ fun HomeScreen(
         .associateBy { it.titleId }
     // Urutan katalog = urutan terbit di gudang; yang terakhir masuk = terbaru.
     val newIds = if (titles.size >= 4) titles.takeLast(3).map { it.id }.toSet() else emptySet()
-    val ordered = resume.keys.mapNotNull { byId[it] } +
-        titles.reversed().filter { !resume.containsKey(it.id) }
     val playFirst: (Title) -> Unit = { t -> onPlay(t, t.episodes.firstOrNull()?.number ?: 1, 0L) }
 
-    Column(Modifier.fillMaxSize().background(AniloverBackground)) {
-        Row(
-            Modifier.fillMaxWidth().height(60.dp).padding(start = 20.dp, end = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Image(
-                painter = painterResource(R.drawable.anilover_logo),
-                contentDescription = null,
-                modifier = Modifier.size(width = 22.dp, height = 27.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                "Anilover", color = AniloverTextPrimary,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-            )
-            Spacer(Modifier.weight(1f))
-            HeaderAction(Icons.Filled.Search, "Cari", onSearch)
-            Spacer(Modifier.width(8.dp))
-            HeaderAction(Icons.Filled.AccountCircle, "Profil", onProfile)
+    // Hero: judul berskor tertinggi yang BUKAN sedang ditonton (itu sudah ada di "Lanjutkan").
+    val heroes = titles.reversed()
+        .filter { !resume.containsKey(it.id) }
+        .sortedByDescending { it.score ?: 0.0 }
+        .take(5)
+        .ifEmpty { titles.take(1) }
+    val genreList = titles.flatMap { it.genres }.groupingBy { it }.eachCount()
+        .entries.sortedByDescending { it.value }.take(10).map { it.key }
+    val fresh = titles.reversed().take(10)
+    val freshIds = fresh.map { it.id }.toSet()
+    val top10 = titles.filter { (it.score ?: 0.0) > 0.0 }.sortedByDescending { it.score }.take(10)
+    val genreRows = genreList.take(4)
+        .map { g -> g to titles.filter { it.genres.contains(g) }.sortedByDescending { it.score ?: 0.0 } }
+        .filter { it.second.size >= 3 }
+        .take(2)
+    val rest = titles.reversed().filter { !freshIds.contains(it.id) }
+
+    // Lebar poster seragam di semua baris & grid: 3 kolom, dengan ~8dp kartu ke-4 mengintip.
+    val posterW: Dp = ((LocalConfiguration.current.screenWidthDp - 64) / 3f).dp
+
+    val listState = rememberLazyListState()
+    val fadePx = with(LocalDensity.current) { 240.dp.toPx() }
+    val headerAlpha by remember {
+        derivedStateOf {
+            if (listState.firstVisibleItemIndex > 0) 1f
+            else (listState.firstVisibleItemScrollOffset / fadePx).coerceIn(0f, 1f)
         }
-        val featured = ordered.firstOrNull()
-        val genreList = titles.flatMap { it.genres }.groupingBy { it }.eachCount()
-            .entries.sortedByDescending { it.value }.take(10).map { it.key }
-        val fresh = titles.reversed().take(10)
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 28.dp)) {
-            if (featured != null) {
+    }
+
+    Box(Modifier.fillMaxSize().background(AniloverBackground)) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 28.dp),
+        ) {
+            if (heroes.isNotEmpty()) {
                 item(key = "hero") {
-                    Billboard(
-                        t = featured, history = history,
-                        inMyList = myList.contains(featured.id),
-                        genres = featured.genres.take(3), onGenre = onGenre,
-                        onOpen = { onOpen(featured) },
-                        onPlay = { ep, pos -> onPlay(featured, ep, pos) },
-                        onToggleMyList = { onToggleMyList(featured) },
+                    HeroPager(
+                        heroes = heroes, history = history, myList = myList,
+                        onOpen = onOpen, onPlay = onPlay, onToggleMyList = onToggleMyList,
                     )
                 }
+            } else {
+                item(key = "hero-space") { Spacer(Modifier.statusBarsPadding().height(56.dp)) }
             }
             if (resume.isNotEmpty()) {
                 item(key = "continue") {
@@ -174,7 +180,21 @@ fun HomeScreen(
                                 onClick = { onPlay(t, e.episode, e.positionMs) },
                                 onInfo = { onOpen(t) },
                                 onRemove = { onRemoveContinue(e) },
+                                modifier = Modifier.animateItem(),
                             )
+                        }
+                    }
+                }
+            }
+            if (top10.size >= 5) {
+                item(key = "top10") {
+                    SectionTitle("Top 10 Skor Tertinggi")
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        itemsIndexed(top10, key = { _, t -> t.id }) { i, t ->
+                            Top10Card(rank = i + 1, t = t, onClick = { onOpen(t) })
                         }
                     }
                 }
@@ -185,6 +205,7 @@ fun HomeScreen(
                         "Baru Ditambahkan", fresh, onOpen, newIds = newIds, myList = myList,
                         onPlayFirst = playFirst, onToggleMyList = onToggleMyList,
                         onDownloadFirst = onDownloadFirst,
+                        cardWidth = posterW, onSeeAll = onSeeNew,
                     )
                 }
             }
@@ -195,53 +216,148 @@ fun HomeScreen(
                         contentPadding = PaddingValues(horizontal = 20.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        items(genreList) { g ->
-                            Text(
-                                g, color = AniloverTextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium,
-                                modifier = Modifier.clip(AniloverShapes.Pill)
-                                    .background(AniloverSurface)
-                                    .border(1.dp, AniloverOutline, AniloverShapes.Pill)
-                                    .clickable { onGenre(g) }
-                                    .padding(horizontal = 16.dp, vertical = 9.dp),
-                            )
-                        }
+                        items(genreList, key = { it }) { g -> GenreChip(g) { onGenre(g) } }
                     }
                 }
             }
-            item(key = "all-title") { SectionTitle("Semua Judul") }
-            items(ordered.chunked(3), key = { row -> row.first().id }) { row ->
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    row.forEach { t ->
-                        PosterCard(
-                            t = t, modifier = Modifier.weight(1f),
-                            badge = if (newIds.contains(t.id)) "BARU" else null,
-                            progress = resume[t.id]?.fraction,
-                            inMyList = myList.contains(t.id),
-                            onPlayFirst = { playFirst(t) },
-                            onToggleMyList = { onToggleMyList(t) },
-                            onDownloadFirst = { onDownloadFirst(t) },
-                            onClick = { onOpen(t) },
-                        )
+            genreRows.forEach { (g, list) ->
+                item(key = "genre-row-$g") {
+                    PosterRow(
+                        "Pilihan $g", list.take(10), onOpen, newIds = newIds, myList = myList,
+                        onPlayFirst = playFirst, onToggleMyList = onToggleMyList,
+                        onDownloadFirst = onDownloadFirst,
+                        cardWidth = posterW, onSeeAll = { onGenre(g) },
+                    )
+                }
+            }
+            if (rest.isNotEmpty()) {
+                item(key = "all-title") { SectionTitle("Koleksi Lainnya") }
+                items(rest.chunked(3), key = { row -> "rest-" + row.first().id }) { row ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        row.forEach { t ->
+                            PosterCard(
+                                t = t, modifier = Modifier.weight(1f),
+                                badge = if (newIds.contains(t.id)) "BARU" else null,
+                                progress = resume[t.id]?.fraction,
+                                inMyList = myList.contains(t.id),
+                                onPlayFirst = { playFirst(t) },
+                                onToggleMyList = { onToggleMyList(t) },
+                                onDownloadFirst = { onDownloadFirst(t) },
+                                onClick = { onOpen(t) },
+                            )
+                        }
+                        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                     }
-                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
+        HomeHeader(
+            alpha = headerAlpha, onBell = onSeeNew,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 }
 
-/** Tombol ikon bulat bertonjol halus untuk bilah atas. */
+/** Header melayang: transparan di atas hero, perlahan solid saat di-scroll. */
+@Composable
+private fun HomeHeader(alpha: Float, onBell: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier.fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color.Black.copy(alpha = 0.55f * (1f - alpha)), Color.Transparent),
+                ),
+            )
+            .background(AniloverBackground.copy(alpha = alpha)),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().statusBarsPadding().height(56.dp)
+                .padding(start = 20.dp, end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.anilover_logo),
+                contentDescription = null,
+                modifier = Modifier.size(width = 22.dp, height = 27.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                "Anilover", color = AniloverTextPrimary,
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Spacer(Modifier.weight(1f))
+            HeaderAction(Icons.Outlined.Notifications, "Judul baru & segera tayang", onBell)
+        }
+        Box(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(1.dp)
+                .background(AniloverOutline.copy(alpha = alpha * 0.6f)),
+        )
+    }
+}
+
+/** Tombol ikon bulat transparan untuk header. */
 @Composable
 private fun HeaderAction(icon: androidx.compose.ui.graphics.vector.ImageVector, desc: String, onClick: () -> Unit) {
     IconButton(
         onClick = onClick,
-        modifier = Modifier.size(42.dp).background(AniloverSurface, AniloverShapes.Pill)
-            .border(1.dp, AniloverOutline, AniloverShapes.Pill),
+        modifier = Modifier.size(40.dp).background(Color.Black.copy(alpha = 0.35f), AniloverShapes.Pill),
     ) {
         Icon(icon, contentDescription = desc, tint = AniloverTextPrimary, modifier = Modifier.size(22.dp))
+    }
+}
+
+@Composable
+private fun HeroPager(
+    heroes: List<Title>,
+    history: List<WatchEntry>,
+    myList: Set<String>,
+    onOpen: (Title) -> Unit,
+    onPlay: (Title, Int, Long) -> Unit,
+    onToggleMyList: (Title) -> Unit,
+) {
+    val pagerState = rememberPagerState(pageCount = { heroes.size })
+    val current = pagerState.currentPage
+    val scrolling = pagerState.isScrollInProgress
+    // Putar otomatis tiap 6 detik; berhenti saat disentuh atau saat trailer sedang diputar.
+    LaunchedEffect(current, scrolling, heroes.size) {
+        if (heroes.size > 1 && !scrolling && heroes.getOrNull(current)?.trailer.isNullOrBlank()) {
+            delay(6000)
+            pagerState.animateScrollToPage((current + 1) % heroes.size)
+        }
+    }
+    Box(Modifier.fillMaxWidth()) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth(),
+        ) { page ->
+            val t = heroes.getOrNull(page) ?: return@HorizontalPager
+            Billboard(
+                t = t, history = history,
+                inMyList = myList.contains(t.id),
+                active = page == pagerState.currentPage,
+                onOpen = { onOpen(t) },
+                onPlay = { ep, pos -> onPlay(t, ep, pos) },
+                onToggleMyList = { onToggleMyList(t) },
+            )
+        }
+        if (heroes.size > 1) {
+            Row(
+                Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                repeat(heroes.size) { i ->
+                    val selected = i == current
+                    val w by animateDpAsState(if (selected) 18.dp else 6.dp, label = "heroDot")
+                    Box(
+                        Modifier.height(6.dp).width(w).clip(AniloverShapes.Pill)
+                            .background(if (selected) AniloverAccent else Color.White.copy(alpha = 0.35f)),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -255,15 +371,18 @@ fun PosterRow(
     onPlayFirst: ((Title) -> Unit)? = null,
     onToggleMyList: ((Title) -> Unit)? = null,
     onDownloadFirst: ((Title) -> Unit)? = null,
+    cardWidth: Dp = 116.dp,
+    onSeeAll: (() -> Unit)? = null,
 ) {
-    SectionTitle(title)
+    SectionTitle(title, onSeeAll)
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        items(list) { t ->
+        items(list, key = { it.id }) { t ->
             PosterCard(
                 t = t,
+                modifier = Modifier.width(cardWidth),
                 badge = if (newIds.contains(t.id)) "BARU" else null,
                 inMyList = myList?.contains(t.id) ?: false,
                 onPlayFirst = onPlayFirst?.let { f -> { f(t) } },
@@ -310,8 +429,9 @@ internal fun TrailerPlayer(url: String, controls: Boolean = false) {
 fun Top10Card(rank: Int, t: Title, onClick: () -> Unit) {
     val pressSource = remember { MutableInteractionSource() }
     val numStyle = TextStyle(
-        fontSize = if (rank < 10) 118.sp else 88.sp,
-        fontWeight = FontWeight.Black,
+        fontFamily = AniloverFont,
+        fontSize = if (rank < 10) 110.sp else 82.sp,
+        fontWeight = FontWeight.Bold,
         letterSpacing = (-6).sp,
     )
     Row(
@@ -319,8 +439,7 @@ fun Top10Card(rank: Int, t: Title, onClick: () -> Unit) {
             .clickable(interactionSource = pressSource, indication = LocalIndication.current, onClick = onClick),
         verticalAlignment = Alignment.Bottom,
     ) {
-        // Dua lapis: garis tepi terang + isi warna latar. (Sebelumnya garis tepi
-        // berwarna sama dengan latar sehingga angka tidak terlihat sama sekali.)
+        // Dua lapis: garis tepi terang + isi warna latar.
         Box(contentAlignment = Alignment.BottomEnd) {
             Text(
                 text = rank.toString(),
@@ -331,27 +450,32 @@ fun Top10Card(rank: Int, t: Title, onClick: () -> Unit) {
             )
             Text(text = rank.toString(), style = numStyle.copy(color = AniloverBackground))
         }
-        AsyncImage(
+        PosterImage(
             model = t.poster ?: t.banner,
             contentDescription = t.title,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.width(104.dp).aspectRatio(2f / 3f)
+            modifier = Modifier.width(100.dp).aspectRatio(2f / 3f)
                 .offset(x = (-14).dp)
-                .clip(RoundedCornerShape(4.dp)).background(AniloverSurface),
+                .clip(AniloverShapes.Poster).background(AniloverSurface),
         )
     }
 }
 
+/** Chip genre: tipis, dengan semburat aksen supaya terasa bisa diketuk. */
 @Composable
-private fun GenrePill(text: String, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
+private fun GenreChip(text: String, onClick: () -> Unit) {
     Text(
-        text, color = AniloverTextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium,
-        modifier = Modifier.clip(shape)
-            .background(AniloverBackground.copy(alpha = 0.55f))
-            .border(1.dp, AniloverTextPrimary.copy(alpha = 0.35f), shape)
+        text, color = AniloverTextPrimary,
+        style = MaterialTheme.typography.labelMedium,
+        modifier = Modifier.clip(AniloverShapes.Pill)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(AniloverAccent.copy(alpha = 0.16f), AniloverSurface),
+                ),
+            )
+            .border(1.dp, AniloverOutline, AniloverShapes.Pill)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 7.dp),
+            .padding(horizontal = 16.dp, vertical = 9.dp),
     )
 }
 
@@ -360,8 +484,7 @@ private fun Billboard(
     t: Title,
     history: List<WatchEntry>,
     inMyList: Boolean,
-    genres: List<String>,
-    onGenre: (String) -> Unit,
+    active: Boolean,
     onOpen: () -> Unit,
     onPlay: (Int, Long) -> Unit,
     onToggleMyList: () -> Unit,
@@ -370,20 +493,20 @@ private fun Billboard(
     val resume = history
         .filter { it.titleId == t.id && it.isStarted && !it.isFinished }
         .maxByOrNull { it.updatedAt }
-    // Billboard potret ala Netflix seluler: poster penuh (bukan banner yang
-    // dipotong sampai buram), judul di tengah bawah, dua tombol sejajar.
+    // Billboard potret ala Netflix seluler: poster penuh sampai ke belakang status bar,
+    // judul di tengah bawah, dua tombol sejajar.
     Box(
-        modifier.fillMaxWidth().aspectRatio(0.82f).background(AniloverSurface)
+        modifier.fillMaxWidth().aspectRatio(0.78f).background(AniloverSurface)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onOpen,
             ),
     ) {
-        if (!t.trailer.isNullOrBlank()) {
+        if (active && !t.trailer.isNullOrBlank()) {
             TrailerPlayer(url = t.trailer!!)
         } else {
-            AsyncImage(
+            PosterImage(
                 model = t.poster ?: t.banner,
                 contentDescription = t.title,
                 contentScale = ContentScale.Crop,
@@ -394,34 +517,25 @@ private fun Billboard(
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
-                    0f to Color.Black.copy(alpha = 0.55f),
-                    0.25f to Color.Transparent,
+                    0f to Color.Black.copy(alpha = 0.35f),
+                    0.2f to Color.Transparent,
                     0.50f to Color.Transparent,
                     0.78f to AniloverBackground.copy(alpha = 0.88f),
                     1f to AniloverBackground,
                 )
             )
         )
-        if (genres.isNotEmpty()) {
-            LazyRow(
-                modifier = Modifier.align(Alignment.TopStart).padding(top = 14.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(genres) { g -> GenrePill(g) { onGenre(g) } }
-            }
-        }
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
+                .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 30.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                t.seriesName, color = AniloverTextPrimary, fontSize = 28.sp,
-                fontWeight = FontWeight.Black, maxLines = 2,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                t.seriesName, color = AniloverTextPrimary, fontSize = 26.sp,
+                fontWeight = FontWeight.Bold, maxLines = 2,
+                textAlign = TextAlign.Center,
                 overflow = TextOverflow.Ellipsis,
-                lineHeight = 31.sp,
+                lineHeight = 32.sp,
             )
             Spacer(Modifier.height(8.dp))
             Row(
@@ -429,9 +543,9 @@ private fun Billboard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 t.matchPercent?.let {
-                    Text("$it% Cocok", color = AniloverGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("$it% Cocok", color = AniloverGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
-                t.year?.let { Text(it.toString(), color = AniloverTextDim, fontSize = 13.sp) }
+                t.year?.let { Text(it.toString(), color = AniloverTextDim, fontSize = 12.sp) }
                 t.statusLabel?.let {
                     Text(
                         it, color = AniloverTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold,
@@ -447,7 +561,7 @@ private fun Billboard(
                         .padding(horizontal = 5.dp, vertical = 1.dp),
                 )
                 if (t.episodes.isNotEmpty()) {
-                    Text("${t.episodes.size} Eps", color = AniloverTextDim, fontSize = 13.sp)
+                    Text("${t.episodes.size} Eps", color = AniloverTextDim, fontSize = 12.sp)
                 }
             }
             if (t.genres.isNotEmpty()) {
@@ -473,11 +587,11 @@ private fun Billboard(
                         containerColor = AniloverAccent, contentColor = AniloverOnAccent,
                     ),
                     shape = AniloverShapes.Button,
-                    modifier = Modifier.weight(1f).height(50.dp),
+                    modifier = Modifier.weight(1f).height(48.dp),
                 ) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(26.dp))
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(24.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text(if (resume != null) "Lanjutkan" else "Putar", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(if (resume != null) "Lanjutkan" else "Putar", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
                 Button(
                     onClick = onToggleMyList,
@@ -486,43 +600,68 @@ private fun Billboard(
                         contentColor = AniloverTextPrimary,
                     ),
                     shape = AniloverShapes.Button,
-                    modifier = Modifier.weight(1f).height(50.dp),
+                    modifier = Modifier.weight(1f).height(48.dp),
                 ) {
                     Icon(
                         if (inMyList) Icons.Outlined.Check else Icons.Outlined.Add,
-                        contentDescription = null, modifier = Modifier.size(24.dp),
+                        contentDescription = null, modifier = Modifier.size(22.dp),
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text("Daftarku", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text("Daftarku", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
             }
         }
     }
 }
 
+/** Judul bagian; bila [onSeeAll] diberikan, muncul tautan "Lihat semua ›" di kanan. */
 @Composable
-fun SectionTitle(text: String) {
-    Text(
-        text, color = AniloverTextPrimary, style = MaterialTheme.typography.titleLarge,
-        modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 12.dp),
-    )
+fun SectionTitle(text: String, onSeeAll: (() -> Unit)? = null) {
+    Row(
+        Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 24.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text, color = AniloverTextPrimary, style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.weight(1f),
+        )
+        if (onSeeAll != null) {
+            Row(
+                Modifier.clip(AniloverShapes.Pill).clickable(onClick = onSeeAll)
+                    .padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Lihat semua", color = AniloverAccent,
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                Icon(
+                    Icons.Filled.ChevronRight, contentDescription = null,
+                    tint = AniloverAccent, modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+    }
 }
 
-/** Judul kartu dua baris tetap: nama seri (tebal) + season/bagian (redup). */
+/** Judul kartu: nama seri (maks. 2 baris, tebal) + season/bagian atau tahun (redup). Tinggi menyesuaikan isi. */
 @Composable
 fun CardTitles(t: Title) {
-    Column(Modifier.height(42.dp).padding(top = 8.dp)) {
+    Column(Modifier.padding(top = 8.dp)) {
         Text(
-            t.seriesName, color = AniloverTextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-            maxLines = 1, overflow = TextOverflow.Ellipsis,
+            t.seriesName, color = AniloverTextPrimary,
+            style = MaterialTheme.typography.titleSmall.copy(fontSize = 12.sp, lineHeight = 16.sp),
+            maxLines = 2, overflow = TextOverflow.Ellipsis,
         )
         Text(
             t.titleSub ?: listOfNotNull(
                 t.year?.toString(),
                 if (t.episodes.isNotEmpty()) "${t.episodes.size} Episode" else null,
             ).joinToString(" · "),
-            color = AniloverTextDim, fontSize = 11.sp,
+            color = AniloverTextDim,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 15.sp),
             maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 2.dp),
         )
     }
 }
@@ -544,41 +683,44 @@ fun PosterCard(
     val hasMenu = onPlayFirst != null || onToggleMyList != null || onDownloadFirst != null
     val pressSource = remember { MutableInteractionSource() }
     Column(modifier) {
-        Box {
-            AsyncImage(
-                model = t.poster ?: t.banner,
-                contentDescription = t.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)
-                    .clip(AniloverShapes.Card).background(AniloverSurface)
-                    .border(1.dp, AniloverOutline.copy(alpha = 0.6f), AniloverShapes.Card)
-                    .pressScaleFx(pressSource)
+        Box(Modifier.pressScaleFx(pressSource)) {
+            // Poster polos tanpa bingkai: sudut halus saja.
+            Box(
+                Modifier.fillMaxWidth().aspectRatio(2f / 3f)
+                    .clip(AniloverShapes.Poster).background(AniloverSurface)
                     .combinedClickable(
                         interactionSource = pressSource,
                         indication = LocalIndication.current,
                         onClick = onClick,
                         onLongClick = if (hasMenu) ({ menuOpen = true }) else null,
                     ),
-            )
-            if (badge != null) {
-                Text(
-                    badge, color = AniloverOnAccent, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold,
-                    modifier = Modifier.align(Alignment.TopStart)
-                        .padding(8.dp)
-                        .background(AniloverGold, AniloverShapes.Chip)
-                        .padding(horizontal = 7.dp, vertical = 3.dp),
+            ) {
+                PosterImage(
+                    model = t.poster ?: t.banner,
+                    contentDescription = t.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
                 )
-            }
-            if (progress != null) {
-                Box(
-                    Modifier.align(Alignment.BottomStart).fillMaxWidth().height(5.dp)
-                        .clip(RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp))
-                        .background(Color.Black.copy(alpha = 0.55f)),
-                ) {
-                    Box(
-                        Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).height(5.dp)
-                            .background(AniloverAccent),
+                if (badge != null) {
+                    Text(
+                        badge, color = AniloverOnAccent, fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.4.sp,
+                        modifier = Modifier.align(Alignment.TopStart)
+                            .padding(6.dp)
+                            .background(AniloverGold, RoundedCornerShape(5.dp))
+                            .padding(horizontal = 5.dp, vertical = 2.dp),
                     )
+                }
+                if (progress != null) {
+                    Box(
+                        Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp)
+                            .background(Color.Black.copy(alpha = 0.55f)),
+                    ) {
+                        Box(
+                            Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).height(4.dp)
+                                .background(AniloverAccent),
+                        )
+                    }
                 }
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
@@ -623,9 +765,9 @@ fun EpisodeCard(t: Title, episode: Int, entry: WatchEntry?, onClick: () -> Unit)
     Column(Modifier.width(170.dp).clickable(onClick = onClick)) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-                .clip(AniloverShapes.Card).background(AniloverSurface),
+                .clip(AniloverShapes.Poster).background(AniloverSurface),
         ) {
-            AsyncImage(
+            PosterImage(
                 model = t.banner ?: t.poster,
                 contentDescription = "Episode $episode",
                 contentScale = ContentScale.Crop,
@@ -675,17 +817,18 @@ fun LandscapeCard(t: Title, onClick: () -> Unit) {
         Modifier.width(190.dp).pressScaleFx(pressSource)
             .clickable(interactionSource = pressSource, indication = LocalIndication.current, onClick = onClick),
     ) {
-        AsyncImage(
+        PosterImage(
             model = t.banner ?: t.poster,
             contentDescription = t.title,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-                .clip(AniloverShapes.Card).background(AniloverSurface),
+                .clip(AniloverShapes.Poster).background(AniloverSurface),
         )
         CardTitles(t)
     }
 }
 
+/** Kartu "Lanjutkan Menonton": info episode & sisa waktu di atas thumbnail, judul di bawah. */
 @Composable
 private fun ContinueCard(
     t: Title,
@@ -693,55 +836,66 @@ private fun ContinueCard(
     onClick: () -> Unit,
     onInfo: () -> Unit,
     onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    Column(Modifier.width(190.dp)) {
+    val pressSource = remember { MutableInteractionSource() }
+    Column(modifier.width(200.dp)) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-                .clip(AniloverShapes.Card).background(AniloverSurface)
-                .clickable(onClick = onClick),
+                .pressScaleFx(pressSource)
+                .clip(AniloverShapes.Poster).background(AniloverSurface)
+                .clickable(interactionSource = pressSource, indication = LocalIndication.current, onClick = onClick),
         ) {
-            AsyncImage(
+            PosterImage(
                 model = t.banner ?: t.poster,
                 contentDescription = t.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
             Box(
-                Modifier.align(Alignment.Center).size(44.dp)
-                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        0.40f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = 0.78f),
+                    ),
+                ),
+            )
+            Box(
+                Modifier.align(Alignment.Center).size(38.dp)
+                    .background(Color.Black.copy(alpha = 0.55f), AniloverShapes.Pill),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Icons.Filled.PlayArrow, contentDescription = "Lanjutkan",
-                    tint = Color.White, modifier = Modifier.size(30.dp),
+                    tint = Color.White, modifier = Modifier.size(26.dp),
                 )
             }
+            Text(
+                "E${entry.episode} · Sisa " + formatRemainingPlain(entry.positionMs, entry.durationMs),
+                color = Color.White, style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 10.dp),
+            )
             Box(
                 Modifier.align(Alignment.BottomStart).fillMaxWidth()
                     .height(4.dp).background(Color.White.copy(alpha = 0.35f)),
             ) {
                 Box(
-                    Modifier.fillMaxWidth(entry.fraction)
+                    Modifier.fillMaxWidth(entry.fraction.coerceIn(0f, 1f))
                         .height(4.dp).background(AniloverAccent),
                 )
             }
         }
-        Row(verticalAlignment = Alignment.Top) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    t.title, color = AniloverTextPrimary, fontSize = 12.sp,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-                Text(
-                    "E${entry.episode} · Sisa " + formatRemainingPlain(entry.positionMs, entry.durationMs),
-                    color = AniloverTextDim, fontSize = 11.sp,
-                )
-            }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                t.seriesName, color = AniloverTextPrimary,
+                style = MaterialTheme.typography.titleSmall.copy(fontSize = 12.sp, lineHeight = 16.sp),
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).padding(top = 2.dp),
+            )
             Box {
-                IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(40.dp)) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "Pilihan", tint = Color.White, modifier = Modifier.size(20.dp))
+                IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "Pilihan", tint = AniloverTextDim, modifier = Modifier.size(20.dp))
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(

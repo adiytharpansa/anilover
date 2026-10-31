@@ -117,7 +117,7 @@ fun DetailScreen(
                     // Trailer inline ala Netflix: bisu, mutar otomatis di hero.
                     TrailerPlayer(title.trailer!!)
                 } else {
-                    AsyncImage(
+                    PosterImage(
                         model = title.banner ?: title.poster,
                         contentDescription = title.title,
                         contentScale = ContentScale.Crop,
@@ -321,7 +321,7 @@ fun DetailScreen(
                         Modifier.width(118.dp).aspectRatio(16f / 9f)
                             .clip(RoundedCornerShape(6.dp)).background(AniloverSurface),
                     ) {
-                        AsyncImage(
+                        PosterImage(
                             model = ep.thumb ?: title.banner ?: title.poster,
                             contentDescription = "Episode ${ep.number}",
                             contentScale = ContentScale.Crop,

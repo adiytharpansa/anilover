@@ -24,6 +24,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import com.app.anilover.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
@@ -44,10 +47,21 @@ val AniloverGreen = Color(0xFF3DD68C)
 /** Skala radius: kecil (lencana), sedang (poster/kartu), besar (tombol/panel). */
 object AniloverShapes {
     val Chip = RoundedCornerShape(8.dp)
+    val Poster = RoundedCornerShape(10.dp)
     val Card = RoundedCornerShape(12.dp)
     val Button = RoundedCornerShape(14.dp)
     val Pill = RoundedCornerShape(50)
 }
+
+/**
+ * Font utama: Poppins (lisensi OFL) dibundel di res/font, jadi tampil sama di semua
+ * perangkat. Ganti font cukup dengan mengubah daftar Font di bawah ini.
+ */
+val AniloverFont = FontFamily(
+    Font(R.font.poppins_regular, FontWeight.Normal),
+    Font(R.font.poppins_medium, FontWeight.Medium),
+    Font(R.font.poppins_bold, FontWeight.Bold),
+)
 
 private val AniloverColors = darkColorScheme(
     primary = AniloverAccent,
@@ -64,13 +78,16 @@ private val AniloverColors = darkColorScheme(
 
 /** Skala tipografi: judul rapat & tebal, isi longgar agar nyaman dibaca. */
 private val AniloverTypography = Typography(
-    headlineLarge = TextStyle(fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp),
-    titleLarge = TextStyle(fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp),
-    titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold),
-    bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 22.sp),
-    bodyMedium = TextStyle(fontSize = 13.sp, lineHeight = 19.sp),
-    labelLarge = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
-    labelSmall = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.2.sp),
+    headlineLarge = TextStyle(fontFamily = AniloverFont, fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp),
+    titleLarge = TextStyle(fontFamily = AniloverFont, fontSize = 19.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp),
+    titleMedium = TextStyle(fontFamily = AniloverFont, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold),
+    titleSmall = TextStyle(fontFamily = AniloverFont, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold),
+    bodyLarge = TextStyle(fontFamily = AniloverFont, fontSize = 14.sp, lineHeight = 21.sp),
+    bodyMedium = TextStyle(fontFamily = AniloverFont, fontSize = 13.sp, lineHeight = 19.sp),
+    bodySmall = TextStyle(fontFamily = AniloverFont, fontSize = 12.sp, lineHeight = 17.sp),
+    labelLarge = TextStyle(fontFamily = AniloverFont, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold),
+    labelMedium = TextStyle(fontFamily = AniloverFont, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium),
+    labelSmall = TextStyle(fontFamily = AniloverFont, fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.2.sp),
 )
 
 /** Judul halaman tab: besar, rapat, dengan subjudul opsional. */

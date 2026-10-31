@@ -8,7 +8,9 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
+import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -27,7 +29,22 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.filled.NewReleases
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.NewReleases
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -125,6 +142,11 @@ class MainActivity : ComponentActivity() {
                 try { provider.remove() } catch (e2: Exception) { }
             }
         }
+        // Tepi-ke-tepi: hero & latar menembus status bar / bilah navigasi (gaya Netflix).
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         super.onCreate(savedInstanceState)
         // Izin notifikasi (Android 13+) untuk kabar judul baru & "Sudah tayang".
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -173,6 +195,7 @@ class MainActivity : ComponentActivity() {
 
 private enum class Tab { Home, Search, New, Downloads, Profile }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AppRoot(
     store: HistoryStore,
@@ -281,25 +304,45 @@ private fun AppRoot(
     BackHandler(enabled = selected != null) { selected = null }
     BackHandler(enabled = selected == null && genreSel != null) { genreSel = null }
 
+    // Status bar ditangani tiap layar (Beranda justru menembusnya); sisi bawah/samping ditangani Scaffold.
     Scaffold(
         containerColor = AniloverBackground,
+        contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         bottomBar = {
             if (selected == null && genreSel == null) {
+                // Garis tipis hanya di sisi atas (bukan kotak penuh).
                 NavigationBar(
                     containerColor = AniloverSurface,
                     tonalElevation = 0.dp,
-                    modifier = Modifier.border(1.dp, AniloverOutline.copy(alpha = 0.7f)),
+                    modifier = Modifier.drawBehind {
+                        drawLine(
+                            color = AniloverOutline.copy(alpha = 0.7f),
+                            start = Offset(0f, 0f),
+                            end = Offset(size.width, 0f),
+                            strokeWidth = 1.dp.toPx(),
+                        )
+                    },
                 ) {
-                    NavItem(Tab.Home, tab, Icons.Filled.Home, "Beranda") { tab = it }
-                    NavItem(Tab.Search, tab, Icons.Filled.Search, "Cari") { tab = it }
-                    NavItem(Tab.New, tab, Icons.Filled.Whatshot, "Baru") { tab = it }
-                    NavItem(Tab.Downloads, tab, Icons.Filled.Download, "Unduhan") { tab = it }
-                    NavItem(Tab.Profile, tab, Icons.Filled.Person, "Profil") { tab = it }
+                    NavItem(Tab.Home, tab, Icons.Filled.Home, Icons.Outlined.Home, "Beranda") { tab = it }
+                    NavItem(Tab.Search, tab, Icons.Filled.Search, Icons.Outlined.Search, "Cari") { tab = it }
+                    NavItem(Tab.New, tab, Icons.Filled.NewReleases, Icons.Outlined.NewReleases, "Baru") { tab = it }
+                    NavItem(Tab.Downloads, tab, Icons.Filled.Download, Icons.Outlined.Download, "Unduhan") { tab = it }
+                    NavItem(Tab.Profile, tab, Icons.Filled.Person, Icons.Outlined.Person, "Profil") { tab = it }
                 }
             }
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding).background(AniloverBackground)) {
+        // Layar penuh (detail, genre, error, skeleton) memberi ruang status bar sendiri;
+        // konten tab menanganinya di dalam AnimatedContent agar tidak melompat saat berpindah tab.
+        val tabContent = selected == null && genreSel == null && titles != null
+        Box(
+            Modifier.fillMaxSize()
+                .padding(padding)
+                .consumeWindowInsets(padding)
+                .imePadding()
+                .then(if (tabContent) Modifier else Modifier.statusBarsPadding())
+                .background(AniloverBackground),
+        ) {
             when {
                 selected != null -> {
                     val t = titles?.firstOrNull { it.id == selected!!.id } ?: selected!!
@@ -365,6 +408,7 @@ private fun AppRoot(
                     },
                     label = "tab",
                 ) { currentTab ->
+                    Box(if (currentTab == Tab.Home) Modifier else Modifier.statusBarsPadding()) {
                     when (currentTab) {
                     Tab.Home -> HomeScreen(
                         titles = titles!!,
@@ -384,8 +428,7 @@ private fun AppRoot(
                                 store.remove(entry.titleId, entry.episode)
                             }
                         },
-                        onSearch = { tab = Tab.Search },
-                        onProfile = { tab = Tab.Profile },
+                        onSeeNew = { tab = Tab.New },
                         onGenre = { genreSel = it },
                     )
                     Tab.Search -> SearchScreen(
@@ -435,6 +478,7 @@ private fun AppRoot(
                         onClearHistory = { scope.launch { store.clearAll() } },
                     )
                     }
+                    }
                 }
             }
         }
@@ -445,21 +489,24 @@ private fun AppRoot(
 private fun androidx.compose.foundation.layout.RowScope.NavItem(
     item: Tab,
     current: Tab,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    selectedIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    unselectedIcon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     onSelect: (Tab) -> Unit,
 ) {
+    val selected = current == item
     NavigationBarItem(
-        selected = current == item,
+        selected = selected,
         onClick = { onSelect(item) },
-        icon = { Icon(icon, contentDescription = label) },
-        label = { Text(label, fontSize = 11.sp, fontWeight = if (current == item) FontWeight.SemiBold else FontWeight.Normal) },
+        // Ikon terisi untuk tab aktif, ikon garis untuk yang lain.
+        icon = { Icon(if (selected) selectedIcon else unselectedIcon, contentDescription = label) },
+        label = { Text(label, fontSize = 11.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal) },
         colors = NavigationBarItemDefaults.colors(
             selectedIconColor = AniloverAccent,
             selectedTextColor = AniloverAccent,
             unselectedIconColor = AniloverTextDim,
             unselectedTextColor = AniloverTextDim,
-            indicatorColor = AniloverAccent.copy(alpha = 0.18f),
+            indicatorColor = Color.Transparent,
         ),
     )
 }
