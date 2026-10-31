@@ -33,6 +33,10 @@ Build: GitHub Actions (`assembleDebug`) — artefak `Anilover-debug-apk`.
   "Audio & Subtitle" sebagai bagian **Closed Caption (CC)** berlabel CC1/CC3; trek berbahasa
   "und" otomatis terpilih bila tidak ada subtitle bahasa pilihan, dan bisa dijadikan default
   lewat opsi baru "CC bawaan" di Profil.
+- **Ikon aplikasi dirapikan & diseragamkan**: segitiga play sakura (#FF96B6 → #FF5C85,
+  sama dengan `AniloverAccent`) ber-sudut-bulat di atas dasar `#0D0E17` (`AniloverBackground`) —
+  untuk launcher (legacy + adaptive v26), splash, logo dalam aplikasi (transparan), ikon
+  notifikasi, dan Play Store 512px; sebelumnya hijau polos di atas putih.
 
 ## Perubahan 2.7.0
 

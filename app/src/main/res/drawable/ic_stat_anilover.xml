@@ -3,7 +3,11 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- Segitiga play putih dengan sudut membulat — sama dengan mark ikon launcher. -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M8,5v14l11,-7z" />
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.2"
+        android:strokeLineJoin="round"
+        android:pathData="M7.6,6.4 L18.0,12 L7.6,17.6 Z" />
 </vector>
