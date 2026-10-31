@@ -5,6 +5,8 @@ on:
   push:
     branches: [arena/6ccedc94-anilover]
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -28,9 +30,10 @@ jobs:
         run: |
           git config user.email "ci@anilover.local"
           git config user.name "Anilover CI"
+          git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/adiytharpansa/anilover.git"
           git add build-log.txt
-          git commit -m "ci: log build gagal [skip ci]" || true
-          git push origin HEAD:arena/6ccedc94-anilover || true
+          git commit -m "ci: log build gagal [skip ci]" || echo "no changes"
+          git push origin HEAD:arena/6ccedc94-anilover
       - uses: actions/upload-artifact@v4
         if: always()
         with:
