@@ -42,3 +42,12 @@ Berkas diubah
 
 - MainActivity.kt : fungsi loadCatalog() bersama; tarik-untuk-segarkan (refreshHome); muat otomatis saat aplikasi dibuka kembali (data > 3 menit) dan berkala tiap 5 menit saat aplikasi terlihat. Bila gagal, data lama tetap tampil + toast.
 - ui/HomeScreen.kt : PullToRefreshBox (Material3) membungkus daftar; indikator ditaruh di bawah header melayang. Parameter baru: isRefreshing, onRefresh.
+
+---
+# Tambahan: Halaman pemutar khusus + komentar
+
+- player/PlayerActivity.kt : tombol Putar kini membuka halaman tontonan. Potret = video 16:9 di atas (kontrol ringkas) + halaman info; lanskap / tombol layar penuh = video penuh seperti sebelumnya. Putar perangkat otomatis masuk/keluar layar penuh; tombol Kembali keluar dari layar penuh dulu.
+- player/WatchPage.kt (baru) : judul + info, aksi (Daftarku/Tidak Suka/Suka/Bagikan), baris episode, komentar (Teratas/Terbaru, balasan, suka, hapus milik sendiri, kolom tulis tersemat).
+- data/CommentRepository.kt (baru) : komentar realtime di Firestore, per episode.
+- MainActivity.kt : kirim info skor/tahun/genre ke pemutar. AndroidManifest.xml : orientasi tidak lagi dikunci lanskap.
+- app/build.gradle.kts : dependensi firebase-firestore. Setup: lihat PANDUAN-FIREBASE.md (bagian Komentar).

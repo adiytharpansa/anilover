@@ -5,7 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.media.AudioManager
+import android.content.res.Configuration
 import android.os.Bundle
+import android.view.OrientationEventListener
+import androidx.activity.OnBackPressedCallback
 import android.util.Rational
 import android.view.WindowManager
 import android.widget.Toast
@@ -25,6 +28,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -48,6 +53,8 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.PictureInPicture
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
@@ -112,12 +119,16 @@ import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManagerListener
 import com.app.anilover.R
+import com.app.anilover.data.AuthRepository
+import com.app.anilover.data.CommentRepository
+import com.app.anilover.data.CommentsState
 import com.app.anilover.data.HistoryStore
 import com.app.anilover.data.LibraryStore
 import com.app.anilover.data.AniloverSettings
 import com.app.anilover.data.WatchEntry
 import com.app.anilover.data.CatalogApi
 import com.app.anilover.ui.AniloverAccent
+import com.app.anilover.ui.AniloverBackground
 import com.app.anilover.ui.AniloverOnAccent
 import com.app.anilover.ui.AniloverTheme
 import com.app.anilover.ui.AniloverOutline
@@ -146,6 +157,7 @@ class PlayerActivity : FragmentActivity() {
         const val EXTRA_START_POS = "start_pos"
         const val EXTRA_AUTOPLAY = "autoplay_next"
         const val EXTRA_SUBTITLE = "subtitle_default"
+        const val EXTRA_META = "meta"
     }
 
     private var playerRef: ExoPlayer? = null
@@ -154,18 +166,70 @@ class PlayerActivity : FragmentActivity() {
     private lateinit var store: HistoryStore
     private var inPip by mutableStateOf(false)
     private var bgService = false
+    private var fullscreen by mutableStateOf(false)
+    private var lockedLandscape = false
+    private var orientationLocked = false
+    private val orientationListener by lazy {
+        object : OrientationEventListener(this) {
+            override fun onOrientationChanged(deg: Int) {
+                if (deg == ORIENTATION_UNKNOWN || !orientationLocked) return
+                val landscape = deg in 60..120 || deg in 240..300
+                val portrait = deg <= 30 || deg >= 330 || deg in 150..210
+                // Tombol layar penuh mengunci orientasi sementara; begitu perangkat benar-benar
+                // diputar ke arah itu, kunci dilepas agar putar-otomatis normal kembali.
+                if ((lockedLandscape && landscape) || (!lockedLandscape && portrait)) releaseOrientationLock()
+            }
+        }
+    }
+
+    private fun releaseOrientationLock() {
+        orientationLocked = false
+        orientationListener.disable()
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+    }
+
+    private fun toggleFullscreen() {
+        val toLandscape = !fullscreen
+        lockedLandscape = toLandscape
+        orientationLocked = true
+        requestedOrientation = if (toLandscape) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        else ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        if (orientationListener.canDetectOrientation()) orientationListener.enable()
+        applyFullscreen(toLandscape)
+    }
+
+    private fun applyFullscreen(on: Boolean) {
+        fullscreen = on
+        val c = WindowInsetsControllerCompat(window, window.decorView)
+        if (on) {
+            c.hide(WindowInsetsCompat.Type.systemBars())
+            c.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        } else {
+            c.show(WindowInsetsCompat.Type.systemBars())
+            c.isAppearanceLightStatusBars = false
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        applyFullscreen(newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         com.app.anilover.data.CrashReporter.install(applicationContext)
         super.onCreate(savedInstanceState)
         store = HistoryStore(applicationContext)
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        // Halaman tontonan: potret (video di atas + info & komentar); putar ke lanskap
+        // atau ketuk tombol layar penuh untuk video penuh.
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_FULL_USER
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowInsetsControllerCompat(window, window.decorView).apply {
-            hide(WindowInsetsCompat.Type.systemBars())
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        }
+        applyFullscreen(resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (fullscreen) toggleFullscreen() else finish()
+            }
+        })
 
         titleId = intent.getStringExtra(EXTRA_TITLE_ID) ?: ""
         val title = intent.getStringExtra(EXTRA_TITLE) ?: ""
@@ -173,6 +237,7 @@ class PlayerActivity : FragmentActivity() {
         val startPos = intent.getLongExtra(EXTRA_START_POS, 0L)
         val autoplayNext = intent.getBooleanExtra(EXTRA_AUTOPLAY, true)
         val subtitleDefault = intent.getStringExtra(EXTRA_SUBTITLE) ?: "id"
+        val meta = intent.getStringExtra(EXTRA_META) ?: ""
         val episodes = parseEpisodes(intent.getStringExtra(EXTRA_EPISODES) ?: "[]")
         PlaybackHolder.title = title
         PlaybackHolder.episode = currentEp
@@ -189,7 +254,10 @@ class PlayerActivity : FragmentActivity() {
                     subtitleDefault = subtitleDefault,
                     store = store,
                     inPip = inPip,
-                    onBack = { finish() },
+                    meta = meta,
+                    fullscreen = fullscreen,
+                    onToggleFullscreen = { toggleFullscreen() },
+                    onBack = { if (fullscreen) toggleFullscreen() else finish() },
                     onEnterPip = { enterPip() },
                     onPlayerCreated = { playerRef = it; PlaybackHolder.player = it; startBackgroundService() },
                     onEpisodeChanged = { currentEp = it; PlaybackHolder.episode = it },
@@ -252,6 +320,7 @@ class PlayerActivity : FragmentActivity() {
     }
 
     override fun onDestroy() {
+        if (orientationLocked) orientationListener.disable()
         stopService(Intent(this, PlaybackService::class.java))
         PlaybackHolder.player = null
         playerRef?.release()
@@ -328,6 +397,9 @@ private fun PlayerScreen(
     subtitleDefault: String,
     store: HistoryStore,
     inPip: Boolean,
+    meta: String,
+    fullscreen: Boolean,
+    onToggleFullscreen: () -> Unit,
     onBack: () -> Unit,
     onEnterPip: () -> Unit,
     onPlayerCreated: (ExoPlayer) -> Unit,
@@ -337,6 +409,9 @@ private fun PlayerScreen(
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
 
     var currentEp by remember { mutableIntStateOf(initialEpisode) }
+    val thread = CommentRepository.threadId(titleId, currentEp)
+    val commentsState by remember(thread) { CommentRepository.observe(thread) }
+        .collectAsState(initial = CommentsState.Loading)
     val currentPlaylist = episodes.firstOrNull { it.number == currentEp }?.playlist ?: ""
 
     val player = remember {
@@ -346,6 +421,12 @@ private fun PlayerScreen(
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
     val library = remember { LibraryStore(context) }
     val aniloverSettings by library.settings.collectAsState(initial = AniloverSettings())
+    val ratings by library.ratings.collectAsState(initial = emptyMap())
+    val myList by library.myList.collectAsState(initial = emptySet())
+    val account by AuthRepository.user.collectAsState()
+    // Mode halaman tontonan (potret): video 16:9 di atas, info + komentar di bawah.
+    val watchMode = !fullscreen && !inPip
+    val compact = watchMode
 
     // ---- Cast ke TV (Google Cast, Default Media Receiver) ----
     val castContext = remember {
@@ -650,7 +731,8 @@ private fun PlayerScreen(
         seekFeedback = if (delta > 0) "+10 dtk" else "-10 dtk"
     }
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    val videoLayer: @Composable (Modifier) -> Unit = { videoMod ->
+    Box(videoMod.background(Color.Black)) {
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -884,8 +966,10 @@ private fun PlayerScreen(
                     IconButton(onClick = onEnterPip) {
                         Icon(Icons.Filled.PictureInPicture, contentDescription = "Picture in Picture", tint = Color.White)
                     }
-                    IconButton(onClick = { locked = true; showControls = false }) {
-                        Icon(Icons.Filled.LockOpen, contentDescription = "Kunci layar", tint = Color.White)
+                    if (!compact) {
+                        IconButton(onClick = { locked = true; showControls = false }) {
+                            Icon(Icons.Filled.LockOpen, contentDescription = "Kunci layar", tint = Color.White)
+                        }
                     }
                 }
 
@@ -929,11 +1013,11 @@ private fun PlayerScreen(
                         IconButton(onClick = { panel = Panel.Speed }) {
                             Icon(Icons.Filled.Speed, contentDescription = "Kecepatan", tint = Color.White)
                         }
-                        Text(speedLabel(speed), color = Color.White, fontSize = 12.sp)
+                        if (!compact) Text(speedLabel(speed), color = Color.White, fontSize = 12.sp)
                         IconButton(onClick = { panel = Panel.Quality }) {
                             Icon(Icons.Filled.HighQuality, contentDescription = "Kualitas", tint = Color.White)
                         }
-                        IconButton(onClick = { panel = Panel.Tracks }) {
+                        if (!compact) IconButton(onClick = { panel = Panel.Tracks }) {
                             Icon(Icons.Filled.Audiotrack, contentDescription = "Audio", tint = Color.White)
                         }
                         if (nextEp != null) {
@@ -941,10 +1025,10 @@ private fun PlayerScreen(
                                 Icon(Icons.Filled.SkipNext, contentDescription = "Episode berikutnya", tint = Color.White)
                             }
                         }
-                        IconButton(onClick = { panel = Panel.Episodes }) {
+                        if (!compact) IconButton(onClick = { panel = Panel.Episodes }) {
                             Icon(Icons.Filled.List, contentDescription = "Episode", tint = Color.White)
                         }
-                        IconButton(onClick = {
+                        if (!compact) IconButton(onClick = {
                             resizeMode = when (resizeMode) {
                                 AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_FILL
                                 AspectRatioFrameLayout.RESIZE_MODE_FILL -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
@@ -952,6 +1036,13 @@ private fun PlayerScreen(
                             }
                         }) {
                             Icon(Icons.Filled.AspectRatio, contentDescription = "Ukuran layar", tint = Color.White)
+                        }
+                        IconButton(onClick = onToggleFullscreen) {
+                            Icon(
+                                if (compact) Icons.Filled.Fullscreen else Icons.Filled.FullscreenExit,
+                                contentDescription = if (compact) "Layar penuh" else "Keluar layar penuh",
+                                tint = Color.White,
+                            )
                         }
                     }
                 }
@@ -969,7 +1060,7 @@ private fun PlayerScreen(
                 color = AniloverAccent,
                 shape = AniloverShapes.Button,
                 modifier = Modifier.align(Alignment.BottomEnd)
-                    .padding(end = 22.dp, bottom = 108.dp)
+                    .padding(end = if (compact) 10.dp else 22.dp, bottom = if (compact) 56.dp else 108.dp)
                     .clickable {
                         val target = minOf(skipTargetMs, (durationMs - 5_000).coerceAtLeast(0L))
                         player.seekTo(target)
@@ -991,7 +1082,7 @@ private fun PlayerScreen(
                 color = AniloverSurface,
                 shape = AniloverShapes.Button,
                 modifier = Modifier.align(Alignment.BottomEnd)
-                    .padding(end = 22.dp, bottom = 108.dp)
+                    .padding(end = if (compact) 10.dp else 22.dp, bottom = if (compact) 56.dp else 108.dp)
                     .clickable { switchTo(nextEp) },
             ) {
                 Text(
@@ -1004,10 +1095,11 @@ private fun PlayerScreen(
         // Post-play: episode berikutnya
         if (ended && nextEp != null && !inPip) {
             Box(
-                Modifier.align(Alignment.BottomEnd).padding(22.dp).width(300.dp)
+                Modifier.align(Alignment.BottomEnd).padding(if (compact) 8.dp else 22.dp)
+                    .width(if (compact) 240.dp else 300.dp)
                     .background(AniloverSurface, AniloverShapes.Card)
                     .border(1.dp, AniloverOutline, AniloverShapes.Card)
-                    .padding(16.dp),
+                    .padding(if (compact) 10.dp else 16.dp),
             ) {
                 Column {
                     Text("Episode Berikutnya", color = AniloverTextDim, fontSize = 12.sp)
@@ -1049,7 +1141,49 @@ private fun PlayerScreen(
             }
         }
 
-        // Panel bawah
+    }
+    }
+
+    Box(Modifier.fillMaxSize().background(if (watchMode) AniloverBackground else Color.Black)) {
+        if (watchMode) {
+            Column(Modifier.fillMaxSize()) {
+                Box(Modifier.fillMaxWidth().background(Color.Black).statusBarsPadding()) {
+                    videoLayer(Modifier.fillMaxWidth().aspectRatio(16f / 9f))
+                }
+                WatchPage(
+                    title = title,
+                    meta = meta,
+                    currentEp = currentEp,
+                    episodes = episodes,
+                    onSelectEpisode = { switchTo(it) },
+                    onSeeAllEpisodes = { panel = Panel.Episodes },
+                    inMyList = myList.contains(titleId),
+                    rating = ratings[titleId] ?: 0,
+                    onToggleMyList = { scope.launch { library.toggleMyList(titleId) } },
+                    onRate = { v -> scope.launch { library.setRating(titleId, v) } },
+                    onShare = {
+                        val send = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, "Tonton $title di Anilover")
+                        }
+                        context.startActivity(Intent.createChooser(send, "Bagikan"))
+                    },
+                    thread = thread,
+                    commentsState = commentsState,
+                    user = account,
+                    onNeedLogin = {
+                        Toast.makeText(
+                            context, "Masuk atau daftar lewat tab Profil untuk berkomentar",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    },
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                )
+            }
+        } else {
+            videoLayer(Modifier.fillMaxSize())
+        }
+
         when (panel) {
             Panel.Speed -> PanelSheet(onClose = { panel = Panel.None }) {
                 Text("Kecepatan Putar", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)

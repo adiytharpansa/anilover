@@ -33,7 +33,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
             android:launchMode="singleTop"
             android:supportsPictureInPicture="true"
-            android:screenOrientation="sensorLandscape"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.Anilover.Player" />
         <service
             android:name=".player.PlaybackService"

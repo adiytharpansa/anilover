@@ -191,6 +191,14 @@ class MainActivity : ComponentActivity() {
                             putExtra(PlayerActivity.EXTRA_START_POS, startPos)
                             putExtra(PlayerActivity.EXTRA_AUTOPLAY, autoplay)
                             putExtra(PlayerActivity.EXTRA_SUBTITLE, subtitle)
+                            putExtra(
+                                PlayerActivity.EXTRA_META,
+                                listOfNotNull(
+                                    title.score?.let { "★ " + String.format(java.util.Locale.US, "%.1f", it) },
+                                    title.year?.toString(),
+                                    title.genres.take(3).joinToString(", ").ifBlank { null },
+                                ).joinToString(" · "),
+                            )
                         }
                     )
                 }

@@ -38,3 +38,33 @@ Commit & push seperti biasa; GitHub Actions akan membangun APK dengan Firebase a
 - Riwayat tonton, Daftarku, dan unduhan masih **tersimpan lokal di perangkat** (bukan di cloud),
   jadi masuk di HP lain belum membawa datanya. Sinkronisasi butuh Firestore (bisa ditambahkan nanti).
 - Masuk dengan Google belum ada (butuh Web client ID + SHA-1 + Credential Manager).
+
+---
+# Komentar (Cloud Firestore)
+
+Halaman pemutar punya kolom komentar (balasan, suka, hapus komentar sendiri, realtime).
+Datanya disimpan di Firestore, jadi aktifkan satu kali:
+
+1. Firebase Console -> **Build -> Firestore Database -> Create database** (mode produksi, pilih lokasi terdekat, mis. asia-southeast2/Jakarta).
+2. Tab **Rules**, tempel aturan berikut lalu **Publish**:
+
+        rules_version = '2';
+        service cloud.firestore {
+          match /databases/{database}/documents {
+            match /comments/{id} {
+              allow read: if true;
+              allow create: if request.auth != null
+                && request.resource.data.uid == request.auth.uid
+                && request.resource.data.text is string
+                && request.resource.data.text.size() > 0
+                && request.resource.data.text.size() <= 500;
+              allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+              // Orang lain hanya boleh mengubah daftar "suka" (likedBy).
+              allow update: if request.auth != null
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy']);
+            }
+          }
+        }
+
+3. Tidak perlu membuat indeks. Hanya pengguna yang sudah masuk yang bisa menulis; tamu hanya membaca.
+- Tanpa Firebase (tidak ada google-services.json) bagian komentar menampilkan "Komentar belum aktif".
