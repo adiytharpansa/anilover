@@ -36,3 +36,9 @@ Berkas diubah
 - build.gradle.kts & app/build.gradle.kts : plugin google-services (aktif otomatis hanya bila app/google-services.json ada), Firebase BoM 33.1.2 + firebase-auth
 - MainActivity.kt        : AuthRepository.init, AuthGate membungkus AppRoot, data akun & Keluar dikirim ke Profil
 - ui/Screens.kt (ProfileScreen) : nama/email akun asli, tombol Keluar (dengan konfirmasi) / Masuk atau daftar untuk tamu
+
+---
+# Tambahan: Muat otomatis & efek segarkan di Beranda
+
+- MainActivity.kt : fungsi loadCatalog() bersama; tarik-untuk-segarkan (refreshHome); muat otomatis saat aplikasi dibuka kembali (data > 3 menit) dan berkala tiap 5 menit saat aplikasi terlihat. Bila gagal, data lama tetap tampil + toast.
+- ui/HomeScreen.kt : PullToRefreshBox (Material3) membungkus daftar; indikator ditaruh di bawah header melayang. Parameter baru: isRefreshing, onRefresh.

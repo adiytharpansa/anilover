@@ -93,6 +93,7 @@ import kotlinx.coroutines.delay
  * Top 10, Baru Ditambahkan, genre, baris pilihan per genre, lalu sisa koleksi.
  * Setiap judul hanya muncul di satu "blok utama" supaya halaman tidak terasa berulang.
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     titles: List<Title>,
@@ -107,6 +108,8 @@ fun HomeScreen(
     onRemoveContinue: (WatchEntry) -> Unit,
     onSeeNew: () -> Unit,
     onGenre: (String) -> Unit,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
 ) {
     val byId = titles.associateBy { it.id }
     val resume: Map<String, WatchEntry> = history
@@ -151,6 +154,23 @@ fun HomeScreen(
     }
 
     Box(Modifier.fillMaxSize().background(AniloverBackground)) {
+        val pullState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
+        androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            state = pullState,
+            modifier = Modifier.fillMaxSize(),
+            indicator = {
+                // Turun di bawah header melayang supaya indikator tidak tertutup.
+                androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator(
+                    state = pullState,
+                    isRefreshing = isRefreshing,
+                    modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 56.dp),
+                    containerColor = AniloverSurface,
+                    color = AniloverAccent,
+                )
+            },
+        ) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -253,6 +273,7 @@ fun HomeScreen(
                     }
                 }
             }
+        }
         }
         HomeHeader(
             alpha = headerAlpha, onBell = onSeeNew,

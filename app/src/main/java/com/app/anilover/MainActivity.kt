@@ -69,7 +69,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -258,23 +260,77 @@ private fun AppRoot(
         )
     }
 
-    LaunchedEffect(reloadKey) {
-        if (titles.isNullOrEmpty()) {
-            val cached = try { library.readCatalogCache() } catch (e: Exception) { emptyList() }
-            if (cached.isNotEmpty()) titles = cached
-        }
+    var refreshing by remember { mutableStateOf(false) }
+    var lastLoad by remember { mutableLongStateOf(0L) }
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+
+    // Ambil katalog terbaru. Mengembalikan true bila berhasil. Bila gagal, data lama
+    // tetap tampil (galat layar penuh hanya muncul saat belum ada data sama sekali).
+    suspend fun loadCatalog(): Boolean {
+        var ok = false
         try {
             val raw = CatalogApi.fetchRawCatalog()
             val fresh = CatalogApi.parseCatalog(raw)
             titles = fresh
             error = null
+            ok = true
+            lastLoad = System.currentTimeMillis()
             try { library.saveCatalogCache(raw) } catch (e: Exception) { }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             if (titles.isNullOrEmpty()) {
                 error = "Tidak bisa memuat katalog. Periksa koneksi internetmu."
             }
         }
-        try { soon = CatalogApi.fetchSoon() } catch (e: Exception) { /* Segera Tayang tambahan */ }
+        try { soon = CatalogApi.fetchSoon() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { /* Segera Tayang tambahan */ }
+        return ok
+    }
+
+    LaunchedEffect(reloadKey) {
+        if (titles.isNullOrEmpty()) {
+            val cached = try { library.readCatalogCache() } catch (e: Exception) { emptyList() }
+            if (cached.isNotEmpty()) titles = cached
+        }
+        loadCatalog()
+    }
+
+    // Tarik-untuk-segarkan di Beranda.
+    val refreshHome: () -> Unit = {
+        if (!refreshing) {
+            scope.launch {
+                refreshing = true
+                val ok = try { loadCatalog() } finally { refreshing = false }
+                if (!ok) {
+                    android.widget.Toast.makeText(
+                        context, "Gagal menyegarkan. Periksa koneksi internetmu.",
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
+        }
+    }
+
+    // Muat otomatis (diam-diam, tanpa layar loading): saat aplikasi dibuka kembali
+    // bila data sudah lebih dari 3 menit, dan berkala tiap 5 menit selama aplikasi terlihat.
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME &&
+                lastLoad != 0L && System.currentTimeMillis() - lastLoad > 3 * 60_000L && !refreshing
+            ) {
+                scope.launch { loadCatalog() }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(5 * 60_000L)
+            if (lifecycleOwner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED) && !refreshing) {
+                loadCatalog()
+            }
+        }
     }
 
     // Unduhan Cerdas: sesudah episode selesai ditonton, unduh lanjutannya dan
@@ -436,6 +492,8 @@ private fun AppRoot(
                         },
                         onSeeNew = { tab = Tab.New },
                         onGenre = { genreSel = it },
+                        isRefreshing = refreshing,
+                        onRefresh = refreshHome,
                     )
                     Tab.Search -> SearchScreen(
                         titles = titles!!,
