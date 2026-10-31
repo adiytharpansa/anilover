@@ -51,3 +51,38 @@ Berkas diubah
 - data/CommentRepository.kt (baru) : komentar realtime di Firestore, per episode.
 - MainActivity.kt : kirim info skor/tahun/genre ke pemutar. AndroidManifest.xml : orientasi tidak lagi dikunci lanskap.
 - app/build.gradle.kts : dependensi firebase-firestore. Setup: lihat PANDUAN-FIREBASE.md (bagian Komentar).
+
+---
+# Tambahan: Sinkronisasi cloud (Firestore) saat masuk — v2.8.0
+
+- data/CloudSync.kt (baru) : satu dokumen `users/{uid}` di Firestore berisi riwayat tonton
+  (maks 500 entri terbaru), Daftarku, nilai, sembunyikan-dari-Lanjutkan, pengingat, dan
+  pengaturan. Aktif hanya saat pengguna masuk; tamu tetap lokal.
+- Penggabungan saat masuk: yang lebih baru menang (server timestamp); selama sesi,
+  perubahan lokal diunggah otomatis (debounce 1,5 dtk) dan perubahan dari perangkat lain
+  diterapkan realtime. `clientId` (UUID perangkat) + hash data mencegah loop antar perangkat.
+- data/Api.kt : HistoryStore.replaceAll + LibraryStore.replaceMyList/replaceRatings/
+  replaceHidden/replaceReminders/replaceSettings untuk menerapkan data cloud ke lokal.
+- MainActivity.kt : CloudSync.attach(...) setelah AuthRepository.init.
+- PANDUAN-FIREBASE.md : aturan Firestore baru `users/{userId}` (hanya pemilik yang baca/tulis).
+
+---
+# Tambahan: Pencarian mencakup sinopsis — v2.8.0
+
+- ui/Screens.kt (SearchScreen) : hasil pencarian kini juga mencocokkan sinopsis judul,
+  tidak hanya judul & genre.
+
+---
+# Tambahan: Urutan "Baru" lebih kokoh — v2.8.0
+
+- data/Api.kt : Title kini membaca cap waktu terbit opsional (`addedAt`/`added`, detik
+  maupun milidetik); helper `List<Title>.newestFirst()` memakai cap itu bila ada,
+  jika tidak kembali ke asumsi lama (urutan katalog dibalik).
+- ui/HomeScreen.kt & ui/Screens.kt (NewScreen) : baris "Baru Ditambahkan"/"Koleksi Lainnya"
+  memakai newestFirst() sehingga tidak lagi bergantung mentah pada urutan katalog.
+
+---
+# Koreksi kecil — v2.8.0
+
+- data/Api.kt : komentar field `adult` tidak lagi menjanjikan "filter profil Anak"
+  (yang memang tidak diimplementasikan); lencana 18+ tetap tampil di halaman detail.

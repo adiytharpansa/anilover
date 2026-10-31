@@ -35,8 +35,9 @@ Commit & push seperti biasa; GitHub Actions akan membangun APK dengan Firebase a
 - Template email reset kata sandi bisa diterjemahkan ke Indonesia di Authentication -> Templates.
 
 ## Catatan batasan
-- Riwayat tonton, Daftarku, dan unduhan masih **tersimpan lokal di perangkat** (bukan di cloud),
-  jadi masuk di HP lain belum membawa datanya. Sinkronisasi butuh Firestore (bisa ditambahkan nanti).
+- Riwayat tonton, Daftarku, nilai, pengingat, dan pengaturan **tersinkron otomatis saat masuk**
+  (lihat bagian "Sinkronisasi cloud" di bawah bagian Komentar). Mode tamu dan unduhan
+  (berkas video) tetap **lokal di perangkat**.
 - Masuk dengan Google belum ada (butuh Web client ID + SHA-1 + Credential Manager).
 
 ---

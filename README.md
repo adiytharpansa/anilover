@@ -11,8 +11,23 @@ Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
   panel audio & subtitle, panel episode, post-play episode berikutnya, PiP, kunci layar,
   gestur kecerahan/volume/geser posisi, zoom layar (pas/isi/zoom), sisa waktu "-mm:ss"
 - Video diputar sebagai HLS dari salinan segmen di repo project-X lewat jsDelivr (pin commit)
+- Bila masuk dengan Firebase Auth: riwayat tonton, Daftarku, nilai, pengingat, dan pengaturan
+  tersinkron otomatis antar perangkat lewat Firestore (`users/{uid}`); tamu tetap lokal
+- Pencarian mencocokkan judul, genre, DAN sinopsis
 
 Build: GitHub Actions (`assembleDebug`) — artefak `Anilover-debug-apk`.
+
+## 2.8.0
+
+- **Sinkronisasi cloud (Firestore)**: saat masuk, riwayat tonton (maks 500 entri), Daftarku,
+  nilai, sembunyikan-dari-Lanjutkan, pengingat "Segera Tayang", dan pengaturan tersinkron
+  antar perangkat — yang lebih baru menang, perubahan lokal diunggah otomatis (debounce
+  1,5 dtk), perubahan dari HP lain masuk realtime. Tamu & unduhan tetap lokal.
+  Lihat `PANDUAN-FIREBASE.md` (aturan `users/{userId}` sudah disertakan).
+- **Pencarian lebih luas**: kata kunci kini juga dicocokkan dengan sinopsis judul.
+- **Urutan "Baru Ditambahkan" lebih kokoh**: memakai cap waktu terbit (`addedAt`) dari
+  katalog bila tersedia; bila tidak, tetap urutan katalog (terakhir masuk = terbaru).
+- Koreksi komentar kode: lencana 18+ tidak lagi dikaitkan dengan filter profil yang belum ada.
 
 ## Perubahan 2.7.0
 

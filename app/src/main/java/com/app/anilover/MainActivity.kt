@@ -94,6 +94,7 @@ import androidx.work.WorkManager
 import com.app.anilover.data.AuthRepository
 import com.app.anilover.data.CatalogApi
 import com.app.anilover.data.CatalogCheckWorker
+import com.app.anilover.data.CloudSync
 import com.app.anilover.data.DownloadManager
 import com.app.anilover.data.HistoryStore
 import com.app.anilover.data.LibraryStore
@@ -173,6 +174,8 @@ class MainActivity : ComponentActivity() {
         val store = HistoryStore(applicationContext)
         val library = LibraryStore(applicationContext)
         val downloader = DownloadManager(applicationContext, library)
+        // Sinkronisasi cloud (Firestore) riwayat/Daftarku/nilai/pengaturan saat masuk.
+        CloudSync.attach(applicationContext, store, library)
         setContent {
             AniloverTheme {
               AuthGate {

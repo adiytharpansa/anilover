@@ -67,10 +67,12 @@ data class Title(
     val status: String? = null,
     val genres: List<String> = emptyList(),
     val episodes: List<Episode> = emptyList(),
-    /** Konten khusus dewasa dari API bila datanya ada; menggerakkan lencana 18+ dan filter profil Anak. */
+    /** Konten khusus dewasa dari API bila datanya ada; menggerakkan lencana 18+ di halaman detail. */
     val adult: Boolean = false,
     /** URL trailer dari API bila ada; billboard memutarnya otomatis bila terisi. */
     val trailer: String? = null,
+    /** Cap waktu terbit (epoch ms) bila katalog menyediakannya; null = fallback ke urutan katalog. */
+    val addedAt: Long? = null,
 ) {
     /** Persentase kecocokan gaya Netflix, diturunkan dari skor (8,6 -> 86%). */
     val matchPercent: Int? get() = score?.let { (it * 10).toInt().coerceIn(0, 100) }
@@ -100,6 +102,15 @@ data class Title(
             else -> status
         }
 }
+
+/**
+ * Urutan "terbaru lebih dulu": bila ada judul yang membawa cap waktu terbit
+ * ([Title.addedAt]), urutkan menurunnya; bila tidak, balik urutan katalog
+ * (asumsi gudang: yang terakhir masuk = yang terbaru terbit).
+ */
+fun List<Title>.newestFirst(): List<Title> =
+    if (any { it.addedAt != null }) sortedByDescending { it.addedAt ?: 0L }
+    else reversed()
 
 object CatalogApi {
     /** Id katalog terakhir yang berhasil dibaca (untuk menyaring Segera Tayang). */
@@ -247,6 +258,15 @@ object CatalogApi {
                     episodes = eps.sortedBy { it.number },
                     adult = t.optBoolean("adult", false),
                     trailer = t.optString("trailer").ifBlank { null },
+                    addedAt = run {
+                        val v = when {
+                            t.has("addedAt") && !t.isNull("addedAt") -> t.optLong("addedAt")
+                            t.has("added") && !t.isNull("added") -> t.optLong("added")
+                            else -> 0L
+                        }
+                        // Terima epoch detik maupun milidetik.
+                        if (v <= 0L) null else if (v < 100_000_000_000L) v * 1000 else v
+                    },
                 )
             )
           } catch (e: Exception) {
@@ -491,6 +511,11 @@ class HistoryStore(private val context: Context) {
         context.dataStore.edit { it[HISTORY_KEY] = "[]" }
     }
 
+    /** Ganti SELURUH riwayat sekaligus (dipakai sinkronisasi cloud saat data remote lebih baru). */
+    suspend fun replaceAll(entries: List<WatchEntry>) {
+        context.dataStore.edit { it[HISTORY_KEY] = write(entries) }
+    }
+
     suspend fun find(titleId: String, episode: Int): WatchEntry? {
         val prefs = context.dataStore.data.first()
         return parse(prefs[HISTORY_KEY] ?: "[]")
@@ -596,6 +621,39 @@ class LibraryStore(private val context: Context) {
             val set = parseStringSet(prefs[MYLIST_KEY]).toMutableSet()
             if (!set.add(id)) set.remove(id)
             prefs[MYLIST_KEY] = writeStringSet(set)
+        }
+    }
+
+    // --- Pengganti massal untuk sinkronisasi cloud (CloudSync) ---
+
+    suspend fun replaceMyList(ids: Set<String>) {
+        context.dataStore.edit { it[MYLIST_KEY] = writeStringSet(ids) }
+    }
+
+    suspend fun replaceHidden(set: Set<String>) {
+        context.dataStore.edit { it[HIDDEN_KEY] = writeStringSet(set) }
+    }
+
+    suspend fun replaceReminders(set: Set<String>) {
+        context.dataStore.edit { it[REMINDERS_KEY] = writeStringSet(set) }
+    }
+
+    suspend fun replaceRatings(map: Map<String, Int>) {
+        context.dataStore.edit { prefs ->
+            val obj = JSONObject()
+            for ((k, v) in map) obj.put(k, v)
+            prefs[RATINGS_KEY] = obj.toString()
+        }
+    }
+
+    suspend fun replaceSettings(s: AniloverSettings) {
+        context.dataStore.edit { prefs ->
+            prefs[AUTOPLAY_KEY] = s.autoplayNext
+            prefs[SUBTITLE_KEY] = s.subtitleDefault
+            prefs[SUBSIZE_KEY] = s.subtitleSize
+            prefs[SUBCOLOR_KEY] = s.subtitleColor
+            prefs[SMART_KEY] = s.smartDownloads
+            prefs[WIFIONLY_KEY] = s.wifiOnlyDownloads
         }
     }
 

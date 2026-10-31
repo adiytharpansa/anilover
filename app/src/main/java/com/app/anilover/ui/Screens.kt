@@ -77,6 +77,7 @@ import com.app.anilover.data.DownloadItem
 import com.app.anilover.data.AniloverSettings
 import com.app.anilover.data.SoonTitle
 import com.app.anilover.data.Title
+import com.app.anilover.data.newestFirst
 
 // ---------------- Cari ----------------
 
@@ -110,7 +111,8 @@ fun SearchScreen(
     val results = titles.filter { t ->
         (genre == null || t.genres.contains(genre)) &&
             (query.isBlank() || t.title.contains(query, ignoreCase = true) ||
-                t.genres.any { it.contains(query, ignoreCase = true) })
+                t.genres.any { it.contains(query, ignoreCase = true) } ||
+                t.synopsis?.contains(query, ignoreCase = true) == true)
     }
     // "Sedang Tren Sekarang" ala Netflix: tampil saat kolom masih kosong.
     val trending = remember(titles) {
@@ -365,7 +367,7 @@ fun NewScreen(
             }
             item { SectionTitle("Baru Ditambahkan") }
         }
-        items(titles.reversed()) { t ->
+        items(titles.newestFirst()) { t ->
             Column(
                 Modifier.fillMaxWidth().clickable { onOpen(t) }
                     .padding(horizontal = 16.dp, vertical = 8.dp),

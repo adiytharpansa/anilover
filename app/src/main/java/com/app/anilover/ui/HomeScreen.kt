@@ -91,6 +91,7 @@ import androidx.media3.ui.PlayerView
 import com.app.anilover.R
 import com.app.anilover.data.Title
 import com.app.anilover.data.WatchEntry
+import com.app.anilover.data.newestFirst
 import kotlinx.coroutines.delay
 
 /**
@@ -125,8 +126,10 @@ fun HomeScreen(
         .sortedByDescending { it.updatedAt }
         .distinctBy { it.titleId }
         .associateBy { it.titleId }
-    // Urutan katalog = urutan terbit di gudang; yang terakhir masuk = terbaru.
-    val newIds = if (titles.size >= 4) titles.takeLast(3).map { it.id }.toSet() else emptySet()
+    // Urutan "terbaru dulu": pakai cap waktu terbit (addedAt) bila ada, jika tidak,
+    // balik urutan katalog (asumsi gudang: yang terakhir masuk = terbaru).
+    val newest = titles.newestFirst()
+    val newIds = if (newest.size >= 4) newest.take(3).map { it.id }.toSet() else emptySet()
     val playFirst: (Title) -> Unit = { t -> onPlay(t, t.episodes.firstOrNull()?.number ?: 1, 0L) }
 
     // Hero: judul berskor tertinggi yang BUKAN sedang ditonton (itu sudah ada di "Lanjutkan").
@@ -137,14 +140,14 @@ fun HomeScreen(
         .ifEmpty { titles.take(1) }
     val genreList = titles.flatMap { it.genres }.groupingBy { it }.eachCount()
         .entries.sortedByDescending { it.value }.take(10).map { it.key }
-    val fresh = titles.reversed().take(10)
+    val fresh = newest.take(10)
     val freshIds = fresh.map { it.id }.toSet()
     val top10 = titles.filter { (it.score ?: 0.0) > 0.0 }.sortedByDescending { it.score }.take(10)
     val genreRows = genreList.take(4)
         .map { g -> g to titles.filter { it.genres.contains(g) }.sortedByDescending { it.score ?: 0.0 } }
         .filter { it.second.size >= 3 }
         .take(2)
-    val rest = titles.reversed().filter { !freshIds.contains(it.id) }
+    val rest = newest.filter { !freshIds.contains(it.id) }
 
     // Lebar poster seragam di semua baris & grid: 3 kolom, dengan ~8dp kartu ke-4 mengintip.
     val posterW: Dp = ((LocalConfiguration.current.screenWidthDp - 64) / 3f).dp
