@@ -18,10 +18,16 @@ jobs:
         with:
           gradle-version: "8.9"
       - name: Build release APK
-        run: gradle assembleRelease --stacktrace
+        run: |
+          set -o pipefail
+          gradle assembleRelease --stacktrace 2>&1 | tee build-log.txt
         env:
           CATALOG_KEY: ${{ secrets.CATALOG_KEY }}
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: Anilover-branch-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            build-log.txt
+          if-no-files-found: ignore
