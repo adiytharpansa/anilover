@@ -20,6 +20,9 @@ android {
         targetSdk = 34
         versionCode = 14
         versionName = "2.7.1"
+        // Kunci katalog (tersamar) dari rahasia CI; kosong pada build lokal.
+        val catalogKeyX = System.getenv("CATALOG_KEY") ?: ""
+        buildConfigField("String", "CATALOG_KEY_X", "\"$catalogKeyX\"")
     }
 
     signingConfigs {
@@ -47,7 +50,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     packaging {
         resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
     }

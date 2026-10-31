@@ -1,6 +1,7 @@
 package com.app.anilover.data
 
 import android.content.Context
+import com.app.anilover.BuildConfig
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -26,9 +27,9 @@ import okhttp3.Request
 // Sumber katalog utama: Cloudflare Pages (aset statis — tanpa jatah harian
 // seperti Worker; katalog disinkronkan otomatis dari repo xjatxz2upew4).
 private const val CATALOG_PAGES =
-    "https://anilover-catalog.pages.dev/aaab8ea29b56fa7e10898c3c/catalog.json"
+    "https://anilover-catalog.pages.dev/aaab8ea29b56fa7e10898c3c/lib.dat"
 private const val SOON_PAGES =
-    "https://anilover-catalog.pages.dev/aaab8ea29b56fa7e10898c3c/coming-soon.json"
+    "https://anilover-catalog.pages.dev/aaab8ea29b56fa7e10898c3c/soon.dat"
 // Cermin katalog gudang (dipakai bila API utama kena batas kuota Cloudflare).
 private const val CATALOG_MIRROR =
     "https://cdn.jsdelivr.net/gh/adiytharpansa/xjatxz2upew4@main/catalog.json"
@@ -129,6 +130,54 @@ object CatalogApi {
             }
             return resp.body?.string() ?: throw java.io.IOException("respons kosong dari " + url)
         }
+    }
+
+    private fun httpGetBytes(url: String, timeoutMs: Int = 15000): ByteArray {
+        val client = httpClient.newBuilder()
+            .connectTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+            .readTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+            .build()
+        val req = Request.Builder()
+            .url(url)
+            .header("User-Agent", "Mozilla/5.0 (Anilover Android)")
+            .build()
+        client.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) {
+                throw java.io.IOException("HTTP " + resp.code + " dari " + url)
+            }
+            return resp.body?.bytes() ?: throw java.io.IOException("respons kosong dari " + url)
+        }
+    }
+
+    /**
+     * Buka isi katalog: teks JSON apa adanya (dari cermin gudang), atau
+     * berkas terenkripsi AES-GCM dari Pages (nonce 12 byte di depan,
+     * sisanya ciphertext+tag). Kunci tiba tersamar lewat BuildConfig
+     * (rahasia CI) dan dibuka dengan topeng turunan konstanta kode;
+     * tanpa kunci yang sah fungsi ini melempar dan pemanggil jatuh ke
+     * sumber berikutnya.
+     */
+    private fun decodeCatalogBody(bytes: ByteArray): String {
+        if (bytes.isNotEmpty() && (bytes[0] == '{'.code.toByte() || bytes[0] == '['.code.toByte())) {
+            return String(bytes, Charsets.UTF_8)
+        }
+        return String(decryptCatalog(bytes), Charsets.UTF_8)
+    }
+
+    private fun decryptCatalog(data: ByteArray): ByteArray {
+        require(data.size > 28) { "berkas terenkripsi terlalu pendek" }
+        val masked = android.util.Base64.decode(BuildConfig.CATALOG_KEY_X, android.util.Base64.DEFAULT)
+        require(masked.size == 32) { "kunci katalog tidak tersedia" }
+        val mask = java.security.MessageDigest.getInstance("SHA-256")
+            .digest("anilover-katalog-v1".toByteArray(Charsets.UTF_8))
+        val key = ByteArray(32) { i -> (masked[i].toInt() xor mask[i].toInt()).toByte() }
+        val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(
+            javax.crypto.Cipher.DECRYPT_MODE,
+            javax.crypto.spec.SecretKeySpec(key, "AES"),
+            javax.crypto.spec.GCMParameterSpec(128, data.copyOfRange(0, 12)),
+        )
+        return cipher.doFinal(data.copyOfRange(12, data.size))
     }
 
     fun parseCatalog(body: String): List<Title> {
@@ -234,7 +283,10 @@ object CatalogApi {
         for (round in 1..2) {
             for ((name, u) in sources) {
                 try {
-                    val body = httpGetText(u, 30000)
+                    val body = decodeCatalogBody(httpGetBytes(u, 30000))
+                    if (!body.trimStart().startsWith("{")) {
+                        throw java.io.IOException("isi katalog tidak dikenal dari " + name)
+                    }
                     lastCatalogError = null
                     return@withContext body
                 } catch (e: Exception) {
@@ -298,7 +350,7 @@ object CatalogApi {
     /** Daftar "Segera Tayang": judul antrean gudang yang belum terbit. */
     suspend fun fetchSoon(): List<SoonTitle> = withContext(Dispatchers.IO) {
         val body = try {
-            httpGetText(SOON_PAGES)
+            decodeCatalogBody(httpGetBytes(SOON_PAGES))
         } catch (e: Exception) {
             httpGetText(SOON_MIRROR)
         }
