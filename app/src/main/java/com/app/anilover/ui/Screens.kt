@@ -664,9 +664,15 @@ fun ProfileScreen(
     onSubtitleChange: (String) -> Unit,
     onSubtitleStyleChange: (String, String) -> Unit,
     onClearHistory: () -> Unit,
+    accountName: String? = null,
+    accountEmail: String? = null,
+    /** Non-null bila Firebase aktif: tombol Keluar (akun) atau Masuk/Daftar (tamu). */
+    onLogout: (() -> Unit)? = null,
 ) {
     var cleared by remember { mutableStateOf(false) }
+    var confirmLogout by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val displayName = accountName ?: if (onLogout == null) "Adiyth" else "Tamu"
     LazyColumn(Modifier.fillMaxSize()) {
         item {
             Column(
@@ -683,11 +689,14 @@ fun ProfileScreen(
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("A", color = AniloverOnAccent, fontSize = 34.sp, fontWeight = FontWeight.Black)
+                    Text(
+                        displayName.trim().take(1).uppercase().ifEmpty { "A" },
+                        color = AniloverOnAccent, fontSize = 34.sp, fontWeight = FontWeight.Black,
+                    )
                 }
                 Spacer(Modifier.height(10.dp))
-                Text("Adiyth", color = AniloverTextPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                Text("Akun lokal di perangkat ini", color = AniloverTextDim, fontSize = 12.sp)
+                Text(displayName, color = AniloverTextPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                Text(accountEmail ?: "Akun lokal di perangkat ini", color = AniloverTextDim, fontSize = 12.sp)
             }
             Spacer(Modifier.height(18.dp))
             Row(
@@ -823,8 +832,52 @@ fun ProfileScreen(
                         context.packageManager.getPackageInfo(context.packageName, 0).versionName
                     } catch (e: Exception) { null }
                 }
+                if (onLogout != null) {
+                    val isGuest = accountEmail == null
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { if (isGuest) onLogout() else confirmLogout = true },
+                        shape = AniloverShapes.Button,
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp, if (isGuest) AniloverAccent else AniloverOutline,
+                        ),
+                        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                            contentColor = if (isGuest) AniloverAccent else AniloverTextPrimary,
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                    ) {
+                        Text(
+                            if (isGuest) "Masuk atau daftar" else "Keluar dari akun",
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                    Spacer(Modifier.height(20.dp))
+                }
                 Text("Anilover versi ${versionName ?: "-"}", color = AniloverTextDim, fontSize = 12.sp)
                 Spacer(Modifier.height(24.dp))
+                if (confirmLogout) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { confirmLogout = false },
+                        containerColor = AniloverSurface,
+                        title = { Text("Keluar dari akun?", color = AniloverTextPrimary) },
+                        text = {
+                            Text(
+                                "Kamu bisa masuk lagi kapan saja dengan email dan kata sandi.",
+                                color = AniloverTextDim,
+                            )
+                        },
+                        confirmButton = {
+                            androidx.compose.material3.TextButton(onClick = {
+                                confirmLogout = false
+                                onLogout?.invoke()
+                            }) { Text("Keluar", color = AniloverAccent, fontWeight = FontWeight.Bold) }
+                        },
+                        dismissButton = {
+                            androidx.compose.material3.TextButton(onClick = { confirmLogout = false }) {
+                                Text("Batal", color = AniloverTextDim)
+                            }
+                        },
+                    )
+                }
             }
         }
     }

@@ -89,6 +89,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.app.anilover.data.AuthRepository
 import com.app.anilover.data.CatalogApi
 import com.app.anilover.data.CatalogCheckWorker
 import com.app.anilover.data.DownloadManager
@@ -105,6 +106,7 @@ import com.app.anilover.ui.HomeScreen
 import com.app.anilover.ui.NewScreen
 import com.app.anilover.ui.ProfileScreen
 import com.app.anilover.ui.AniloverAccent
+import com.app.anilover.ui.AuthGate
 import com.app.anilover.ui.AniloverOnAccent
 import com.app.anilover.ui.AniloverBackground
 import com.app.anilover.ui.AniloverSurface
@@ -165,11 +167,13 @@ class MainActivity : ComponentActivity() {
                 "anilover-catalog-check", ExistingPeriodicWorkPolicy.KEEP, checkRequest,
             )
         } catch (e: Exception) { /* notifikasi latar bersifat tambahan */ }
+        AuthRepository.init(applicationContext)
         val store = HistoryStore(applicationContext)
         val library = LibraryStore(applicationContext)
         val downloader = DownloadManager(applicationContext, library)
         setContent {
             AniloverTheme {
+              AuthGate {
                 AppRoot(store, library, downloader) { title, episode, startPos, autoplay, subtitle ->
                     val eps = JSONArray()
                     for (e in title.episodes) {
@@ -188,6 +192,7 @@ class MainActivity : ComponentActivity() {
                         }
                     )
                 }
+              }
             }
         }
     }
@@ -220,6 +225,7 @@ private fun AppRoot(
     val downloads by library.downloads.collectAsState(initial = emptyList())
     val reminders by library.reminders.collectAsState(initial = emptySet())
     val recents by library.recentSearches.collectAsState(initial = emptyList())
+    val account by AuthRepository.user.collectAsState()
     val context = LocalContext.current
 
     // Laporan galat terakhir (dari CrashReporter): tampilkan agar bisa dibagikan
@@ -476,6 +482,9 @@ private fun AppRoot(
                             scope.launch { library.setSubtitleStyle(size, color) }
                         },
                         onClearHistory = { scope.launch { store.clearAll() } },
+                        accountName = account?.name,
+                        accountEmail = account?.email,
+                        onLogout = if (AuthRepository.isConfigured) ({ AuthRepository.signOut() }) else null,
                     )
                     }
                     }

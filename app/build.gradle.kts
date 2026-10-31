@@ -4,6 +4,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Firebase aktif hanya bila app/google-services.json ada. Tanpa berkas itu build tetap
+// berhasil dan aplikasi berjalan tanpa layar masuk (lihat PANDUAN-FIREBASE.md).
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "com.app.anilover"
     compileSdk = 34
@@ -67,4 +73,6 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.4.1")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation("com.google.firebase:firebase-auth")
 }

@@ -23,3 +23,16 @@ Daftar perbaikan
 10. Kartu Lanjutkan Menonton -> info "E1 - Sisa mm:ss" di atas thumbnail + gradient, judul 1 baris.
 11. Font Poppins + skala tipografi di Theme.kt (Text bawaan otomatis ikut karena MaterialTheme).
 12. Animasi -> animateItem() pada baris Lanjutkan Menonton (hapus item mulus), efek tekan poster tetap.
+
+---
+# Tambahan: Masuk / Daftar dengan Firebase Auth
+
+Berkas baru
+- data/AuthRepository.kt : pembungkus Firebase Auth (masuk, daftar, reset kata sandi, keluar, mode tamu, pesan galat Indonesia)
+- ui/AuthScreen.kt       : AuthGate + layar Masuk/Daftar (validasi, tampil/sembunyi sandi, loading, "Lupa kata sandi?", "Lanjut tanpa akun")
+- PANDUAN-FIREBASE.md    : langkah setup Firebase Console + letak google-services.json
+
+Berkas diubah
+- build.gradle.kts & app/build.gradle.kts : plugin google-services (aktif otomatis hanya bila app/google-services.json ada), Firebase BoM 33.1.2 + firebase-auth
+- MainActivity.kt        : AuthRepository.init, AuthGate membungkus AppRoot, data akun & Keluar dikirim ke Profil
+- ui/Screens.kt (ProfileScreen) : nama/email akun asli, tombol Keluar (dengan konfirmasi) / Masuk atau daftar untuk tamu
