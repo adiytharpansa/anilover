@@ -27,9 +27,9 @@ import okhttp3.Request
 // Sumber katalog utama: Cloudflare Pages (aset statis — tanpa jatah harian
 // seperti Worker; katalog disinkronkan otomatis dari repo xjatxz2upew4).
 private const val CATALOG_PAGES =
-    "https://anilover-catalog.pages.dev/aaab8ea29b56fa7e10898c3c/lib.dat"
+    "https://anilover-catalog.pages.dev/da163150ab26d6059ec10153/lib.dat"
 private const val SOON_PAGES =
-    "https://anilover-catalog.pages.dev/aaab8ea29b56fa7e10898c3c/soon.dat"
+    "https://anilover-catalog.pages.dev/da163150ab26d6059ec10153/soon.dat"
 // Cermin katalog gudang (dipakai bila API utama kena batas kuota Cloudflare).
 private const val CATALOG_MIRROR =
     "https://cdn.jsdelivr.net/gh/adiytharpansa/xjatxz2upew4@main/catalog.json"
