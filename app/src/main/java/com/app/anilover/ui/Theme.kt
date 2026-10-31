@@ -189,3 +189,19 @@ fun formatSize(bytes: Long): String = when {
     bytes > 0 -> String.format("%.0f KB", bytes / 1_000.0)
     else -> "0 MB"
 }
+
+/** Muncul halus (fade + naik sedikit) sekali saja saat kartu pertama kali tampil; [delayMs] untuk efek berurutan. */
+@Composable
+fun Modifier.appearFx(delayMs: Int = 0): Modifier {
+    var shown by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { shown = true }
+    val a by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = tween(360, delayMillis = delayMs),
+        label = "appear",
+    )
+    return this.graphicsLayer {
+        alpha = a
+        translationY = (1f - a) * 22.dp.toPx()
+    }
+}

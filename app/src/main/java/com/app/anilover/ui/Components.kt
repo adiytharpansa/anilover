@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 
@@ -63,29 +64,40 @@ fun PosterImage(
     )
 }
 
-/** Kartu cadangan saat gambar tidak ada / gagal dimuat. */
+/** Kartu cadangan: gradasi warna khas per judul + inisial besar (bukan kotak abu-abu). */
 @Composable
 fun PosterFallback(title: String, modifier: Modifier = Modifier) {
+    val hue = ((title.hashCode() and 0x7fffffff) % 360).toFloat()
+    val top = androidx.compose.ui.graphics.Color.hsv(hue, 0.50f, 0.46f)
+    val bottom = androidx.compose.ui.graphics.Color.hsv((hue + 40f) % 360f, 0.60f, 0.20f)
     BoxWithConstraints(
-        modifier.background(
-            Brush.verticalGradient(listOf(AniloverSurfaceHigh, AniloverSurface)),
-        ),
+        modifier.background(Brush.verticalGradient(listOf(top, bottom))),
         contentAlignment = Alignment.Center,
     ) {
         val roomy = maxWidth > 72.dp
+        val initial = title.trim().firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString()
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(if (roomy) 10.dp else 2.dp),
         ) {
-            Icon(
-                Icons.Filled.Movie, contentDescription = null,
-                tint = AniloverTextDim.copy(alpha = 0.6f),
-                modifier = Modifier.size(if (roomy) 28.dp else 18.dp),
-            )
+            if (initial == null) {
+                Icon(
+                    Icons.Filled.Movie, contentDescription = null,
+                    tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.6f),
+                    modifier = Modifier.size(if (roomy) 28.dp else 18.dp),
+                )
+            } else {
+                Text(
+                    initial,
+                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.9f),
+                    style = MaterialTheme.typography.displaySmall,
+                    fontSize = if (roomy) 44.sp else 24.sp,
+                )
+            }
             if (roomy && title.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    title, color = AniloverTextDim,
+                    title, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center,
                     maxLines = 3, overflow = TextOverflow.Ellipsis,
