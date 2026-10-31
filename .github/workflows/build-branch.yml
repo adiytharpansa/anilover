@@ -23,6 +23,14 @@ jobs:
           gradle assembleRelease --stacktrace 2>&1 | tee build-log.txt
         env:
           CATALOG_KEY: ${{ secrets.CATALOG_KEY }}
+      - name: Simpan log build ke branch saat gagal (debug, [skip ci])
+        if: failure()
+        run: |
+          git config user.email "ci@anilover.local"
+          git config user.name "Anilover CI"
+          git add build-log.txt
+          git commit -m "ci: log build gagal [skip ci]" || true
+          git push origin HEAD:arena/6ccedc94-anilover || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
