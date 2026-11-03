@@ -14,6 +14,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.width
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -36,12 +40,14 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -89,6 +95,7 @@ fun DetailScreen(
         .maxByOrNull { it.updatedAt }
     val downloadByEp = downloads.filter { it.titleId == title.id }.associateBy { it.episode }
     var synopsisExpanded by remember { mutableStateOf(false) }
+    var confirmAll by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val hasTrailer = !title.trailer.isNullOrBlank()
     val tabKeys = buildList {
@@ -98,6 +105,7 @@ fun DetailScreen(
     }
     var tabKey by remember(title.id) { mutableStateOf("ep") }
     val activeTab = if (tabKeys.contains(tabKey)) tabKey else "ep"
+    val pending = title.episodes.filter { downloadByEp[it.number] == null }
     // Tombol Putar lengket: muncul setelah hero + info tergeser lewat.
     val showSticky by remember {
         derivedStateOf {
@@ -105,16 +113,20 @@ fun DetailScreen(
                 (listState.firstVisibleItemIndex == 1 && listState.firstVisibleItemScrollOffset > 650)
         }
     }
+    val playMain = {
+        if (resume != null) onPlay(resume.episode, resume.positionMs)
+        else onPlay(title.episodes.firstOrNull()?.number ?: 1, 0L)
+    }
 
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().background(AniloverBackground)) {
     LazyColumn(
         Modifier.fillMaxSize(), state = listState,
         contentPadding = PaddingValues(bottom = 84.dp),
     ) {
         item(key = "hero") {
-            Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(AniloverSurface)) {
+            Box(Modifier.fillMaxWidth().aspectRatio(16f / 10f).background(AniloverSurface)) {
                 if (hasTrailer) {
-                    // Trailer inline ala Netflix: bisu, mutar otomatis di hero.
+                    // Trailer inline: bisu, mutar otomatis di hero.
                     TrailerPlayer(title.trailer!!)
                 } else {
                     PosterImage(
@@ -127,76 +139,71 @@ fun DetailScreen(
                 Box(
                     Modifier.fillMaxSize().background(
                         Brush.verticalGradient(
-                            listOf(Color.Black.copy(alpha = 0.3f), Color.Transparent, AniloverBackground)
+                            listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent, AniloverBackground)
                         )
                     )
                 )
                 IconButton(
                     onClick = onBack,
-                    modifier = Modifier.padding(10.dp).size(40.dp)
-                        .background(AniloverBackground.copy(alpha = 0.6f), AniloverShapes.Pill),
+                    modifier = Modifier.statusBarsPadding().padding(12.dp).size(42.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), AniloverShapes.Pill),
                 ) {
                     Icon(Icons.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
                 }
-                Text(
-                    title.title, color = AniloverTextPrimary, fontSize = 28.sp,
-                    fontWeight = FontWeight.Black, maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.align(Alignment.BottomStart).padding(16.dp),
-                )
+                // Tombol putar besar di tengah hero (gaya referensi).
+                Box(
+                    Modifier.align(Alignment.Center).size(58.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), AniloverShapes.Pill)
+                        .clip(AniloverShapes.Pill)
+                        .clickable(onClick = playMain),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Filled.PlayArrow, contentDescription = "Putar", tint = Color.White,
+                        modifier = Modifier.size(34.dp),
+                    )
+                }
             }
         }
-        item {
+        item(key = "info") {
             Column(Modifier.padding(horizontal = 16.dp)) {
+                Text(
+                    title.title, color = AniloverTextPrimary, fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold, lineHeight = 30.sp, maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(10.dp))
+                // Chip metadata
                 Row(
+                    Modifier.horizontalScroll(rememberScrollState()),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    title.matchPercent?.let {
-                        Text("$it% Kecocokan", color = AniloverGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    }
-                    title.score?.let {
-                        Text("★ " + String.format("%.1f", it), color = Color.White, fontSize = 13.sp)
-                    }
-                    title.year?.let { Text(it.toString(), color = Color.White, fontSize = 13.sp) }
-                    title.statusLabel?.let {
-                        Text(
-                            it, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .background(AniloverSurfaceHigh, AniloverShapes.Chip)
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                    title.score?.takeIf { it > 0.0 }?.let {
+                        MetaChip(
+                            "★ " + String.format(java.util.Locale("id", "ID"), "%.1f", it),
+                            textColor = AniloverGold,
                         )
                     }
-                    Text(
-                        "HD", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .background(AniloverSurfaceHigh, AniloverShapes.Chip)
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                    )
-                    if (title.adult) {
-                        Text(
-                            "18+", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .background(AniloverSurfaceHigh, AniloverShapes.Chip)
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                        )
-                    }
+                    title.matchPercent?.let { MetaChip("$it% cocok", textColor = AniloverAccent) }
+                    title.year?.let { MetaChip(it.toString()) }
+                    title.statusLabel?.let { MetaChip(it) }
+                    MetaChip("HD")
+                    if (title.episodes.isNotEmpty()) MetaChip("${title.episodes.size} Eps")
+                    if (title.adult) MetaChip("18+")
                 }
                 if (title.genres.isNotEmpty()) {
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(title.genres.joinToString(" · "), color = AniloverTextDim, fontSize = 12.sp)
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(16.dp))
                 Button(
-                    onClick = {
-                        if (resume != null) onPlay(resume.episode, resume.positionMs)
-                        else onPlay(title.episodes.firstOrNull()?.number ?: 1, 0L)
-                    },
+                    onClick = playMain,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AniloverAccent, contentColor = AniloverOnAccent,
                     ),
                     shape = AniloverShapes.Button,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
                 ) {
                     Icon(Icons.Filled.PlayArrow, contentDescription = null)
                     Spacer(Modifier.width(4.dp))
@@ -206,22 +213,16 @@ fun DetailScreen(
                         fontWeight = FontWeight.Bold, fontSize = 16.sp,
                     )
                 }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(14.dp))
                 Row(
                     Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     DetailAction(
                         icon = if (inMyList) Icons.Filled.Check else Icons.Filled.Add,
                         label = if (inMyList) "Di Daftarku" else "Daftarku",
                         active = inMyList,
                         onClick = onToggleMyList,
-                    )
-                    DetailAction(
-                        icon = Icons.Filled.ThumbDown,
-                        label = "Tidak Suka",
-                        active = rating == -1,
-                        onClick = { onRate(if (rating == -1) 0 else -1) },
                     )
                     DetailAction(
                         icon = Icons.Filled.ThumbUp,
@@ -231,7 +232,7 @@ fun DetailScreen(
                             else -> "Sukai"
                         },
                         active = rating > 0,
-                        // Ketuk berurutan ala Netflix: Suka -> Sangat Suka -> batal.
+                        // Ketuk berurutan: Suka -> Sangat Suka -> batal.
                         onClick = {
                             onRate(
                                 when (rating) {
@@ -241,6 +242,18 @@ fun DetailScreen(
                                 }
                             )
                         },
+                    )
+                    DetailAction(
+                        icon = Icons.Filled.ThumbDown,
+                        label = "Tidak Suka",
+                        active = rating == -1,
+                        onClick = { onRate(if (rating == -1) 0 else -1) },
+                    )
+                    DetailAction(
+                        icon = Icons.Filled.Download,
+                        label = if (pending.isEmpty()) "Terunduh" else "Unduh",
+                        active = pending.isEmpty() && title.episodes.isNotEmpty(),
+                        onClick = { if (pending.isNotEmpty()) confirmAll = true },
                     )
                     DetailAction(
                         icon = Icons.Filled.Share,
@@ -256,47 +269,100 @@ fun DetailScreen(
                     )
                 }
                 if (!title.synopsis.isNullOrBlank()) {
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(14.dp))
                     Text(
-                        title.synopsis, color = AniloverTextDim, fontSize = 14.sp,
+                        title.synopsis, color = AniloverTextDim, fontSize = 14.sp, lineHeight = 20.sp,
                         maxLines = if (synopsisExpanded) Int.MAX_VALUE else 3,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.clickable { synopsisExpanded = !synopsisExpanded },
                     )
                     Text(
-                        if (synopsisExpanded) "Tutup" else "Lainnya",
-                        color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        if (synopsisExpanded) "Tutup" else "Selengkapnya",
+                        color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.clickable { synopsisExpanded = !synopsisExpanded }
-                            .padding(vertical = 4.dp),
+                            .padding(vertical = 6.dp),
                     )
                 }
-                Spacer(Modifier.height(16.dp))
-                Row(Modifier.fillMaxWidth()) {
+                Spacer(Modifier.height(14.dp))
+                // Tab pil: yang aktif terisi aksen.
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     for (key in tabKeys) {
                         val label = when (key) {
                             "ep" -> "Episode"
-                            "trailer" -> "Trailer & Lainnya"
-                            else -> "Lainnya Seperti Ini"
+                            "trailer" -> "Trailer"
+                            else -> "Serupa"
                         }
-                        Column(
-                            Modifier.weight(1f).clickable { tabKey = key },
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                        val on = activeTab == key
+                        Box(
+                            Modifier.clip(AniloverShapes.Pill)
+                                .background(if (on) AniloverAccent else AniloverSurfaceHigh)
+                                .clickable { tabKey = key }
+                                .padding(horizontal = 18.dp, vertical = 9.dp),
                         ) {
-                            if (activeTab == key) {
-                                Box(Modifier.fillMaxWidth().height(3.dp).background(AniloverAccent))
-                            } else {
-                                Spacer(Modifier.height(3.dp))
-                            }
                             Text(
                                 label,
-                                color = if (activeTab == key) Color.White else AniloverTextDim,
+                                color = if (on) AniloverOnAccent else AniloverTextDim,
                                 fontSize = 13.sp,
-                                fontWeight = if (activeTab == key) FontWeight.Bold else FontWeight.Normal,
-                                modifier = Modifier.padding(vertical = 8.dp),
+                                fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
                             )
                         }
                     }
                 }
+                Spacer(Modifier.height(10.dp))
+            }
+        }
+        if (activeTab == "ep" && title.episodes.isNotEmpty()) {
+            // Chip nomor episode: ditonton = redup, dilanjutkan = aksen terisi.
+            val rows = title.episodes.chunked(5)
+            item(key = "chips-head") {
+                Text(
+                    "Pilih Episode", color = AniloverTextPrimary, fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
+                )
+            }
+            items(rows, key = { r -> "chips-" + r.first().number }) { row ->
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    row.forEach { ep ->
+                        val prog = progressByEp[ep.number]
+                        val isResume = resume?.episode == ep.number
+                        val watched = prog != null && prog.isFinished
+                        Box(
+                            Modifier.weight(1f).height(42.dp)
+                                .clip(AniloverShapes.Chip)
+                                .background(if (isResume) AniloverAccent else AniloverSurfaceHigh)
+                                .clickable {
+                                    onPlay(
+                                        ep.number,
+                                        if (prog != null && prog.isStarted && !prog.isFinished) prog.positionMs else 0L,
+                                    )
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                "%02d".format(ep.number),
+                                color = when {
+                                    isResume -> AniloverOnAccent
+                                    watched -> AniloverTextDim.copy(alpha = 0.55f)
+                                    else -> AniloverTextPrimary
+                                },
+                                fontSize = 14.sp,
+                                fontWeight = if (isResume) FontWeight.Bold else FontWeight.Medium,
+                            )
+                        }
+                    }
+                    repeat(5 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+            item(key = "list-head") {
+                Text(
+                    "Daftar Episode", color = AniloverTextPrimary, fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 2.dp),
+                )
             }
         }
         if (activeTab == "ep") {
@@ -312,14 +378,9 @@ fun DetailScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "${ep.number}", color = Color.White, fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.width(30.dp),
-                    )
                     Box(
-                        Modifier.width(118.dp).aspectRatio(16f / 9f)
-                            .clip(RoundedCornerShape(6.dp)).background(AniloverSurface),
+                        Modifier.width(112.dp).aspectRatio(16f / 9f)
+                            .clip(AniloverShapes.Poster).background(AniloverSurface),
                     ) {
                         PosterImage(
                             model = ep.thumb ?: title.banner ?: title.poster,
@@ -328,11 +389,11 @@ fun DetailScreen(
                             modifier = Modifier.fillMaxSize(),
                         )
                         Box(
-                            Modifier.align(Alignment.Center).size(34.dp)
-                                .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
+                            Modifier.align(Alignment.Center).size(30.dp)
+                                .background(Color.Black.copy(alpha = 0.55f), AniloverShapes.Pill),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+                            Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
                         }
                         if (prog != null && prog.isStarted && !prog.isFinished) {
                             Box(
@@ -349,14 +410,14 @@ fun DetailScreen(
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            ep.title ?: "Episode ${ep.number}",
-                            color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium,
+                            "${ep.number}. " + (ep.title ?: "Episode ${ep.number}"),
+                            color = AniloverTextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium,
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
                         if (!ep.synopsis.isNullOrBlank()) {
                             Text(
                                 ep.synopsis, color = AniloverTextDim, fontSize = 12.sp,
-                                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
                             )
                         }
                         when {
@@ -381,10 +442,10 @@ fun DetailScreen(
                             )
                         }
                         "selesai" -> IconButton(onClick = { onDeleteDownload(dl) }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Hapus unduhan", tint = Color.White)
+                            Icon(Icons.Filled.Delete, contentDescription = "Hapus unduhan", tint = AniloverTextDim)
                         }
                         else -> IconButton(onClick = { onDownload(ep) }) {
-                            Icon(Icons.Filled.Download, contentDescription = "Unduh episode", tint = Color.White)
+                            Icon(Icons.Filled.Download, contentDescription = "Unduh episode", tint = AniloverTextPrimary)
                         }
                     }
                 }
@@ -392,10 +453,13 @@ fun DetailScreen(
                     Text(
                         "Unduhan gagal — ketuk ikon unduh untuk mencoba lagi.",
                         color = AniloverAccent, fontSize = 11.sp,
-                        modifier = Modifier.padding(start = 42.dp, top = 2.dp),
+                        modifier = Modifier.padding(start = 124.dp, top = 2.dp),
                     )
                 }
             }
+        }
+        if (similar.isNotEmpty()) {
+            item(key = "reco") { PosterRow("Rekomendasi untukmu", similar, onOpenTitle) }
         }
         }
         if (activeTab == "trailer" && hasTrailer) {
@@ -403,13 +467,13 @@ fun DetailScreen(
                 Column(Modifier.padding(16.dp)) {
                     Box(
                         Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-                            .clip(RoundedCornerShape(8.dp)).background(AniloverSurface),
+                            .clip(AniloverShapes.Card).background(AniloverSurface),
                     ) {
                         TrailerPlayer(title.trailer!!, controls = true)
                     }
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        "Trailer — ${title.title}", color = Color.White,
+                        "Trailer — ${title.title}", color = AniloverTextPrimary,
                         fontSize = 14.sp, fontWeight = FontWeight.Medium,
                     )
                     Text(
@@ -420,7 +484,17 @@ fun DetailScreen(
             }
         }
         if (activeTab == "similar" && similar.isNotEmpty()) {
-            item(key = "similar") { PosterRow("Judul Serupa", similar, onOpenTitle) }
+            items(similar.chunked(3), key = { r -> "sim-" + r.first().id }) { row ->
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    row.forEach { t ->
+                        PosterCard(t = t, modifier = Modifier.weight(1f), onClick = { onOpenTitle(t) })
+                    }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
         }
         item { Spacer(Modifier.height(28.dp)) }
     }
@@ -432,12 +506,13 @@ fun DetailScreen(
     ) {
         Row(
             Modifier.fillMaxWidth().background(AniloverSurface)
+                .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    title.title, color = Color.White, fontSize = 14.sp,
+                    title.title, color = AniloverTextPrimary, fontSize = 14.sp,
                     fontWeight = FontWeight.Bold, maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -447,10 +522,7 @@ fun DetailScreen(
                 )
             }
             Button(
-                onClick = {
-                    if (resume != null) onPlay(resume.episode, resume.positionMs)
-                    else onPlay(title.episodes.firstOrNull()?.number ?: 1, 0L)
-                },
+                onClick = playMain,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AniloverAccent, contentColor = AniloverOnAccent,
                 ),
@@ -463,6 +535,30 @@ fun DetailScreen(
         }
     }
     }
+    if (confirmAll) {
+        AlertDialog(
+            onDismissRequest = { confirmAll = false },
+            title = { Text("Unduh semua episode?") },
+            text = { Text("${pending.size} episode akan diunduh ke perangkat.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    pending.forEach { onDownload(it) }
+                    confirmAll = false
+                }) { Text("Unduh", color = AniloverAccent) }
+            },
+            dismissButton = { TextButton(onClick = { confirmAll = false }) { Text("Batal") } },
+        )
+    }
+}
+
+@Composable
+private fun MetaChip(text: String, textColor: Color = AniloverTextPrimary) {
+    Text(
+        text, color = textColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+        modifier = Modifier
+            .background(AniloverSurfaceHigh, AniloverShapes.Pill)
+            .padding(horizontal = 11.dp, vertical = 5.dp),
+    )
 }
 
 @Composable
@@ -475,13 +571,24 @@ private fun DetailAction(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier.width(76.dp).height(58.dp).clickable(onClick = onClick),
+        modifier = Modifier.width(64.dp).clip(AniloverShapes.Card).clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
     ) {
-        Icon(
-            icon, contentDescription = label,
-            tint = if (active) AniloverAccent else Color.White,
-            modifier = Modifier.size(26.dp),
+        Box(
+            Modifier.size(44.dp)
+                .background(if (active) AniloverAccent.copy(alpha = 0.18f) else AniloverSurfaceHigh, AniloverShapes.Pill),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                icon, contentDescription = label,
+                tint = if (active) AniloverAccent else AniloverTextPrimary,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            label, color = if (active) AniloverAccent else AniloverTextDim, fontSize = 10.sp,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
-        Text(label, color = Color.White, fontSize = 11.sp)
     }
 }

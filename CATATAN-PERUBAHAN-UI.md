@@ -53,60 +53,18 @@ Berkas diubah
 - app/build.gradle.kts : dependensi firebase-firestore. Setup: lihat PANDUAN-FIREBASE.md (bagian Komentar).
 
 ---
-# Tambahan: Sinkronisasi cloud (Firestore) saat masuk — v2.8.0
+# Tambahan: Poster lebih menarik
 
-- data/CloudSync.kt (baru) : satu dokumen `users/{uid}` di Firestore berisi riwayat tonton
-  (maks 500 entri terbaru), Daftarku, nilai, sembunyikan-dari-Lanjutkan, pengingat, dan
-  pengaturan. Aktif hanya saat pengguna masuk; tamu tetap lokal.
-- Penggabungan saat masuk: yang lebih baru menang (server timestamp); selama sesi,
-  perubahan lokal diunggah otomatis (debounce 1,5 dtk) dan perubahan dari perangkat lain
-  diterapkan realtime. `clientId` (UUID perangkat) + hash data mencegah loop antar perangkat.
-- data/Api.kt : HistoryStore.replaceAll + LibraryStore.replaceMyList/replaceRatings/
-  replaceHidden/replaceReminders/replaceSettings untuk menerapkan data cloud ke lokal.
-- MainActivity.kt : CloudSync.attach(...) setelah AuthRepository.init.
-- PANDUAN-FIREBASE.md : aturan Firestore baru `users/{userId}` (hanya pemilik yang baca/tulis).
+- ui/HomeScreen.kt : PosterCard -> pill skor ★ (kanan bawah), lencana BARU/ONGOING (kiri atas), tombol +/centang Daftarku (kanan atas, getar halus), gradasi gelap di dasar, bingkai aksen saat ditekan, parallax halus di baris, muncul bertahap. Baris "Baru Ditambahkan" kini kartu lanskap (LandscapeRow/LandscapeCard). Judul kartu: medium + "Genre · N Eps".
+- ui/Components.kt : PosterFallback -> gradasi warna khas per judul + inisial besar.
+- ui/Theme.kt : Modifier.appearFx (animasi muncul sekali).
 
 ---
-# Tambahan: Pencarian mencakup sinopsis — v2.8.0
-
-- ui/Screens.kt (SearchScreen) : hasil pencarian kini juga mencocokkan sinopsis judul,
-  tidak hanya judul & genre.
-
----
-# Tambahan: Urutan "Baru" lebih kokoh — v2.8.0
-
-- data/Api.kt : Title kini membaca cap waktu terbit opsional (`addedAt`/`added`, detik
-  maupun milidetik); helper `List<Title>.newestFirst()` memakai cap itu bila ada,
-  jika tidak kembali ke asumsi lama (urutan katalog dibalik).
-- ui/HomeScreen.kt & ui/Screens.kt (NewScreen) : baris "Baru Ditambahkan"/"Koleksi Lainnya"
-  memakai newestFirst() sehingga tidak lagi bergantung mentah pada urutan katalog.
-
----
-# Koreksi kecil — v2.8.0
-
-- data/Api.kt : komentar field `adult` tidak lagi menjanjikan "filter profil Anak"
-  (yang memang tidak diimplementasikan); lencana 18+ tetap tampil di halaman detail.
-
----
-# Tambahan: Closed Caption (CC) di pemutar — v2.8.0
-
-- player/PlayerActivity.kt : deteksi trek CEA-608/708 (isCeaFormat) + label ala aplikasi
-  populer (ccLabel: "CC1 (CC)" dari INSTREAM-ID); panel "Audio & Subtitle" kini memisahkan
-  bagian Subtitle dan Closed Caption (CC).
-- loadEpisode: setSelectUndeterminedTextLanguage(true) agar CC (bahasa "und") otomatis
-  terpilih bila tidak ada trek subtitle bahasa pilihan; bila pengaturan = "cc", listener
-  onTracksChanged memilih trek CC pertama secara otomatis.
-- ui/Screens.kt (Profil): opsi subtitle bawaan baru "CC bawaan" (nilai "cc").
-
----
-# Ikon aplikasi dirapikan & diseragamkan — v2.8.0
-
-- Ikon baru: segitiga play sakura (#FF96B6 -> #FF5C85, sama dengan AniloverAccent) dengan
-  sudut membulat + glow lembut di atas dasar #0D0E17 (AniloverBackground) — sebelumnya
-  kotak hijau polos di atas putih yang tidak nyambung dengan tema "Tinta" aplikasi.
-- Semua aset diperbarui dari satu master 1024px: mipmap ic_launcher (48-192, kotak & round),
-  ic_launcher_foreground transparan (108-432, untuk adaptive icon v26 & splash),
-  anilover_logo.png (logo di dalam aplikasi: layar masuk & header Beranda, kini transparan),
-  dan ic_launcher-playstore.png (512).
-- ic_launcher_background.xml kini #0D0E17 (dulu #000000); ic_stat_anilover.xml (notifikasi)
-  kini segitiga play putih ber-sudut-bulat, sama dengan mark ikon.
+# Desain ulang total (aksen hijau, gaya Anilab) — lihat DESAIN-REFERENSI.md
+- Tema: Theme.kt palet "Neon" (hitam #0A0A0B, aksen hijau #6FFA41), tombol pill, kartu 16dp.
+- Logo baru transparan: res/drawable-nodpi/anilover_logo.png; ikon peluncur: drawable-nodpi/ic_launcher_foreground.png (+ XML adaptive diarahkan ke sana), ic_launcher-playstore.png.
+- Beranda (HomeScreen.kt): header logo + Cari + lonceng, hero pill Putar/+Daftarku, Top Hits bernomor, Episode Baru Rilis.
+- Navbar: Beranda · Jadwal · Daftarku · Unduhan · Profil (Cari lewat header). MyListScreen baru.
+- Detail (DetailScreen.kt) bertab + chip episode; pemutar & WatchPage restyle.
+- Cari, Jadwal, Unduhan, Profil, Masuk (Screens.kt, AuthScreen.kt) direstyle; Masuk = layar selamat datang.
+- CATATAN: warna splash/tema XML (res/values) tidak ada di zip yang terpotong — ubah latar splash ke #0A0A0B & ikon ke logo baru secara manual.

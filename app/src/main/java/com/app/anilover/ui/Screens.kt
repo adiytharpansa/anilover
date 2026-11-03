@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import android.app.Activity
 import android.content.Intent
@@ -64,6 +66,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -77,7 +80,6 @@ import com.app.anilover.data.DownloadItem
 import com.app.anilover.data.AniloverSettings
 import com.app.anilover.data.SoonTitle
 import com.app.anilover.data.Title
-import com.app.anilover.data.newestFirst
 
 // ---------------- Cari ----------------
 
@@ -88,6 +90,10 @@ fun SearchScreen(
     recents: List<String> = emptyList(),
     onSaveRecent: (String) -> Unit = {},
     onClearRecents: () -> Unit = {},
+    /** Bila diisi, tombol "Putar" di hasil langsung memutar; bila null, membuka detail. */
+    onPlay: ((Title) -> Unit)? = null,
+    /** Bila diisi, tombol "Unduh" tampil di hasil pencarian. */
+    onDownload: ((Title) -> Unit)? = null,
 ) {
     var query by remember { mutableStateOf("") }
     var genre by remember { mutableStateOf<String?>(null) }
@@ -111,20 +117,18 @@ fun SearchScreen(
     val results = titles.filter { t ->
         (genre == null || t.genres.contains(genre)) &&
             (query.isBlank() || t.title.contains(query, ignoreCase = true) ||
-                t.genres.any { it.contains(query, ignoreCase = true) } ||
-                t.synopsis?.contains(query, ignoreCase = true) == true)
+                t.genres.any { it.contains(query, ignoreCase = true) })
     }
-    // "Sedang Tren Sekarang" ala Netflix: tampil saat kolom masih kosong.
-    val trending = remember(titles) {
-        titles.sortedByDescending { it.score ?: 0.0 }.take(5)
+    // "Pencarian populer": judul berskor tertinggi, tampil saat kolom masih kosong.
+    // WAJIB di tingkat atas: remember di dalam cabang kondisional merusak tabel slot Compose
+    // dan membuat aplikasi keluar sendiri saat hasil berubah kosong<->ada (perbaikan 2.6.1).
+    val popular = remember(titles) {
+        titles.sortedByDescending { it.score ?: 0.0 }.take(12)
     }
-    // Saran untuk hasil kosong. WAJIB di tingkat atas: remember di dalam cabang
-    // kondisional merusak tabel slot Compose dan membuat aplikasi keluar sendiri
-    // saat hasil pencarian berubah kosong<->ada (perbaikan 2.6.1).
     val suggestions = remember(titles) {
         titles.sortedByDescending { it.score ?: 0.0 }.take(6)
     }
-    val showTrending = query.isBlank() && genre == null && trending.size >= 3
+    val showPopular = query.isBlank() && genre == null && popular.isNotEmpty()
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Spacer(Modifier.height(14.dp))
         Text("Cari", color = AniloverTextPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp)
@@ -132,8 +136,8 @@ fun SearchScreen(
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            placeholder = { Text("Cari judul atau genre…", color = AniloverTextDim) },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = Color.White) },
+            placeholder = { Text("Cari anime, genre…", color = AniloverTextDim) },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = AniloverTextDim) },
             trailingIcon = {
                 IconButton(onClick = {
                     try {
@@ -150,7 +154,7 @@ fun SearchScreen(
                         Toast.makeText(context, "Pencarian suara tidak tersedia", Toast.LENGTH_SHORT).show()
                     }
                 }) {
-                    Icon(Icons.Filled.Mic, contentDescription = "Pencarian suara", tint = Color.White)
+                    Icon(Icons.Filled.Mic, contentDescription = "Pencarian suara", tint = AniloverAccent)
                 }
             },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -159,7 +163,7 @@ fun SearchScreen(
             }),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            shape = AniloverShapes.Button,
+            shape = AniloverShapes.Pill,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
@@ -178,6 +182,7 @@ fun SearchScreen(
                         selected = genre == g,
                         onClick = { genre = if (genre == g) null else g },
                         label = { Text(g) },
+                        shape = AniloverShapes.Pill,
                         colors = aniloverChipColors(),
                     )
                 }
@@ -202,6 +207,7 @@ fun SearchScreen(
                         selected = false,
                         onClick = { query = r },
                         label = { Text(r) },
+                        shape = AniloverShapes.Pill,
                         leadingIcon = {
                             Icon(Icons.Filled.History, contentDescription = null, modifier = Modifier.size(16.dp))
                         },
@@ -213,40 +219,20 @@ fun SearchScreen(
                 }
             }
         }
-        if (showTrending) {
-            Spacer(Modifier.height(14.dp))
-            Text("Sedang Tren Sekarang", color = AniloverTextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(6.dp))
-            for ((idx, t) in trending.withIndex()) {
-                Row(
-                    Modifier.fillMaxWidth().clickable { openSaving(t) }.padding(vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "${idx + 1}", color = AniloverAccent, fontSize = 17.sp, fontWeight = FontWeight.Black,
-                        modifier = Modifier.width(30.dp),
-                    )
-                    PosterImage(
-                        model = t.poster ?: t.banner,
-                        contentDescription = t.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.width(40.dp).aspectRatio(2f / 3f)
-                            .clip(RoundedCornerShape(4.dp)).background(AniloverSurface),
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        t.title, color = AniloverTextPrimary, fontSize = 14.sp,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                    t.matchPercent?.let {
-                        Text("$it%", color = AniloverGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
+        Spacer(Modifier.height(14.dp))
+        if (showPopular) {
+            Text("Pencarian populer", color = AniloverTextPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(10.dp))
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 24.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(popular) { t -> GridPoster(t) { openSaving(t) } }
             }
-        }
-        Spacer(Modifier.height(12.dp))
-        if (results.isEmpty()) {
+        } else if (results.isEmpty()) {
             if (query.isBlank()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("Tidak ada judul untuk filter ini.", color = AniloverTextDim, fontSize = 14.sp)
@@ -275,14 +261,125 @@ fun SearchScreen(
                 }
             }
         } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+            Text("Hasil · ${results.size} judul", color = AniloverTextDim, fontSize = 13.sp)
+            Spacer(Modifier.height(4.dp))
+            LazyColumn(
                 contentPadding = PaddingValues(bottom = 24.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
-                items(results) { t -> GridPoster(t) { openSaving(t) } }
+                items(results) { t ->
+                    SearchResultRow(
+                        t = t,
+                        onOpen = { openSaving(t) },
+                        onPlay = onPlay?.let { f -> { f(t) } },
+                        onDownload = onDownload?.let { f -> { f(t) } },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Kapsul kecil untuk metadata (tahun, jumlah episode, skor). */
+@Composable
+private fun MetaPill(text: String, color: Color = AniloverTextPrimary) {
+    Text(
+        text, color = color, fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.background(AniloverSurfaceHigh, AniloverShapes.Chip)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}
+
+/** Hasil pencarian: poster kecil, judul, lencana, tombol Putar/Unduh, dan chip nomor episode. */
+@Composable
+private fun SearchResultRow(
+    t: Title,
+    onOpen: () -> Unit,
+    onPlay: (() -> Unit)?,
+    onDownload: (() -> Unit)?,
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 6.dp)
+            .clip(AniloverShapes.Card)
+            .background(AniloverSurface)
+            .clickable(onClick = onOpen)
+            .padding(10.dp),
+    ) {
+        PosterImage(
+            model = t.poster ?: t.banner,
+            contentDescription = t.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.width(86.dp).aspectRatio(2f / 3f)
+                .clip(AniloverShapes.Poster).background(AniloverSurfaceHigh),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                t.seriesName, color = AniloverTextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 20.sp,
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                t.year?.let { MetaPill(it.toString()) }
+                if (t.episodes.isNotEmpty()) MetaPill("${t.episodes.size} Eps")
+                t.score?.takeIf { it > 0.0 }?.let {
+                    MetaPill("★ " + String.format(java.util.Locale("id", "ID"), "%.1f", it), AniloverGold)
+                }
+            }
+            if (t.genres.isNotEmpty()) {
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    t.genres.take(3).joinToString(" · "), color = AniloverTextDim, fontSize = 11.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.clip(AniloverShapes.Pill).background(AniloverAccent)
+                        .clickable(onClick = onPlay ?: onOpen)
+                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = AniloverOnAccent, modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(3.dp))
+                    Text("Putar", color = AniloverOnAccent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                if (onDownload != null && t.episodes.isNotEmpty()) {
+                    Row(
+                        Modifier.clip(AniloverShapes.Pill)
+                            .border(1.dp, AniloverOutline, AniloverShapes.Pill)
+                            .clickable(onClick = onDownload)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Filled.Download, contentDescription = null, tint = AniloverTextPrimary, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Unduh", color = AniloverTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+            if (t.episodes.size > 1) {
+                Spacer(Modifier.height(10.dp))
+                // Chip episode ringkas: 01 02 ··· 39 40 (null = elipsis).
+                val nums = t.episodes.map { it.number }.sorted()
+                val chips: List<Int?> = if (nums.size <= 5) nums
+                else listOf<Int?>(nums[0], nums[1], null, nums[nums.size - 2], nums[nums.size - 1])
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for (n in chips) {
+                        Box(
+                            Modifier.size(width = 34.dp, height = 26.dp)
+                                .background(AniloverSurfaceHigh, AniloverShapes.Chip)
+                                .clickable(onClick = onOpen),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                if (n == null) "···" else "%02d".format(n),
+                                color = AniloverTextDim, fontSize = 11.sp, fontWeight = FontWeight.Medium,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -295,13 +392,24 @@ private fun GridPoster(t: Title, onClick: () -> Unit) {
         Modifier.pressScaleFx(pressSource)
             .clickable(interactionSource = pressSource, indication = LocalIndication.current, onClick = onClick),
     ) {
-        PosterImage(
-            model = t.poster ?: t.banner,
-            contentDescription = t.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)
-                .clip(AniloverShapes.Poster).background(AniloverSurface),
-        )
+        Box {
+            PosterImage(
+                model = t.poster ?: t.banner,
+                contentDescription = t.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)
+                    .clip(AniloverShapes.Poster).background(AniloverSurface),
+            )
+            t.score?.takeIf { it > 0.0 }?.let {
+                Text(
+                    "★ " + String.format(java.util.Locale("id", "ID"), "%.1f", it),
+                    color = AniloverGold, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(5.dp))
+                        .padding(horizontal = 5.dp, vertical = 2.dp),
+                )
+            }
+        }
         CardTitles(t)
     }
 }
@@ -317,18 +425,20 @@ fun CategoryScreen(
 ) {
     Column(Modifier.fillMaxSize()) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onBack) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(40.dp).background(AniloverSurfaceHigh, CircleShape),
+            ) {
                 Icon(Icons.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
             }
-            Text(genre, color = AniloverTextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(6.dp))
-            Text(
-                "${titles.size} judul", color = AniloverTextDim, fontSize = 13.sp,
-                modifier = Modifier.padding(top = 3.dp),
-            )
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(genre, color = AniloverTextPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                Text("${titles.size} judul", color = AniloverTextDim, fontSize = 12.sp)
+            }
         }
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
@@ -342,7 +452,61 @@ fun CategoryScreen(
     }
 }
 
-// ---------------- Baru ----------------
+// ---------------- Daftarku (tab sendiri) ----------------
+
+@Composable
+fun MyListScreen(
+    titles: List<Title>,
+    onOpen: (Title) -> Unit,
+    onBrowse: () -> Unit,
+) {
+    Column(Modifier.fillMaxSize()) {
+        ScreenTitle("Daftarku", if (titles.isEmpty()) null else "${titles.size} judul tersimpan")
+        if (titles.isEmpty()) {
+            Column(
+                Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                EmptyState(
+                    icon = Icons.Filled.PlayCircle,
+                    title = "Daftarku masih kosong",
+                    subtitle = "Ketuk tombol + di poster atau halaman detail untuk menyimpan judul favoritmu di sini.",
+                )
+                Spacer(Modifier.height(6.dp))
+                androidx.compose.material3.Button(
+                    onClick = onBrowse,
+                    shape = AniloverShapes.Button,
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = AniloverAccent, contentColor = AniloverOnAccent,
+                    ),
+                    modifier = Modifier.height(48.dp),
+                ) {
+                    Text("Jelajahi", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
+                Spacer(Modifier.height(80.dp))
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(titles) { t ->
+                    PosterCard(
+                        t = t,
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { onOpen(t) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ---------------- Jadwal (tab "Baru") ----------------
 
 @Composable
 fun NewScreen(
@@ -354,7 +518,7 @@ fun NewScreen(
 ) {
     LazyColumn(Modifier.fillMaxSize()) {
         item {
-            ScreenTitle("Baru & Populer", "Judul terbaru dan yang segera tayang")
+            ScreenTitle("Jadwal", "Judul terbaru dan yang segera tayang")
         }
         if (soon.isNotEmpty()) {
             item { SectionTitle("Segera Tayang") }
@@ -367,49 +531,69 @@ fun NewScreen(
             }
             item { SectionTitle("Baru Ditambahkan") }
         }
-        items(titles.newestFirst()) { t ->
-            Column(
-                Modifier.fillMaxWidth().clickable { onOpen(t) }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            ) {
-                Box(
-                    Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-                        .clip(AniloverShapes.Card).background(AniloverSurface),
-                ) {
-                    PosterImage(
-                        model = t.banner ?: t.poster,
-                        contentDescription = t.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    Box(
-                        Modifier.align(Alignment.Center).size(46.dp)
-                            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(30.dp))
-                    }
-                }
-                Spacer(Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        t.title, color = AniloverTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                    t.matchPercent?.let {
-                        Text("$it%", color = AniloverGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-                val meta = listOfNotNull(
-                    t.year?.toString(), t.statusLabel,
-                    if (t.episodes.isNotEmpty()) "${t.episodes.size} Episode" else null,
-                    if (t.genres.isNotEmpty()) t.genres.joinToString(", ") else null,
-                ).joinToString("  •  ")
-                if (meta.isNotBlank()) Text(meta, color = AniloverTextDim, fontSize = 12.sp)
-            }
+        items(titles.reversed()) { t ->
+            ScheduleCard(t = t, onClick = { onOpen(t) })
         }
         item { Spacer(Modifier.height(24.dp)) }
+    }
+}
+
+private val ScheduleShade: Brush
+    get() = Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.82f)))
+
+/** Kartu lanskap: banner 16:9, gradasi, judul + metadata di atas gambar, tombol putar beraksen. */
+@Composable
+private fun ScheduleCard(t: Title, onClick: () -> Unit) {
+    val src = remember { MutableInteractionSource() }
+    Box(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).pressScaleFx(src),
+    ) {
+        Box(
+            Modifier.fillMaxWidth().aspectRatio(16f / 9f)
+                .clip(AniloverShapes.Card).background(AniloverSurface)
+                .clickable(interactionSource = src, indication = LocalIndication.current, onClick = onClick),
+        ) {
+            PosterImage(
+                model = t.banner ?: t.poster,
+                contentDescription = t.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.62f).background(ScheduleShade))
+            t.score?.takeIf { it > 0.0 }?.let {
+                Text(
+                    "★ " + String.format(java.util.Locale("id", "ID"), "%.1f", it),
+                    color = AniloverGold, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(10.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), AniloverShapes.Chip)
+                        .padding(horizontal = 7.dp, vertical = 3.dp),
+                )
+            }
+            Box(
+                Modifier.align(Alignment.Center).size(48.dp).background(AniloverAccent, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = AniloverOnAccent, modifier = Modifier.size(30.dp))
+            }
+            Column(Modifier.align(Alignment.BottomStart).padding(horizontal = 14.dp, vertical = 12.dp)) {
+                Text(
+                    t.seriesName, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                val meta = listOfNotNull(
+                    t.year?.toString(), t.statusLabel,
+                    if (t.episodes.isNotEmpty()) "${t.episodes.size} Eps" else null,
+                    t.genres.take(2).joinToString(", ").ifBlank { null },
+                ).joinToString("  ·  ")
+                if (meta.isNotBlank()) {
+                    Text(
+                        meta, color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -433,52 +617,56 @@ private fun SoonCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.62f).background(ScheduleShade))
             Text(
                 "SEGERA", color = AniloverOnAccent, fontSize = 10.sp, fontWeight = FontWeight.Black,
-                modifier = Modifier.align(Alignment.TopStart)
-                    .background(AniloverGold, RoundedCornerShape(bottomEnd = 8.dp))
-                    .padding(horizontal = 6.dp, vertical = 3.dp),
+                letterSpacing = 0.5.sp,
+                modifier = Modifier.align(Alignment.TopStart).padding(10.dp)
+                    .background(AniloverGold, AniloverShapes.Pill)
+                    .padding(horizontal = 9.dp, vertical = 3.dp),
             )
-        }
-        Spacer(Modifier.height(6.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                s.title, color = AniloverTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            s.matchPercent?.let {
-                Text("$it%", color = AniloverGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Column(Modifier.align(Alignment.BottomStart).padding(horizontal = 14.dp, vertical = 12.dp)) {
+                Text(
+                    s.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                val meta = listOfNotNull(
+                    s.year?.toString(),
+                    if (s.totalEpisodes > 0) "${s.totalEpisodes} Eps" else null,
+                    s.genres.take(2).joinToString(", ").ifBlank { null },
+                ).joinToString("  ·  ")
+                if (meta.isNotBlank()) {
+                    Text(meta, color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
+                }
             }
         }
-        val meta = listOfNotNull(
-            s.year?.toString(),
-            if (s.totalEpisodes > 0) "${s.totalEpisodes} Episode" else null,
-            if (s.genres.isNotEmpty()) s.genres.joinToString(", ") else null,
-        ).joinToString("  •  ")
-        if (meta.isNotBlank()) Text(meta, color = AniloverTextDim, fontSize = 12.sp)
         if (!s.synopsis.isNullOrBlank()) {
+            Spacer(Modifier.height(8.dp))
             Text(
-                s.synopsis, color = AniloverTextDim, fontSize = 12.sp,
+                s.synopsis, color = AniloverTextDim, fontSize = 12.sp, lineHeight = 17.sp,
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(10.dp))
         Row(
-            Modifier.clip(AniloverShapes.Button)
-                .background(if (reminded) AniloverAccent else AniloverSurfaceHigh)
+            Modifier.clip(AniloverShapes.Pill)
+                .background(if (reminded) AniloverAccent else Color.Transparent)
+                .border(1.dp, if (reminded) AniloverAccent else AniloverOutline, AniloverShapes.Pill)
                 .clickable(onClick = onToggleReminder)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 if (reminded) Icons.Filled.Check else Icons.Filled.Notifications,
-                contentDescription = null, tint = if (reminded) AniloverOnAccent else Color.White, modifier = Modifier.size(17.dp),
+                contentDescription = null,
+                tint = if (reminded) AniloverOnAccent else AniloverAccent,
+                modifier = Modifier.size(17.dp),
             )
             Spacer(Modifier.width(6.dp))
             Text(
                 if (reminded) "Diingatkan" else "Ingatkan Saya",
-                color = if (reminded) AniloverOnAccent else Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                color = if (reminded) AniloverOnAccent else AniloverTextPrimary,
+                fontSize = 13.sp, fontWeight = FontWeight.Bold,
             )
         }
     }
@@ -593,27 +781,34 @@ fun DownloadsScreen(
                         color = AniloverTextDim, fontSize = 13.sp,
                     )
                     Spacer(Modifier.height(14.dp))
-                    Text(
-                        "Jelajahi judul", color = AniloverAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { onBrowse() },
-                    )
+                    androidx.compose.material3.Button(
+                        onClick = onBrowse,
+                        shape = AniloverShapes.Button,
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = AniloverAccent, contentColor = AniloverOnAccent,
+                        ),
+                    ) {
+                        Text("Jelajahi judul", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
         items(downloads) { d ->
             val t = byId[d.titleId]
             Row(
-                Modifier.fillMaxWidth()
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
+                    .clip(AniloverShapes.Card)
+                    .background(AniloverSurface)
                     .clickable(enabled = d.state == "selesai") { onPlayDownload(d) }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 PosterImage(
                     model = t?.poster ?: t?.banner,
                     contentDescription = d.titleName,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.width(52.dp).aspectRatio(2f / 3f)
-                        .clip(AniloverShapes.Chip).background(AniloverSurface),
+                    modifier = Modifier.width(56.dp).aspectRatio(2f / 3f)
+                        .clip(AniloverShapes.Poster).background(AniloverSurfaceHigh),
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
@@ -685,7 +880,7 @@ fun ProfileScreen(
                     Modifier.size(76.dp)
                         .background(
                             androidx.compose.ui.graphics.Brush.linearGradient(
-                                listOf(AniloverAccent, AniloverGold)
+                                listOf(AniloverAccent, AniloverGreen)
                             ),
                             RoundedCornerShape(50),
                         ),
@@ -711,7 +906,6 @@ fun ProfileScreen(
             }
             Spacer(Modifier.height(8.dp))
         }
-        item { PosterRowOrEmpty(myListTitles, onOpenTitle) }
         item {
             SectionTitle("Pengaturan Putar")
             Column(Modifier.padding(horizontal = 20.dp).panel()) {
@@ -746,7 +940,7 @@ fun ProfileScreen(
                     Text("Dipilih otomatis saat episode mulai diputar", color = AniloverTextDim, fontSize = 12.sp)
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for ((value, label) in listOf("id" to "Indonesia", "en" to "Inggris", "cc" to "CC bawaan", "off" to "Nonaktif")) {
+                        for ((value, label) in listOf("id" to "Indonesia", "en" to "Inggris", "off" to "Nonaktif")) {
                             FilterChip(
                                 selected = settings.subtitleDefault == value,
                                 onClick = { onSubtitleChange(value) },
@@ -888,7 +1082,7 @@ fun ProfileScreen(
 @Composable
 private fun StatColumn(value: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, color = AniloverAccent, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+        Text(value, color = AniloverAccent, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
         Text(label, color = AniloverTextDim, fontSize = 11.sp)
     }
 }
@@ -927,20 +1121,6 @@ fun EmptyState(
         Text(
             subtitle, color = AniloverTextDim, fontSize = 13.sp,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
-    }
-}
-
-@Composable
-private fun PosterRowOrEmpty(myListTitles: List<Title>, onOpenTitle: (Title) -> Unit) {
-    if (myListTitles.isNotEmpty()) {
-        PosterRow("Daftarku", myListTitles, onOpenTitle)
-    } else {
-        SectionTitle("Daftarku")
-        EmptyState(
-            icon = Icons.Filled.PlayCircle,
-            title = "Daftarku masih kosong",
-            subtitle = "Tambahkan judul dari tombol + di beranda atau halaman detail supaya mudah ditemukan lagi.",
         )
     }
 }

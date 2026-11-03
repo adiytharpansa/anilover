@@ -97,9 +97,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
-import androidx.media3.common.Format
 import androidx.media3.common.MimeTypes
-import androidx.media3.common.Tracks
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -557,33 +555,6 @@ private fun PlayerScreen(
     val latestNext by rememberUpdatedState(nextEp)
     val latestAutoplay by rememberUpdatedState(autoplayNext)
     val latestEnded by rememberUpdatedState(ended)
-    val latestSubtitleDefault by rememberUpdatedState(subtitleDefault)
-
-    // Bila subtitle bawaan = "cc", pilih otomatis trek CC (CEA-608/708) begitu
-    // trek tersedia pada stream — perilaku seperti aplikasi populer.
-    DisposableEffect(player) {
-        val listener = object : Player.Listener {
-            override fun onTracksChanged(tracks: Tracks) {
-                if (latestSubtitleDefault != "cc") return
-                val cea = tracks.groups
-                    .filter { it.type == C.TRACK_TYPE_TEXT }
-                    .firstNotNullOfOrNull { g ->
-                        (0 until g.length).firstNotNullOfOrNull { i ->
-                            if (isCeaFormat(g.getTrackFormat(i))) g to i else null
-                        }
-                    }
-                if (cea != null && !cea.first.isTrackSelected(cea.second)) {
-                    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                        .clearOverridesOfType(C.TRACK_TYPE_TEXT)
-                        .setOverrideForType(TrackSelectionOverride(cea.first.mediaTrackGroup, cea.second))
-                        .build()
-                }
-            }
-        }
-        player.addListener(listener)
-        onDispose { player.removeListener(listener) }
-    }
 
     fun saveNow(finished: Boolean = false) {
         val d = player.duration
@@ -599,10 +570,7 @@ private fun PlayerScreen(
                 setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
             } else {
                 setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                // CC (CEA-608/708) biasanya berbahasa "und": ikut terpilih otomatis
-                // bila tidak ada trek subtitle bahasa pilihan — seperti aplikasi populer.
-                setSelectUndeterminedTextLanguage(true)
-                if (subtitleDefault != "cc") setPreferredTextLanguage(subtitleDefault)
+                setPreferredTextLanguage(subtitleDefault)
             }
         }.build()
         player.setMediaItem(
@@ -969,7 +937,7 @@ private fun PlayerScreen(
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
                     }
                     Column(Modifier.weight(1f)) {
-                        Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                         Text(
                             "Episode $currentEp dari ${episodes.size}" + if (casting) " · Diputar di TV" else "",
                             color = AniloverTextDim, fontSize = 12.sp,
@@ -1008,24 +976,25 @@ private fun PlayerScreen(
                 // Kontrol tengah
                 Row(
                     Modifier.align(Alignment.Center),
-                    horizontalArrangement = Arrangement.spacedBy(44.dp),
+                    horizontalArrangement = Arrangement.spacedBy(if (compact) 28.dp else 44.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconButton(onClick = { seekBy(-10_000) }, modifier = Modifier.size(56.dp)) {
-                        Icon(Icons.Filled.Replay10, contentDescription = "Mundur 10 detik", tint = Color.White, modifier = Modifier.size(38.dp))
+                    IconButton(onClick = { seekBy(-10_000) }, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Filled.Replay10, contentDescription = "Mundur 10 detik", tint = Color.White, modifier = Modifier.size(30.dp))
                     }
                     IconButton(
                         onClick = { if (isPlaying) player.pause() else player.play() },
-                        modifier = Modifier.size(72.dp),
+                        modifier = Modifier.size(if (compact) 56.dp else 68.dp)
+                            .background(Color.Black.copy(alpha = 0.5f), AniloverShapes.Pill),
                     ) {
                         Icon(
                             if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                             contentDescription = if (isPlaying) "Jeda" else "Putar",
-                            tint = Color.White, modifier = Modifier.size(56.dp),
+                            tint = Color.White, modifier = Modifier.size(if (compact) 34.dp else 42.dp),
                         )
                     }
-                    IconButton(onClick = { seekBy(10_000) }, modifier = Modifier.size(56.dp)) {
-                        Icon(Icons.Filled.Forward10, contentDescription = "Maju 10 detik", tint = Color.White, modifier = Modifier.size(38.dp))
+                    IconButton(onClick = { seekBy(10_000) }, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Filled.Forward10, contentDescription = "Maju 10 detik", tint = Color.White, modifier = Modifier.size(30.dp))
                     }
                 }
 
@@ -1111,8 +1080,9 @@ private fun PlayerScreen(
             (durationMs - positionMs) > 0 && (durationMs - positionMs) <= 45_000
         ) {
             Surface(
-                color = AniloverSurface,
+                color = Color.Black.copy(alpha = 0.6f),
                 shape = AniloverShapes.Button,
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.7f)),
                 modifier = Modifier.align(Alignment.BottomEnd)
                     .padding(end = if (compact) 10.dp else 22.dp, bottom = if (compact) 56.dp else 108.dp)
                     .clickable { switchTo(nextEp) },
@@ -1311,10 +1281,6 @@ private fun TracksPanel(player: ExoPlayer, onClose: () -> Unit) {
         }
         if (text.isNotEmpty()) {
             Spacer(Modifier.height(6.dp))
-            val subTracks = text.flatMap { g -> (0 until g.length).map { g to it } }
-                .filter { (g, i) -> !isCeaFormat(g.getTrackFormat(i)) }
-            val ccTracks = text.flatMap { g -> (0 until g.length).map { g to it } }
-                .filter { (g, i) -> isCeaFormat(g.getTrackFormat(i)) }
             Text("Subtitle", color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             Row(
                 Modifier.fillMaxWidth().clickable {
@@ -1326,27 +1292,10 @@ private fun TracksPanel(player: ExoPlayer, onClose: () -> Unit) {
             ) {
                 Text("Nonaktif", color = Color.White, modifier = Modifier.weight(1f))
             }
-            for ((g, i) in subTracks) {
-                val f = g.getTrackFormat(i)
-                val label = trackLabel(f.language, f.label, "Subtitle ${i + 1}")
-                Row(
-                    Modifier.fillMaxWidth().clickable {
-                        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                            .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, i)).build()
-                        refresh++
-                    }.padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(label, color = Color.White, modifier = Modifier.weight(1f))
-                    if (g.isTrackSelected(i)) Icon(Icons.Filled.Check, contentDescription = null, tint = AniloverAccent)
-                }
-            }
-            if (ccTracks.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                Text("Closed Caption (CC)", color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                for ((g, i) in ccTracks) {
+            for (g in text) {
+                for (i in 0 until g.length) {
                     val f = g.getTrackFormat(i)
+                    val label = trackLabel(f.language, f.label, "Subtitle ${i + 1}")
                     Row(
                         Modifier.fillMaxWidth().clickable {
                             player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
@@ -1356,7 +1305,7 @@ private fun TracksPanel(player: ExoPlayer, onClose: () -> Unit) {
                         }.padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(ccLabel(f), color = Color.White, modifier = Modifier.weight(1f))
+                        Text(label, color = Color.White, modifier = Modifier.weight(1f))
                         if (g.isTrackSelected(i)) Icon(Icons.Filled.Check, contentDescription = null, tint = AniloverAccent)
                     }
                 }
@@ -1419,17 +1368,6 @@ private fun trackLabel(language: String?, label: String?, fallback: String): Str
     return fallback
 }
 
-/** Trek closed caption bawaan stream (CEA-608/708), mis. dari #EXT-X-MEDIA TYPE=CLOSED-CAPTIONS. */
-private fun isCeaFormat(f: Format): Boolean =
-    f.sampleMimeType == MimeTypes.APPLICATION_CEA608 ||
-        f.sampleMimeType == MimeTypes.APPLICATION_CEA708
-
-/** Label ala aplikasi populer: "CC1 (CC)" dari INSTREAM-ID, fallback "Closed Caption". */
-private fun ccLabel(f: Format): String {
-    val base = f.id?.takeIf { it.isNotBlank() } ?: f.label?.takeIf { it.isNotBlank() }
-    return if (base != null) "$base (CC)" else "Closed Caption"
-}
-
 private fun speedLabel(s: Float): String =
     if (s == s.toInt().toFloat()) "${s.toInt()}x" else "${s}x"
 
@@ -1465,14 +1403,14 @@ private fun NetflixSeekBar(
         },
         contentAlignment = Alignment.CenterStart,
     ) {
-        Box(Modifier.fillMaxWidth().height(5.dp).background(Color.White.copy(alpha = 0.25f), AniloverShapes.Pill))
-        Box(Modifier.fillMaxWidth(buffered).height(5.dp).background(Color.White.copy(alpha = 0.45f), AniloverShapes.Pill))
-        Box(Modifier.fillMaxWidth(scrubFrac ?: played).height(5.dp).background(AniloverAccent, AniloverShapes.Pill))
+        Box(Modifier.fillMaxWidth().height(3.dp).background(Color.White.copy(alpha = 0.22f), AniloverShapes.Pill))
+        Box(Modifier.fillMaxWidth(buffered).height(3.dp).background(Color.White.copy(alpha = 0.40f), AniloverShapes.Pill))
+        Box(Modifier.fillMaxWidth(scrubFrac ?: played).height(3.dp).background(AniloverAccent, AniloverShapes.Pill))
         Box(
             Modifier.fillMaxWidth(scrubFrac ?: played),
             contentAlignment = Alignment.CenterEnd,
         ) {
-            Box(Modifier.size(16.dp).background(AniloverAccent, AniloverShapes.Pill).border(2.dp, Color.White, AniloverShapes.Pill))
+            Box(Modifier.size(11.dp).background(AniloverAccent, AniloverShapes.Pill))
         }
     }
 }

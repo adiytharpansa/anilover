@@ -127,7 +127,7 @@ internal fun WatchPage(
             item(key = "info") {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                     Text(
-                        title, color = AniloverTextPrimary, fontSize = 19.sp,
+                        title, color = AniloverTextPrimary, fontSize = 20.sp,
                         fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis,
                     )
                     Spacer(Modifier.height(4.dp))
@@ -169,12 +169,14 @@ internal fun WatchPage(
                             Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            Box(Modifier.size(width = 4.dp, height = 16.dp).background(AniloverAccent, AniloverShapes.Pill))
+                            Spacer(Modifier.width(8.dp))
                             Text(
                                 "Episode", color = AniloverTextPrimary, fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
                             )
                             Text(
-                                "Semua", color = AniloverTextDim, fontSize = 13.sp,
+                                "Semua", color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.clickable(onClick = onSeeAllEpisodes)
                                     .padding(vertical = 6.dp),
                             )
@@ -192,8 +194,8 @@ internal fun WatchPage(
                             items(episodes, key = { it.number }) { ep ->
                                 val cur = ep.number == currentEp
                                 Box(
-                                    Modifier.size(width = 64.dp, height = 40.dp)
-                                        .clip(AniloverShapes.Chip)
+                                    Modifier.size(width = 56.dp, height = 40.dp)
+                                        .clip(AniloverShapes.Pill)
                                         .background(if (cur) AniloverAccent else AniloverSurfaceHigh)
                                         .clickable { if (!cur) onSelectEpisode(ep) },
                                     contentAlignment = Alignment.Center,
@@ -222,6 +224,8 @@ internal fun WatchPage(
                     Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    Box(Modifier.size(width = 4.dp, height = 16.dp).background(AniloverAccent, AniloverShapes.Pill))
+                    Spacer(Modifier.width(8.dp))
                     Text(
                         "Komentar", color = AniloverTextPrimary, fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
@@ -354,20 +358,24 @@ private fun WatchAction(
     onClick: () -> Unit,
 ) {
     Column(
-        Modifier.clip(AniloverShapes.Chip).clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+        Modifier.clip(AniloverShapes.Card).clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(
-            icon, contentDescription = label,
-            tint = if (active) AniloverAccent else AniloverTextPrimary,
-            modifier = Modifier.size(24.dp),
-        )
+        Box(
+            Modifier.size(42.dp).background(
+                if (active) AniloverAccent.copy(alpha = 0.18f) else AniloverSurfaceHigh, CircleShape,
+            ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                icon, contentDescription = label,
+                tint = if (active) AniloverAccent else AniloverTextPrimary,
+                modifier = Modifier.size(21.dp),
+            )
+        }
         Spacer(Modifier.height(4.dp))
-        Text(
-            label, fontSize = 11.sp,
-            color = if (active) AniloverAccent else AniloverTextPrimary,
-        )
+        Text(label, fontSize = 10.sp, color = if (active) AniloverAccent else AniloverTextDim)
     }
 }
 
@@ -375,13 +383,13 @@ private fun WatchAction(
 private fun SortChip(label: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         Modifier.clip(AniloverShapes.Pill)
-            .background(if (selected) AniloverTextPrimary else AniloverSurfaceHigh)
+            .background(if (selected) AniloverAccent else AniloverSurfaceHigh)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 5.dp),
+            .padding(horizontal = 13.dp, vertical = 6.dp),
     ) {
         Text(
-            label, fontSize = 12.sp, fontWeight = FontWeight.Medium,
-            color = if (selected) AniloverBackground else AniloverTextPrimary,
+            label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+            color = if (selected) AniloverOnAccent else AniloverTextDim,
         )
     }
 }
@@ -545,7 +553,7 @@ private fun CommentInputBar(
                 Spacer(Modifier.width(10.dp))
                 Box(
                     Modifier.weight(1f)
-                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
                         .background(AniloverSurfaceHigh)
                         .padding(horizontal = 14.dp, vertical = 9.dp),
                 ) {
@@ -564,20 +572,24 @@ private fun CommentInputBar(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                IconButton(
-                    enabled = canSend,
-                    onClick = {
-                        sending = true
-                        onSend(text) { ok ->
-                            sending = false
-                            if (ok) text = ""
-                        }
-                    },
+                Spacer(Modifier.width(6.dp))
+                Box(
+                    Modifier.size(40.dp).clip(CircleShape)
+                        .background(if (canSend) AniloverAccent else AniloverSurfaceHigh)
+                        .clickable(enabled = canSend) {
+                            sending = true
+                            onSend(text) { ok ->
+                                sending = false
+                                if (ok) text = ""
+                            }
+                        },
+                    contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
                         contentDescription = "Kirim",
-                        tint = if (canSend) AniloverAccent else AniloverTextDim.copy(alpha = 0.5f),
+                        tint = if (canSend) AniloverOnAccent else AniloverTextDim.copy(alpha = 0.5f),
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }
