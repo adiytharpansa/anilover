@@ -57,7 +57,7 @@ import com.app.anilover.data.WatchEntry
 private const val NEW_BADGE_COUNT = 3
 
 /** Genre baku yang layak jadi chip; tag lain dari data (mis. "Earth", "Japan") disaring. */
-private val KnownGenres = setOf(
+internal val KnownGenres = setOf(
     "action", "adventure", "comedy", "drama", "fantasy", "horror", "mystery", "romance",
     "sci-fi", "slice of life", "sports", "supernatural", "thriller", "mecha", "music",
     "psychological", "ecchi", "shounen", "seinen", "shoujo", "josei", "isekai", "school",
@@ -65,7 +65,7 @@ private val KnownGenres = setOf(
 )
 
 /** Ambil genre baku saja; bila hasil kosong (data tak lazim), pakai semua supaya baris tidak hilang. */
-private fun cleanGenres(all: List<String>): List<String> =
+internal fun cleanGenres(all: List<String>): List<String> =
     all.filter { it.trim().lowercase() in KnownGenres }.ifEmpty { all }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
