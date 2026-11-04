@@ -597,16 +597,16 @@ private fun Billboard(
             horizontalAlignment = Alignment.Start,
         ) {
             Text(
-                t.seriesName, color = AniloverTextPrimary, fontSize = 28.sp,
-                fontWeight = FontWeight.Bold, maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                lineHeight = 34.sp,
+                t.seriesName, color = AniloverTextPrimary,
+                style = MaterialTheme.typography.headlineLarge,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(8.dp))
             if (t.genres.isNotEmpty()) {
                 Text(
                     t.genres.take(4).joinToString(", "),
-                    color = AniloverTextPrimary.copy(alpha = 0.85f), fontSize = 13.sp,
+                    color = AniloverTextPrimary.copy(alpha = 0.85f),
+                    style = MaterialTheme.typography.titleSmall,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.height(6.dp))
@@ -616,19 +616,21 @@ private fun Billboard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 scoreText(t)?.let {
-                    Text(it, color = AniloverGold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(it, color = AniloverGold,
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
                 }
-                t.year?.let { Text(it.toString(), color = AniloverTextDim, fontSize = 12.sp) }
+                t.year?.let { Text(it.toString(), color = AniloverTextDim, style = MaterialTheme.typography.bodySmall) }
                 t.statusLabel?.let {
                     Text(
-                        it, color = AniloverTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                        it, color = AniloverTextPrimary,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                         modifier = Modifier
                             .background(Color.White.copy(alpha = 0.22f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     )
                 }
                 if (t.episodes.isNotEmpty()) {
-                    Text("${t.episodes.size} Eps", color = AniloverTextDim, fontSize = 12.sp)
+                    Text("${t.episodes.size} Eps", color = AniloverTextDim, style = MaterialTheme.typography.bodySmall)
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -653,7 +655,7 @@ private fun Billboard(
                     Spacer(Modifier.width(6.dp))
                     Text(
                         if (resume != null) "Lanjutkan" else "Putar", color = AniloverOnAccent,
-                        fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                        style = MaterialTheme.typography.labelLarge,
                     )
                 }
                 // Pill "+ Daftarku": outline putih.
@@ -670,7 +672,7 @@ private fun Billboard(
                         contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp),
                     )
                     Spacer(Modifier.width(6.dp))
-                    Text("Daftarku", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Text("Daftarku", color = Color.White, style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
