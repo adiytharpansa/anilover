@@ -501,7 +501,7 @@ private fun PlayerScreen(
         sv.setStyle(
             CaptionStyleCompat(
                 fg,
-                android.graphics.Color.argb(150, 0, 0, 0),
+                android.graphics.Color.TRANSPARENT,
                 android.graphics.Color.TRANSPARENT,
                 CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
                 android.graphics.Color.BLACK,
