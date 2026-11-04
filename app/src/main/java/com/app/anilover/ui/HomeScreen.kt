@@ -37,16 +37,20 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.content.Intent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -519,6 +523,7 @@ private fun Billboard(
     val resume = history
         .filter { it.titleId == t.id && it.isStarted && !it.isFinished }
         .maxByOrNull { it.updatedAt }
+    val context = LocalContext.current
     // Billboard potret ala Netflix seluler: poster penuh sampai ke belakang status bar,
     // judul di tengah bawah, dua tombol sejajar.
     Box(
@@ -563,20 +568,26 @@ private fun Billboard(
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 32.sp,
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
+            // Baris pill gaya AniLab: status (terang), 18+ (gelap), HD (garis tepi).
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                t.matchPercent?.let {
-                    Text("$it% Cocok", color = AniloverGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-                t.year?.let { Text(it.toString(), color = AniloverTextDim, fontSize = 12.sp) }
                 t.statusLabel?.let {
                     Text(
-                        it, color = AniloverTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                        it, color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier
-                            .background(Color.White.copy(alpha = 0.22f), RoundedCornerShape(4.dp))
+                            .background(Color.White, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                }
+                if (t.adult) {
+                    Text(
+                        "18+", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(4.dp))
+                            .border(1.dp, Color.White.copy(alpha = 0.45f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     )
                 }
@@ -586,6 +597,17 @@ private fun Billboard(
                         .border(1.dp, Color.White.copy(alpha = 0.6f), RoundedCornerShape(3.dp))
                         .padding(horizontal = 5.dp, vertical = 1.dp),
                 )
+            }
+            Spacer(Modifier.height(8.dp))
+            // Baris meta gaya AniLab: tahun • skor • jumlah episode, abu-abu, di tengah.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                t.year?.let { Text(it.toString(), color = AniloverTextDim, fontSize = 12.sp) }
+                t.score?.let {
+                    Text("★ " + String.format("%.1f", it), color = AniloverTextDim, fontSize = 12.sp)
+                }
                 if (t.episodes.isNotEmpty()) {
                     Text("${t.episodes.size} Eps", color = AniloverTextDim, fontSize = 12.sp)
                 }
@@ -599,41 +621,53 @@ private fun Billboard(
                 )
             }
             Spacer(Modifier.height(14.dp))
+            // Baris aksi gaya AniLab: Bagikan | tombol Putar putih | Daftarku (hati).
             Row(
                 Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.width(80.dp).clickable {
+                        val send = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, "Tonton ${t.title} di Anilover")
+                        }
+                        context.startActivity(Intent.createChooser(send, "Bagikan"))
+                    },
+                ) {
+                    Icon(Icons.Filled.Share, contentDescription = "Bagikan", tint = Color.White, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.height(2.dp))
+                    Text("Bagikan", color = AniloverTextDim, fontSize = 12.sp)
+                }
                 Button(
                     onClick = {
                         if (resume != null) onPlay(resume.episode, resume.positionMs)
                         else onPlay(t.episodes.firstOrNull()?.number ?: 1, 0L)
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = AniloverAccent, contentColor = AniloverOnAccent,
+                        containerColor = Color.White, contentColor = Color.Black,
                     ),
-                    shape = AniloverShapes.Button,
-                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = AniloverShapes.Pill,
+                    modifier = Modifier.width(150.dp).height(42.dp),
                 ) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(26.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text(if (resume != null) "Lanjutkan" else "Putar", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(if (resume != null) "Lanjutkan" else "Putar", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
-                Button(
-                    onClick = onToggleMyList,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AniloverSurfaceHigh.copy(alpha = 0.92f),
-                        contentColor = AniloverTextPrimary,
-                    ),
-                    shape = AniloverShapes.Button,
-                    modifier = Modifier.weight(1f).height(48.dp),
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.width(80.dp).clickable(onClick = onToggleMyList),
                 ) {
                     Icon(
-                        if (inMyList) Icons.Outlined.Check else Icons.Outlined.Add,
-                        contentDescription = null, modifier = Modifier.size(22.dp),
+                        if (inMyList) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = "Daftarku",
+                        tint = if (inMyList) AniloverAccent else Color.White,
+                        modifier = Modifier.size(24.dp),
                     )
-                    Spacer(Modifier.width(4.dp))
-                    Text("Daftarku", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Spacer(Modifier.height(2.dp))
+                    Text("Daftarku", color = AniloverTextDim, fontSize = 12.sp)
                 }
             }
         }
@@ -811,6 +845,18 @@ fun PosterCard(
                                 if (isNew) AniloverGold else Color.Black.copy(alpha = 0.6f),
                                 RoundedCornerShape(5.dp),
                             )
+                            .padding(horizontal = 5.dp, vertical = 2.dp),
+                    )
+                }
+                if (t.adult) {
+                    // Lencana usia di kartu poster, gaya AniLab.
+                    Text(
+                        "18+",
+                        color = Color.White,
+                        fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.4.sp,
+                        modifier = Modifier.align(Alignment.BottomStart)
+                            .padding(start = 6.dp, bottom = if (progress != null) 10.dp else 6.dp)
+                            .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(5.dp))
                             .padding(horizontal = 5.dp, vertical = 2.dp),
                     )
                 }

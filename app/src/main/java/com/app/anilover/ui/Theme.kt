@@ -32,17 +32,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 
-// ── Token warna: "Tinta" — dasar biru-tinta gelap, aksen sakura, emas untuk sorotan ──
-val AniloverBackground = Color(0xFF0D0E17)
-val AniloverSurface = Color(0xFF161828)
-val AniloverSurfaceHigh = Color(0xFF212438)
-val AniloverOutline = Color(0xFF2E3250)
-val AniloverAccent = Color(0xFFFF5C85)
-/** Teks/ikon di atas aksen sakura. */
-val AniloverOnAccent = Color(0xFF1C0610)
+// ── Token warna: gaya AniLab — hitam pekat, permukaan abu gelap, aksen merah ──
+val AniloverBackground = Color(0xFF000000)
+val AniloverSurface = Color(0xFF121212)
+val AniloverSurfaceHigh = Color(0xFF2B2B2B)
+val AniloverOutline = Color(0xFF2E2E2E)
+val AniloverAccent = Color(0xFFD9232E)
+/** Teks/ikon di atas aksen merah. */
+val AniloverOnAccent = Color(0xFFFFFFFF)
 val AniloverGold = Color(0xFFFFC857)
-val AniloverTextPrimary = Color(0xFFF3F4FA)
-val AniloverTextDim = Color(0xFF9EA3BF)
+val AniloverTextPrimary = Color(0xFFFFFFFF)
+val AniloverTextDim = Color(0xFFB3B3B3)
 val AniloverGreen = Color(0xFF3DD68C)
 
 /** Skala radius: kecil (lencana), sedang (poster/kartu), besar (tombol/panel). */

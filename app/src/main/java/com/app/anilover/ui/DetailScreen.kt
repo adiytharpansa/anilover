@@ -2,6 +2,7 @@ package com.app.anilover.ui
 
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,7 +33,9 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
@@ -56,6 +59,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -139,84 +143,131 @@ fun DetailScreen(
                     Icon(Icons.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
                 }
                 Text(
-                    title.title, color = AniloverTextPrimary, fontSize = 28.sp,
-                    fontWeight = FontWeight.Black, maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.align(Alignment.BottomStart).padding(16.dp),
+                    title.title, color = AniloverTextPrimary, fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold, maxLines = 2,
+                    overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
                 )
             }
         }
         item {
             Column(Modifier.padding(horizontal = 16.dp)) {
+                // Baris pill gaya AniLab, rata tengah: status (terang), 18+ (gelap), skor (terang), HD (garis tepi).
                 Row(
+                    Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                 ) {
-                    title.matchPercent?.let {
-                        Text("$it% Kecocokan", color = AniloverGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    }
-                    title.score?.let {
-                        Text("★ " + String.format("%.1f", it), color = Color.White, fontSize = 13.sp)
-                    }
-                    title.year?.let { Text(it.toString(), color = Color.White, fontSize = 13.sp) }
                     title.statusLabel?.let {
                         Text(
-                            it, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                            it, color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier
-                                .background(AniloverSurfaceHigh, AniloverShapes.Chip)
+                                .background(Color.White, RoundedCornerShape(4.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                         )
                     }
-                    Text(
-                        "HD", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .background(AniloverSurfaceHigh, AniloverShapes.Chip)
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                    )
                     if (title.adult) {
                         Text(
                             "18+", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier
-                                .background(AniloverSurfaceHigh, AniloverShapes.Chip)
+                                .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(4.dp))
+                                .border(1.dp, Color.White.copy(alpha = 0.45f), RoundedCornerShape(4.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                         )
                     }
-                }
-                if (title.genres.isNotEmpty()) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(title.genres.joinToString(" · "), color = AniloverTextDim, fontSize = 12.sp)
-                }
-                Spacer(Modifier.height(12.dp))
-                Button(
-                    onClick = {
-                        if (resume != null) onPlay(resume.episode, resume.positionMs)
-                        else onPlay(title.episodes.firstOrNull()?.number ?: 1, 0L)
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AniloverAccent, contentColor = AniloverOnAccent,
-                    ),
-                    shape = AniloverShapes.Button,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                ) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
+                    title.score?.let {
+                        Text(
+                            "★ " + String.format("%.1f", it), color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .background(Color.White, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                        )
+                    }
                     Text(
-                        if (resume != null) "Lanjutkan E${resume.episode} · ${formatClock(resume.positionMs)}"
-                        else "Putar",
-                        fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                        "HD", color = AniloverTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .border(1.dp, Color.White.copy(alpha = 0.6f), RoundedCornerShape(3.dp))
+                            .padding(horizontal = 5.dp, vertical = 1.dp),
                     )
                 }
-                Spacer(Modifier.height(10.dp))
+                // Baris meta gaya AniLab: tahun • jumlah episode • kecocokan, abu-abu, rata tengah.
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                ) {
+                    title.year?.let { Text(it.toString(), color = AniloverTextDim, fontSize = 12.sp) }
+                    if (title.episodes.isNotEmpty()) {
+                        Text("${title.episodes.size} Episode", color = AniloverTextDim, fontSize = 12.sp)
+                    }
+                    title.matchPercent?.let {
+                        Text("$it% Cocok", color = AniloverTextDim, fontSize = 12.sp)
+                    }
+                }
+                if (title.genres.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        title.genres.joinToString("  •  "), color = AniloverTextPrimary, fontSize = 12.sp,
+                        textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                Spacer(Modifier.height(14.dp))
+                // Baris aksi gaya AniLab: Bagikan | Putar (pil putih) | Daftarku (hati).
                 Row(
                     Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     DetailAction(
-                        icon = if (inMyList) Icons.Filled.Check else Icons.Filled.Add,
-                        label = if (inMyList) "Di Daftarku" else "Daftarku",
+                        icon = Icons.Filled.Share,
+                        label = "Bagikan",
+                        active = false,
+                        onClick = {
+                            val send = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, "Tonton ${title.title} di Anilover")
+                            }
+                            context.startActivity(Intent.createChooser(send, "Bagikan"))
+                        },
+                    )
+                    Button(
+                        onClick = {
+                            if (resume != null) onPlay(resume.episode, resume.positionMs)
+                            else onPlay(title.episodes.firstOrNull()?.number ?: 1, 0L)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White, contentColor = Color.Black,
+                        ),
+                        shape = AniloverShapes.Pill,
+                        modifier = Modifier.width(150.dp).height(42.dp),
+                    ) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(26.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            if (resume != null) "Lanjutkan" else "Putar",
+                            fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                        )
+                    }
+                    DetailAction(
+                        icon = if (inMyList) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        label = "Daftarku",
                         active = inMyList,
                         onClick = onToggleMyList,
                     )
+                }
+                if (resume != null) {
+                    Text(
+                        "Lanjutkan E${resume.episode} · ${formatClock(resume.positionMs)}",
+                        color = AniloverTextDim, fontSize = 12.sp, textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                // Penilaian tetap dipertahankan di bawahnya: jempol ala Netflix.
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
+                ) {
                     DetailAction(
                         icon = Icons.Filled.ThumbDown,
                         label = "Tidak Suka",
@@ -240,18 +291,6 @@ fun DetailScreen(
                                     else -> 1
                                 }
                             )
-                        },
-                    )
-                    DetailAction(
-                        icon = Icons.Filled.Share,
-                        label = "Bagikan",
-                        active = false,
-                        onClick = {
-                            val send = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "Tonton ${title.title} di Anilover")
-                            }
-                            context.startActivity(Intent.createChooser(send, "Bagikan"))
                         },
                     )
                 }
@@ -452,9 +491,9 @@ fun DetailScreen(
                     else onPlay(title.episodes.firstOrNull()?.number ?: 1, 0L)
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = AniloverAccent, contentColor = AniloverOnAccent,
+                    containerColor = Color.White, contentColor = Color.Black,
                 ),
-                shape = AniloverShapes.Button,
+                shape = AniloverShapes.Pill,
             ) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null)
                 Spacer(Modifier.width(4.dp))
@@ -482,6 +521,6 @@ private fun DetailAction(
             tint = if (active) AniloverAccent else Color.White,
             modifier = Modifier.size(26.dp),
         )
-        Text(label, color = Color.White, fontSize = 11.sp)
+        Text(label, color = AniloverTextDim, fontSize = 11.sp)
     }
 }

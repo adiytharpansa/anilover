@@ -382,7 +382,7 @@ private fun AppRoot(
             if (selected == null && genreSel == null) {
                 // Garis tipis hanya di sisi atas (bukan kotak penuh).
                 NavigationBar(
-                    containerColor = AniloverSurface,
+                    containerColor = Color.Black,
                     tonalElevation = 0.dp,
                     modifier = Modifier.drawBehind {
                         drawLine(
