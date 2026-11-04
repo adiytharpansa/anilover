@@ -251,7 +251,7 @@ fun HomeScreen(
                         "Pilihan $g", list.take(10), onOpen, newIds = newIds, myList = myList,
                         onPlayFirst = playFirst, onToggleMyList = onToggleMyList,
                         onDownloadFirst = onDownloadFirst,
-                        cardWidth = posterW, onSeeAll = { onGenre(g) },
+                        cardWidth = posterW * 1.25f, onSeeAll = { onGenre(g) },
                     )
                 }
             }
