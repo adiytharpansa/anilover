@@ -25,11 +25,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.NewReleases
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.NewReleases
@@ -93,6 +97,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.app.anilover.data.AuthRepository
 import com.app.anilover.data.CatalogApi
+import com.app.anilover.data.CloudSync
 import com.app.anilover.data.CatalogCheckWorker
 import com.app.anilover.data.DownloadManager
 import com.app.anilover.data.HistoryStore
@@ -105,6 +110,7 @@ import com.app.anilover.ui.CategoryScreen
 import com.app.anilover.ui.DetailScreen
 import com.app.anilover.ui.DownloadsScreen
 import com.app.anilover.ui.HomeScreen
+import com.app.anilover.ui.MyListScreen
 import com.app.anilover.ui.NewScreen
 import com.app.anilover.ui.ProfileScreen
 import com.app.anilover.ui.AniloverAccent
@@ -173,6 +179,8 @@ class MainActivity : ComponentActivity() {
         val store = HistoryStore(applicationContext)
         val library = LibraryStore(applicationContext)
         val downloader = DownloadManager(applicationContext, library)
+        // Sinkronisasi cloud (Firestore) riwayat/Daftarku/nilai/pengaturan saat masuk.
+        CloudSync.attach(applicationContext, store, library)
         setContent {
             AniloverTheme {
               AuthGate {
@@ -208,7 +216,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Tab { Home, Search, New, Downloads, Profile }
+private enum class Tab { Home, Search, New, MyList, Downloads, Profile }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -373,6 +381,7 @@ private fun AppRoot(
 
     BackHandler(enabled = selected != null) { selected = null }
     BackHandler(enabled = selected == null && genreSel != null) { genreSel = null }
+    BackHandler(enabled = selected == null && genreSel == null && tab != Tab.Home) { tab = Tab.Home }
 
     // Status bar ditangani tiap layar (Beranda justru menembusnya); sisi bawah/samping ditangani Scaffold.
     Scaffold(
@@ -394,8 +403,8 @@ private fun AppRoot(
                     },
                 ) {
                     NavItem(Tab.Home, tab, Icons.Filled.Home, Icons.Outlined.Home, "Beranda") { tab = it }
-                    NavItem(Tab.Search, tab, Icons.Filled.Search, Icons.Outlined.Search, "Cari") { tab = it }
-                    NavItem(Tab.New, tab, Icons.Filled.NewReleases, Icons.Outlined.NewReleases, "Baru") { tab = it }
+                    NavItem(Tab.New, tab, Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth, "Jadwal") { tab = it }
+                    NavItem(Tab.MyList, tab, Icons.Filled.Bookmark, Icons.Outlined.BookmarkBorder, "Daftarku") { tab = it }
                     NavItem(Tab.Downloads, tab, Icons.Filled.Download, Icons.Outlined.Download, "Unduhan") { tab = it }
                     NavItem(Tab.Profile, tab, Icons.Filled.Person, Icons.Outlined.Person, "Profil") { tab = it }
                 }
@@ -499,6 +508,7 @@ private fun AppRoot(
                             }
                         },
                         onSeeNew = { tab = Tab.New },
+                        onSearch = { tab = Tab.Search },
                         onGenre = { genreSel = it },
                         isRefreshing = refreshing,
                         onRefresh = refreshHome,
@@ -509,6 +519,13 @@ private fun AppRoot(
                         recents = recents,
                         onSaveRecent = { q -> scope.launch { library.addRecentSearch(q) } },
                         onClearRecents = { scope.launch { library.clearRecentSearches() } },
+                        onPlay = { t -> t.episodes.firstOrNull()?.let { play(t, it.number, 0L) } },
+                        onDownload = { t -> t.episodes.firstOrNull()?.let { downloader.start(t, it) } },
+                    )
+                    Tab.MyList -> MyListScreen(
+                        titles = titles!!.filter { myList.contains(it.id) },
+                        onOpen = { selected = it },
+                        onBrowse = { tab = Tab.Home },
                     )
                     Tab.New -> NewScreen(
                         titles = titles!!,

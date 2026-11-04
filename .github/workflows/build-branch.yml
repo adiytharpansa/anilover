@@ -1,0 +1,55 @@
+name: Build APK (branch)
+# Dipakai untuk membangun APK dari branch kerja (mis. arena/*) tanpa harus merge ke main.
+# Push ke branch ini otomatis menjalankan build; bisa juga dijalankan manual via workflow_dispatch.
+on:
+  push:
+    branches: [arena/6ccedc94-anilover]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Build release APK
+        run: |
+          set -o pipefail
+          gradle assembleRelease --stacktrace 2>&1 | tee build-log.txt
+        env:
+          CATALOG_KEY: ${{ secrets.CATALOG_KEY }}
+      - name: Simpan log build ke branch saat gagal (debug, [skip ci])
+        if: failure()
+        run: |
+          git config user.email "ci@anilover.local"
+          git config user.name "Anilover CI"
+          git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/adiytharpansa/anilover.git"
+          git add build-log.txt
+          git commit -m "ci: log build gagal [skip ci]" || echo "no changes"
+          git push origin HEAD:arena/6ccedc94-anilover
+      - name: Arsipkan APK ke root repo saat sukses (konvensi "Arsip APK", [skip ci])
+        if: success()
+        run: |
+          git config user.email "ci@anilover.local"
+          git config user.name "Anilover CI"
+          git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/adiytharpansa/anilover.git"
+          V=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)
+          cp app/build/outputs/apk/release/app-release.apk "Anilover-$V.apk"
+          git add "Anilover-$V.apk"
+          git commit -m "Arsip APK $V dari build branch (CI ${{ github.run_id }}) [skip ci]" || echo "APK sama, tidak ada commit baru"
+          git push origin HEAD:arena/6ccedc94-anilover
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Anilover-branch-apk
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            build-log.txt
+          if-no-files-found: ignore

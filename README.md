@@ -1,6 +1,6 @@
 # Anilover
 
-**Unduh APK terbaru:** [Anilover-2.7.1.apk](https://github.com/adiytharpansa/anilover/raw/main/Anilover-2.7.1.apk)
+**Unduh APK terbaru:** [Anilover-2.8.0.apk](https://github.com/adiytharpansa/anilover/raw/main/Anilover-2.8.0.apk)
 
 Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
 **api.anime** (https://api-anime.adiyth-arpansa.workers.dev).
@@ -11,8 +11,32 @@ Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
   panel audio & subtitle, panel episode, post-play episode berikutnya, PiP, kunci layar,
   gestur kecerahan/volume/geser posisi, zoom layar (pas/isi/zoom), sisa waktu "-mm:ss"
 - Video diputar sebagai HLS dari salinan segmen di repo project-X lewat jsDelivr (pin commit)
+- Bila masuk dengan Firebase Auth: riwayat tonton, Daftarku, nilai, pengingat, dan pengaturan
+  tersinkron otomatis antar perangkat lewat Firestore (`users/{uid}`); tamu tetap lokal
+- Pencarian mencocokkan judul, genre, DAN sinopsis
 
 Build: GitHub Actions (`assembleDebug`) — artefak `Anilover-debug-apk`.
+
+## 2.8.0
+
+- **Sinkronisasi cloud (Firestore)**: saat masuk, riwayat tonton (maks 500 entri), Daftarku,
+  nilai, sembunyikan-dari-Lanjutkan, pengingat "Segera Tayang", dan pengaturan tersinkron
+  antar perangkat — yang lebih baru menang, perubahan lokal diunggah otomatis (debounce
+  1,5 dtk), perubahan dari HP lain masuk realtime. Tamu & unduhan tetap lokal.
+  Lihat `PANDUAN-FIREBASE.md` (aturan `users/{userId}` sudah disertakan).
+- **Pencarian lebih luas**: kata kunci kini juga dicocokkan dengan sinopsis judul.
+- **Urutan "Baru Ditambahkan" lebih kokoh**: memakai cap waktu terbit (`addedAt`) dari
+  katalog bila tersedia; bila tidak, tetap urutan katalog (terakhir masuk = terbaru).
+- Koreksi komentar kode: lencana 18+ tidak lagi dikaitkan dengan filter profil yang belum ada.
+- **Closed Caption (CC) di pemutar**: trek CEA-608/708 bawaan stream HLS (dari
+  `#EXT-X-MEDIA TYPE=CLOSED-CAPTIONS` atau in-band di segmen TS) kini tampil di panel
+  "Audio & Subtitle" sebagai bagian **Closed Caption (CC)** berlabel CC1/CC3; trek berbahasa
+  "und" otomatis terpilih bila tidak ada subtitle bahasa pilihan, dan bisa dijadikan default
+  lewat opsi baru "CC bawaan" di Profil.
+- **Ikon aplikasi dirapikan & diseragamkan**: segitiga play sakura (#FF96B6 → #FF5C85,
+  sama dengan `AniloverAccent`) ber-sudut-bulat di atas dasar `#0D0E17` (`AniloverBackground`) —
+  untuk launcher (legacy + adaptive v26), splash, logo dalam aplikasi (transparan), ikon
+  notifikasi, dan Play Store 512px; sebelumnya hijau polos di atas putih.
 
 ## Perubahan 2.7.0
 

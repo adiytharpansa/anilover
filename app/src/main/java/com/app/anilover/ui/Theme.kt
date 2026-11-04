@@ -32,25 +32,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 
-// ── Token warna: "Tinta" — dasar biru-tinta gelap, aksen sakura, emas untuk sorotan ──
-val AniloverBackground = Color(0xFF0D0E17)
-val AniloverSurface = Color(0xFF161828)
-val AniloverSurfaceHigh = Color(0xFF212438)
-val AniloverOutline = Color(0xFF2E3250)
-val AniloverAccent = Color(0xFFFF5C85)
-/** Teks/ikon di atas aksen sakura. */
-val AniloverOnAccent = Color(0xFF1C0610)
+// ── Token warna: "Neon" — latar hitam pekat, aksen hijau limau dari logo, emas untuk skor ──
+val AniloverBackground = Color(0xFF0A0A0B)
+val AniloverSurface = Color(0xFF141416)
+val AniloverSurfaceHigh = Color(0xFF1E1F23)
+val AniloverOutline = Color(0xFF2B2C31)
+val AniloverAccent = Color(0xFF6FFA41)
+/** Teks/ikon di atas aksen hijau. */
+val AniloverOnAccent = Color(0xFF07140A)
 val AniloverGold = Color(0xFFFFC857)
-val AniloverTextPrimary = Color(0xFFF3F4FA)
-val AniloverTextDim = Color(0xFF9EA3BF)
+val AniloverTextPrimary = Color(0xFFF5F5F7)
+val AniloverTextDim = Color(0xFF9A9CA5)
 val AniloverGreen = Color(0xFF3DD68C)
 
 /** Skala radius: kecil (lencana), sedang (poster/kartu), besar (tombol/panel). */
 object AniloverShapes {
     val Chip = RoundedCornerShape(8.dp)
-    val Poster = RoundedCornerShape(10.dp)
-    val Card = RoundedCornerShape(12.dp)
-    val Button = RoundedCornerShape(14.dp)
+    val Poster = RoundedCornerShape(12.dp)
+    val Card = RoundedCornerShape(16.dp)
+    val Button = RoundedCornerShape(50)
     val Pill = RoundedCornerShape(50)
 }
 

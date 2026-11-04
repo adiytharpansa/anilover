@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,6 +25,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -38,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -50,6 +53,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -93,6 +98,7 @@ fun AuthGate(content: @Composable () -> Unit) {
 
 @Composable
 fun AuthScreen() {
+    var showForm by rememberSaveable { mutableStateOf(false) }
     var register by rememberSaveable { mutableStateOf(false) }
     var name by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
@@ -154,12 +160,24 @@ fun AuthScreen() {
         }
     }
 
+    androidx.activity.compose.BackHandler(enabled = showForm) {
+        showForm = false; error = null; info = null
+    }
+    if (!showForm) {
+        WelcomeScreen(
+            onLogin = { register = false; showForm = true },
+            onRegister = { register = true; showForm = true },
+            onGuest = { AuthRepository.continueAsGuest() },
+        )
+        return
+    }
+
     Box(Modifier.fillMaxSize().background(AniloverBackground)) {
         // Semburat aksen di bagian atas.
         Box(
             Modifier.fillMaxWidth().height(340.dp).background(
                 Brush.verticalGradient(
-                    listOf(AniloverAccent.copy(alpha = 0.26f), Color.Transparent),
+                    listOf(AniloverAccent.copy(alpha = 0.16f), Color.Transparent),
                 ),
             ),
         )
@@ -172,11 +190,19 @@ fun AuthScreen() {
                 .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth()) {
+                IconButton(
+                    onClick = { showForm = false; error = null; info = null },
+                    modifier = Modifier.size(40.dp).background(AniloverSurfaceHigh, androidx.compose.foundation.shape.CircleShape),
+                ) {
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
             Image(
                 painter = painterResource(R.drawable.anilover_logo),
                 contentDescription = null,
-                modifier = Modifier.size(width = 44.dp, height = 54.dp),
+                modifier = Modifier.size(width = 52.dp, height = 63.dp),
             )
             Spacer(Modifier.height(12.dp))
             Text(
@@ -324,6 +350,97 @@ fun AuthScreen() {
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+/** Layar selamat datang: kolase pita miring, logo, judul besar, tombol Masuk / Daftar. */
+@Composable
+private fun WelcomeScreen(onLogin: () -> Unit, onRegister: () -> Unit, onGuest: () -> Unit) {
+    val stripes = listOf(
+        Triple("ANIME", listOf(Color(0xFF123A0C), Color(0xFF2E7D1C)), Color.White),
+        Triple("SUB INDO", listOf(Color(0xFF1E1F23), Color(0xFF3A3C44)), Color.White),
+        Triple("STREAMING", listOf(AniloverAccent, Color(0xFF2BAE2B)), AniloverOnAccent),
+    )
+    Box(Modifier.fillMaxSize().background(AniloverBackground)) {
+        // Kolase pita miring di separuh atas.
+        Box(Modifier.fillMaxWidth().fillMaxHeight(0.5f).clipToBounds()) {
+            Column(
+                Modifier.align(Alignment.Center).fillMaxWidth()
+                    .graphicsLayer { rotationZ = -9f; scaleX = 1.4f; scaleY = 1.4f },
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                for ((label, colors, textColor) in stripes) {
+                    Box(
+                        Modifier.fillMaxWidth().height(92.dp)
+                            .background(Brush.horizontalGradient(colors)),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Text(
+                            label, color = textColor.copy(alpha = 0.9f),
+                            fontSize = 40.sp, fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(start = 40.dp),
+                        )
+                    }
+                }
+            }
+        }
+        // Pudar ke hitam supaya teks di bawah terbaca.
+        Box(
+            Modifier.fillMaxWidth().fillMaxHeight(0.62f).align(Alignment.TopCenter)
+                .background(
+                    Brush.verticalGradient(
+                        0.0f to Color.Transparent,
+                        0.62f to Color.Transparent,
+                        1.0f to AniloverBackground,
+                    )
+                ),
+        )
+        Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.anilover_logo),
+                contentDescription = null,
+                modifier = Modifier.size(width = 66.dp, height = 80.dp),
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Selamat datang di\nAnilover", color = AniloverTextPrimary,
+                fontSize = 30.sp, lineHeight = 36.sp, fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Nonton anime subtitle Indonesia, unduh, dan lanjutkan di mana saja.",
+                color = AniloverTextDim, style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(24.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = onLogin,
+                    shape = AniloverShapes.Button,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AniloverAccent, contentColor = AniloverOnAccent,
+                    ),
+                    modifier = Modifier.weight(1f).height(52.dp),
+                ) { Text("Masuk", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+                OutlinedButton(
+                    onClick = onRegister,
+                    shape = AniloverShapes.Button,
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, AniloverAccent),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = AniloverAccent),
+                    modifier = Modifier.weight(1f).height(52.dp),
+                ) { Text("Daftar", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+            }
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = onGuest) {
+                Text("Lanjut tanpa akun", color = AniloverTextDim, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }

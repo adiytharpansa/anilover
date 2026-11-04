@@ -51,3 +51,20 @@ Berkas diubah
 - data/CommentRepository.kt (baru) : komentar realtime di Firestore, per episode.
 - MainActivity.kt : kirim info skor/tahun/genre ke pemutar. AndroidManifest.xml : orientasi tidak lagi dikunci lanskap.
 - app/build.gradle.kts : dependensi firebase-firestore. Setup: lihat PANDUAN-FIREBASE.md (bagian Komentar).
+
+---
+# Tambahan: Poster lebih menarik
+
+- ui/HomeScreen.kt : PosterCard -> pill skor ★ (kanan bawah), lencana BARU/ONGOING (kiri atas), tombol +/centang Daftarku (kanan atas, getar halus), gradasi gelap di dasar, bingkai aksen saat ditekan, parallax halus di baris, muncul bertahap. Baris "Baru Ditambahkan" kini kartu lanskap (LandscapeRow/LandscapeCard). Judul kartu: medium + "Genre · N Eps".
+- ui/Components.kt : PosterFallback -> gradasi warna khas per judul + inisial besar.
+- ui/Theme.kt : Modifier.appearFx (animasi muncul sekali).
+
+---
+# Desain ulang total (aksen hijau, gaya Anilab) — lihat DESAIN-REFERENSI.md
+- Tema: Theme.kt palet "Neon" (hitam #0A0A0B, aksen hijau #6FFA41), tombol pill, kartu 16dp.
+- Logo baru transparan: res/drawable-nodpi/anilover_logo.png; ikon peluncur: drawable-nodpi/ic_launcher_foreground.png (+ XML adaptive diarahkan ke sana), ic_launcher-playstore.png.
+- Beranda (HomeScreen.kt): header logo + Cari + lonceng, hero pill Putar/+Daftarku, Top Hits bernomor, Episode Baru Rilis.
+- Navbar: Beranda · Jadwal · Daftarku · Unduhan · Profil (Cari lewat header). MyListScreen baru.
+- Detail (DetailScreen.kt) bertab + chip episode; pemutar & WatchPage restyle.
+- Cari, Jadwal, Unduhan, Profil, Masuk (Screens.kt, AuthScreen.kt) direstyle; Masuk = layar selamat datang.
+- CATATAN: warna splash/tema XML (res/values) tidak ada di zip yang terpotong — ubah latar splash ke #0A0A0B & ikon ke logo baru secara manual.
