@@ -25,7 +25,9 @@ Commit & push seperti biasa; GitHub Actions akan membangun APK dengan Firebase a
 - **Ada** `app/google-services.json` -> layar Masuk/Daftar muncul saat aplikasi dibuka.
   Pengguna bisa Masuk, Daftar, "Lupa kata sandi?" (email reset dari Firebase), atau "Lanjut tanpa akun" (tamu).
   Sesi tersimpan, jadi tidak perlu login ulang tiap membuka aplikasi.
-- **Tidak ada** berkasnya -> build tetap berhasil dan aplikasi berjalan seperti sebelumnya (tanpa layar masuk).
+- **Tidak ada** berkasnya -> build tetap berhasil dan layar Masuk/Daftar + komentar tetap berfungsi dalam MODE LOKAL:
+  akun (kata sandi di-hash PBKDF2 + salt) dan komentar tersimpan di perangkat ini saja, tidak terlihat oleh pengguna lain
+  dan tidak ikut pindah ke HP lain. "Lupa kata sandi?" disembunyikan karena butuh email dari Firebase.
 - Tab **Profil** menampilkan nama + email akun dan tombol **Keluar dari akun**
   (untuk tamu: tombol **Masuk atau daftar**).
 

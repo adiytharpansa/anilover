@@ -218,6 +218,8 @@ class PlayerActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         com.app.anilover.data.CrashReporter.install(applicationContext)
         super.onCreate(savedInstanceState)
+        com.app.anilover.data.AuthRepository.init(applicationContext)
+        com.app.anilover.data.CommentRepository.init(applicationContext)
         store = HistoryStore(applicationContext)
         // Halaman tontonan: potret (video di atas + info & komentar); putar ke lanskap
         // atau ketuk tombol layar penuh untuk video penuh.

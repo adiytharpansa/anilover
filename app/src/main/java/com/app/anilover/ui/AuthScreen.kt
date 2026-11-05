@@ -71,16 +71,11 @@ import kotlinx.coroutines.launch
 private val AuthError = AniloverDanger
 
 /**
- * Pintu masuk aplikasi: bila Firebase belum dikonfigurasi, langsung tampilkan aplikasi
- * (perilaku lama). Bila sudah, tampilkan layar Masuk/Daftar sampai pengguna login
- * atau memilih "Lanjut tanpa akun".
+ * Pintu masuk aplikasi: tampilkan layar Masuk/Daftar sampai pengguna login atau memilih
+ * "Lanjut tanpa akun". Tanpa Firebase, akun disimpan lokal di perangkat.
  */
 @Composable
 fun AuthGate(content: @Composable () -> Unit) {
-    if (!AuthRepository.isConfigured) {
-        content()
-        return
-    }
     val ready by AuthRepository.ready.collectAsState()
     val user by AuthRepository.user.collectAsState()
     val guest by AuthRepository.guest.collectAsState()
@@ -244,7 +239,7 @@ fun AuthScreen() {
                 )
             }
 
-            if (!register) {
+            if (!register && AuthRepository.isConfigured) {
                 Text(
                     "Lupa kata sandi?", color = AniloverAccent,
                     style = MaterialTheme.typography.labelMedium,
@@ -319,7 +314,8 @@ fun AuthScreen() {
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                "Riwayat tonton & Daftarku tersimpan di perangkat ini.",
+                if (AuthRepository.isConfigured) "Riwayat tonton & Daftarku tersimpan di perangkat ini."
+                else "Akun, riwayat tonton, Daftarku, dan komentar tersimpan di perangkat ini.",
                 color = AniloverTextDim, style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
             )

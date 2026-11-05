@@ -59,3 +59,12 @@ Berkas diubah
 - res/values/themes.xml : colorAccent tema pemutar & Cast jadi hijau.
 - Semua halaman (Masuk/Daftar, Beranda, Detail, Cari, Baru, Daftarku, Unduhan, Profil, Pemutar, Komentar) memakai token yang sama, jadi otomatis ikut.
 - WatchPage.kt : avatar komentar memakai palet hijau/putih/abu; PlayerActivity.kt : spinner memuat hijau; AuthScreen.kt : semburat atas lebih halus.
+
+---
+# Tambahan: Masuk/Daftar & komentar tanpa Firebase (mode lokal)
+
+- data/AuthRepository.kt : bila Firebase belum dipasang, Masuk/Daftar memakai akun lokal (PBKDF2 + salt, sesi tersimpan). init() kini idempotent.
+- ui/AuthScreen.kt : AuthGate selalu menampilkan layar Masuk/Daftar (atau "Lanjut tanpa akun"); "Lupa kata sandi?" hanya bila Firebase aktif.
+- data/CommentRepository.kt : komentar lokal (balasan, suka, hapus, urutan Teratas/Terbaru) saat Firebase belum aktif; Firestore tetap dipakai bila ada.
+- MainActivity.kt & PlayerActivity.kt : memanggil AuthRepository.init + CommentRepository.init; tombol Keluar selalu tersedia di Profil.
+- player/WatchPage.kt : keterangan "Komentar tersimpan di perangkat ini" di mode lokal.

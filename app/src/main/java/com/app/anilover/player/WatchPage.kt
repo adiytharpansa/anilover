@@ -237,6 +237,16 @@ internal fun WatchPage(
                 }
             }
 
+            if (!com.app.anilover.data.AuthRepository.isConfigured) {
+                item(key = "c-local") {
+                    Text(
+                        "Komentar tersimpan di perangkat ini.",
+                        color = AniloverTextDim, fontSize = 11.sp,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+            }
+
             when (commentsState) {
                 CommentsState.Loading -> item(key = "c-loading") {
                     Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {

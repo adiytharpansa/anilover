@@ -170,6 +170,7 @@ class MainActivity : ComponentActivity() {
             )
         } catch (e: Exception) { /* notifikasi latar bersifat tambahan */ }
         AuthRepository.init(applicationContext)
+        com.app.anilover.data.CommentRepository.init(applicationContext)
         val store = HistoryStore(applicationContext)
         val library = LibraryStore(applicationContext)
         val downloader = DownloadManager(applicationContext, library)
@@ -550,7 +551,7 @@ private fun AppRoot(
                         onClearHistory = { scope.launch { store.clearAll() } },
                         accountName = account?.name,
                         accountEmail = account?.email,
-                        onLogout = if (AuthRepository.isConfigured) ({ AuthRepository.signOut() }) else null,
+                        onLogout = { AuthRepository.signOut() },
                     )
                     }
                     }
