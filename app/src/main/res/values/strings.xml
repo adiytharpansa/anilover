@@ -254,4 +254,21 @@
         <item quantity="one">View %1$d reply</item>
         <item quantity="other">View %1$d replies</item>
     </plurals>
+    <string name="auth_back">Back</string>
+    <string name="auth_change_email">Change</string>
+    <string name="auth_continue">Continue</string>
+    <string name="auth_pass_hint">At least 6 characters. A mix of letters, numbers and symbols makes it stronger.</string>
+    <string name="auth_step_of">Step %1$d of %2$d</string>
+    <string name="ob_counter">%1$d of 3 picked</string>
+    <string name="ob_done">Done</string>
+    <string name="ob_name_label">Display name (optional)</string>
+    <string name="ob_skip">Skip for now</string>
+    <string name="ob_sub">Pick 3 anime you like and we\'ll tailor your home page for you.</string>
+    <string name="ob_title">Personalize Anilover</string>
+    <string name="verify_resend">Resend verification email</string>
+    <string name="verify_resent">A verification link was sent to %1$s. Check your inbox or spam folder.</string>
+    <string name="verify_sent_note">We sent a verification link to your email. You can keep watching — verify any time from Profile.</string>
+    <string name="verify_unavailable">Email verification is only available for Firebase accounts.</string>
+    <string name="verify_unverified">Email not verified yet</string>
+    <string name="verify_verified">Email verified</string>
 </resources>

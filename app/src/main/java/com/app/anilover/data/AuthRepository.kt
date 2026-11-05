@@ -15,6 +15,9 @@ import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +34,12 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** Akun yang sedang masuk (diringkas dari FirebaseUser). */
-data class AuthUser(val uid: String, val name: String, val email: String?)
+data class AuthUser(
+    val uid: String,
+    val name: String,
+    val email: String?,
+    val emailVerified: Boolean = false,
+)
 
 /** Galat akun lokal; pesannya sudah siap ditampilkan ke pengguna. */
 class LocalAuthException(message: String) : Exception(message)
@@ -58,6 +66,10 @@ object AuthRepository {
 
     private val _guest = MutableStateFlow(false)
     val guest: StateFlow<Boolean> = _guest
+
+    /** true bila pengguna yang masuk belum menyelesaikan personalisasi awal (pilih 3 favorit). */
+    private val _needsOnboarding = MutableStateFlow(false)
+    val needsOnboarding: StateFlow<Boolean> = _needsOnboarding
 
     private var prefs: android.content.SharedPreferences? = null
     private var localPrefs: android.content.SharedPreferences? = null
@@ -104,8 +116,10 @@ object AuthRepository {
                 return@withContext withContext(Dispatchers.Default) { localSignIn(email, password) }
             }
             try {
-                FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password).await()
+                val cred = FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password).await()
                 setGuest(false)
+                val uid = cred?.user?.uid
+                _needsOnboarding.value = uid != null && fetchOnboardingPending(uid)
                 Result.success(Unit)
             } catch (e: Exception) {
                 Result.failure(e)
@@ -122,13 +136,29 @@ object AuthRepository {
                 val auth = FirebaseAuth.getInstance()
                 val user = auth.createUserWithEmailAndPassword(email, password).await()?.user
                     ?: throw IllegalStateException(Str.get(R.string.auth_err_create))
+                val cleanName = name.trim()
                 // Nama gagal disimpan tidak boleh membatalkan pendaftaran.
-                try {
-                    user.updateProfile(
-                        UserProfileChangeRequest.Builder().setDisplayName(name).build(),
-                    ).await()
-                } catch (e: Exception) { /* nama bisa diubah nanti */ }
+                if (cleanName.isNotBlank()) {
+                    try {
+                        user.updateProfile(
+                            UserProfileChangeRequest.Builder().setDisplayName(cleanName).build(),
+                        ).await()
+                    } catch (e: Exception) { /* nama bisa diubah nanti */ }
+                }
+                // Email verifikasi otomatis (tautan, bukan kode) — kegagalannya tidak
+                // membatalkan pendaftaran; pengguna tetap bisa masuk & menonton.
+                try { user.sendEmailVerification().await() } catch (e: Exception) { }
+                saveProfileDoc(
+                    user.uid,
+                    mapOf(
+                        "email" to user.email,
+                        "displayName" to cleanName.ifBlank { null },
+                        "onboardingDone" to false,
+                        "createdAt" to FieldValue.serverTimestamp(),
+                    ),
+                )
                 setGuest(false)
+                _needsOnboarding.value = true
                 _user.value = user.toAuthUser()
                 Result.success(Unit)
             } catch (e: Exception) {
@@ -155,8 +185,114 @@ object AuthRepository {
         }
     }
 
+    /** Tulis dokumen profil users/{uid} di Firestore (gabung, jangan timpa kolom lain). */
+    private suspend fun saveProfileDoc(uid: String, data: Map<String, Any?>) {
+        try {
+            FirebaseFirestore.getInstance().collection("users").document(uid)
+                .set(data.filterValues { it != null }, SetOptions.merge()).await()
+        } catch (e: Exception) { /* profil awan tambahan; jangan gagalkan alur akun */ }
+    }
+
+    /** true bila dokumen profil belum menandai personalisasi selesai. */
+    private suspend fun fetchOnboardingPending(uid: String): Boolean = try {
+        val doc = FirebaseFirestore.getInstance().collection("users").document(uid).get().await()
+        doc?.getBoolean("onboardingDone") != true
+    } catch (e: Exception) { false }
+
+    /** Kirim ulang email verifikasi ke pengguna Firebase yang sedang masuk. */
+    suspend fun resendVerification(): Result<Unit> {
+        if (!isConfigured) {
+            return Result.failure(LocalAuthException(Str.get(R.string.verify_unavailable)))
+        }
+        return try {
+            val fu = FirebaseAuth.getInstance().currentUser
+                ?: return Result.failure(LocalAuthException(Str.get(R.string.auth_err_user)))
+            fu.sendEmailVerification().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Segarkan data pengguna dari server (mis. status verifikasi email terbaru). */
+    suspend fun refreshUser() {
+        if (!isConfigured) return
+        try {
+            val fu = FirebaseAuth.getInstance().currentUser ?: return
+            fu.reload().await()
+            _user.value = fu.toAuthUser()
+        } catch (e: Exception) { }
+    }
+
+    /**
+     * Selesaikan personalisasi awal: simpan nama tampilan + genre/judul favorit,
+     * lalu tandai selesai agar tidak ditanya lagi.
+     */
+    suspend fun completeOnboarding(
+        name: String,
+        genres: List<String>,
+        titleIds: List<String>,
+    ): Result<Unit> {
+        val cleanName = name.trim()
+        if (isConfigured) {
+            try {
+                val fu = FirebaseAuth.getInstance().currentUser
+                if (fu != null) {
+                    if (cleanName.isNotBlank() && cleanName != fu.displayName) {
+                        try {
+                            fu.updateProfile(
+                                UserProfileChangeRequest.Builder().setDisplayName(cleanName).build(),
+                            ).await()
+                        } catch (e: Exception) { }
+                    }
+                    saveProfileDoc(
+                        fu.uid,
+                        mapOf(
+                            "displayName" to cleanName.ifBlank { null },
+                            "favoriteGenres" to genres,
+                            "favoriteTitleIds" to titleIds,
+                            "onboardingDone" to true,
+                            "updatedAt" to FieldValue.serverTimestamp(),
+                        ),
+                    )
+                    _user.value = fu.toAuthUser()
+                }
+            } catch (e: Exception) { }
+        } else {
+            val u = _user.value
+            if (u != null) {
+                val profile = JSONObject()
+                    .put("name", cleanName)
+                    .put("genres", JSONArray(genres))
+                    .put("titles", JSONArray(titleIds))
+                localPrefs?.edit()
+                    ?.putString("profile_" + u.uid, profile.toString())
+                    ?.remove("ob_pending")
+                    ?.apply()
+                if (cleanName.isNotBlank()) _user.value = u.copy(name = cleanName)
+            }
+        }
+        _needsOnboarding.value = false
+        return Result.success(Unit)
+    }
+
+    /** Lewati personalisasi: tandai selesai (tanpa favorit) agar tidak ditanya lagi. */
+    suspend fun skipOnboarding() {
+        if (isConfigured) {
+            try {
+                FirebaseAuth.getInstance().currentUser?.let {
+                    saveProfileDoc(it.uid, mapOf("onboardingDone" to true))
+                }
+            } catch (e: Exception) { }
+        } else {
+            localPrefs?.edit()?.remove("ob_pending")?.apply()
+        }
+        _needsOnboarding.value = false
+    }
+
     /** Keluar dari akun, atau meninggalkan mode tamu agar layar masuk muncul lagi. */
     fun signOut() {
+        _needsOnboarding.value = false
         setGuest(false)
         if (isConfigured) {
             try { FirebaseAuth.getInstance().signOut() } catch (e: Exception) { }
@@ -185,7 +321,8 @@ object AuthRepository {
         for (i in 0 until arr.length()) {
             val o = arr.optJSONObject(i) ?: continue
             if (o.optString("uid") == uid) {
-                _user.value = AuthUser(uid, o.optString("name"), o.optString("email"))
+                _user.value = AuthUser(uid, o.optString("name"), o.optString("email"), emailVerified = true)
+                _needsOnboarding.value = localPrefs?.getString("ob_pending", null) == uid
                 return
             }
         }
@@ -202,7 +339,8 @@ object AuthRepository {
             if (hashPassword(password, salt) != o.optString("hash")) break
             val uid = o.optString("uid")
             localPrefs?.edit()?.putString("session", uid)?.apply()
-            _user.value = AuthUser(uid, o.optString("name"), key)
+            _user.value = AuthUser(uid, o.optString("name"), key, emailVerified = true)
+            _needsOnboarding.value = localPrefs?.getString("ob_pending", null) == uid
             setGuest(false)
             return Result.success(Unit)
         }
@@ -227,8 +365,10 @@ object AuthRepository {
                 .put("salt", Base64.encodeToString(salt, Base64.NO_WRAP))
                 .put("hash", hashPassword(password, salt))
         )
-        localPrefs?.edit()?.putString("accounts", arr.toString())?.putString("session", uid)?.apply()
-        _user.value = AuthUser(uid, cleanName, key)
+        localPrefs?.edit()?.putString("accounts", arr.toString())?.putString("session", uid)
+            ?.putString("ob_pending", uid)?.apply()
+        _user.value = AuthUser(uid, cleanName, key, emailVerified = true)
+        _needsOnboarding.value = true
         setGuest(false)
         return Result.success(Unit)
     }
@@ -259,6 +399,7 @@ object AuthRepository {
             ?: email?.substringBefore("@")?.takeIf { it.isNotBlank() }
             ?: Str.get(R.string.user_default),
         email = email,
+        emailVerified = isEmailVerified,
     )
 
     /** Menunggu Task Google selesai tanpa dependensi coroutines-play-services. */

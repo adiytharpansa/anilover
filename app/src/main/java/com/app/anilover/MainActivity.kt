@@ -109,6 +109,7 @@ import com.app.anilover.ui.NewScreen
 import com.app.anilover.ui.ProfileScreen
 import com.app.anilover.ui.AniloverAccent
 import com.app.anilover.ui.AuthGate
+import com.app.anilover.ui.OnboardingScreen
 import com.app.anilover.ui.AniloverOnAccent
 import com.app.anilover.ui.AniloverBackground
 import com.app.anilover.ui.AniloverSurface
@@ -372,6 +373,30 @@ private fun AppRoot(
     fun play(t: Title, ep: Int, pos: Long) =
         onPlay(t, ep, pos, settings.autoplayNext, settings.subtitleDefault)
 
+    // Segarkan status akun (terutama verifikasi email) tiap membuka tab Profil.
+    LaunchedEffect(tab) {
+        if (tab == Tab.Profile) AuthRepository.refreshUser()
+    }
+
+    // Langkah 3 pendaftaran (personalisasi ala Netflix): tampilkan sekali untuk
+    // pengguna masuk yang belum menyelesaikannya, memakai katalog yang sudah dimuat.
+    val needsOnboarding by AuthRepository.needsOnboarding.collectAsState()
+    if (needsOnboarding && account != null) {
+        if (titles == null) {
+            SkeletonHome()
+        } else {
+            OnboardingScreen(
+                titles = titles!!,
+                accountName = account?.name ?: "",
+                onFinish = { name, genres, ids ->
+                    scope.launch { AuthRepository.completeOnboarding(name, genres, ids) }
+                },
+                onSkip = { scope.launch { AuthRepository.skipOnboarding() } },
+            )
+        }
+        return
+    }
+
     BackHandler(enabled = selected != null) { selected = null }
     BackHandler(enabled = selected == null && genreSel != null) { genreSel = null }
 
@@ -551,6 +576,27 @@ private fun AppRoot(
                         onClearHistory = { scope.launch { store.clearAll() } },
                         accountName = account?.name,
                         accountEmail = account?.email,
+                        accountVerified = account?.emailVerified ?: true,
+                        showEmailStatus = AuthRepository.isConfigured && account != null,
+                        onResendVerification = if (
+                            AuthRepository.isConfigured && account != null &&
+                            account?.emailVerified == false
+                        ) {
+                            {
+                                scope.launch {
+                                    val r = AuthRepository.resendVerification()
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        if (r.isSuccess) {
+                                            Str.get(R.string.verify_resent, account?.email ?: "")
+                                        } else {
+                                            Str.get(R.string.err_generic)
+                                        },
+                                        android.widget.Toast.LENGTH_LONG,
+                                    ).show()
+                                }
+                            }
+                        } else null,
                         onLogout = { AuthRepository.signOut() },
                     )
                     }

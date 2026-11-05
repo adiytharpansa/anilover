@@ -1,5 +1,12 @@
 # Panduan memasang Firebase Auth (Masuk / Daftar)
 
+> STATUS 5 Nov 2026: FIREBASE SUDAH AKTIF. Proyek "Anilover" (ID reaa-a6573) sudah dibuat,
+> Email/Password sudah dinyalakan, Cloud Firestore sudah dibuat dengan aturan keamanan
+> (users hanya bisa mengakses dokumennya sendiri; komentar bisa dibaca publik, dibuat oleh
+> pengguna masuk, disukai pengguna masuk, dihapus pemiliknya), dan app/google-services.json
+> SUDAH terpasang di repo ini. Panduan di bawah kini hanya sebagai referensi bila suatu saat
+> perlu membuat ulang proyek.
+
 Kode sudah siap. Yang perlu kamu lakukan hanya menyiapkan proyek Firebase dan menaruh satu berkas.
 
 ## 1. Buat proyek Firebase

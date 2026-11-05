@@ -245,4 +245,21 @@
     <plurals name="view_replies">
         <item quantity="other">Lihat %1$d balasan</item>
     </plurals>
+    <string name="auth_back">Kembali</string>
+    <string name="auth_change_email">Ubah</string>
+    <string name="auth_continue">Lanjutkan</string>
+    <string name="auth_pass_hint">Minimal 6 karakter. Campuran huruf, angka, dan simbol membuatnya lebih kuat.</string>
+    <string name="auth_step_of">Langkah %1$d dari %2$d</string>
+    <string name="ob_counter">%1$d dari 3 dipilih</string>
+    <string name="ob_done">Selesai</string>
+    <string name="ob_name_label">Nama tampilan (opsional)</string>
+    <string name="ob_skip">Lewati dulu</string>
+    <string name="ob_sub">Pilih 3 anime yang kamu sukai dan Beranda akan disesuaikan untukmu.</string>
+    <string name="ob_title">Personalisasi Anilover</string>
+    <string name="verify_resend">Kirim ulang email verifikasi</string>
+    <string name="verify_resent">Tautan verifikasi dikirim ke %1$s. Periksa kotak masuk atau folder spam.</string>
+    <string name="verify_sent_note">Kami mengirim tautan verifikasi ke emailmu. Kamu tetap bisa menonton — verifikasi kapan saja dari Profil.</string>
+    <string name="verify_unavailable">Verifikasi email hanya tersedia untuk akun Firebase.</string>
+    <string name="verify_unverified">Email belum terverifikasi</string>
+    <string name="verify_verified">Email terverifikasi</string>
 </resources>

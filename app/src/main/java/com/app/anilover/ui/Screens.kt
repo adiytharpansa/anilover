@@ -667,6 +667,11 @@ fun ProfileScreen(
     onClearHistory: () -> Unit,
     accountName: String? = null,
     accountEmail: String? = null,
+    /** Status verifikasi email (hanya bermakna bila [showEmailStatus] true). */
+    accountVerified: Boolean = true,
+    showEmailStatus: Boolean = false,
+    /** Non-null bila email belum terverifikasi: kirim ulang email verifikasi. */
+    onResendVerification: (() -> Unit)? = null,
     /** Non-null bila Firebase aktif: tombol Keluar (akun) atau Masuk/Daftar (tamu). */
     onLogout: (() -> Unit)? = null,
 ) {
@@ -698,6 +703,30 @@ fun ProfileScreen(
                 Spacer(Modifier.height(10.dp))
                 Text(displayName, color = AniloverTextPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold)
                 Text(accountEmail ?: Str.get(R.string.local_account), color = AniloverTextDim, fontSize = 12.sp)
+                if (showEmailStatus && accountEmail != null) {
+                    Spacer(Modifier.height(6.dp))
+                    if (accountVerified) {
+                        Text(
+                            "✓ " + Str.get(R.string.verify_verified),
+                            color = AniloverGreen, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                        )
+                    } else {
+                        Text(
+                            Str.get(R.string.verify_unverified),
+                            color = AniloverDanger, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                        )
+                        if (onResendVerification != null) {
+                            Text(
+                                Str.get(R.string.verify_resend),
+                                color = AniloverAccent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier
+                                    .clip(AniloverShapes.Chip)
+                                    .clickable { onResendVerification() }
+                                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                            )
+                        }
+                    }
+                }
             }
             Spacer(Modifier.height(18.dp))
             Row(
