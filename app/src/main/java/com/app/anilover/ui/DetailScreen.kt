@@ -1,5 +1,7 @@
 package com.app.anilover.ui
 
+import com.app.anilover.Str
+import com.app.anilover.R
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -140,7 +142,7 @@ fun DetailScreen(
                     modifier = Modifier.padding(10.dp).size(40.dp)
                         .background(AniloverBackground.copy(alpha = 0.6f), AniloverShapes.Pill),
                 ) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
+                    Icon(Icons.Filled.ArrowBack, contentDescription = Str.get(R.string.back), tint = Color.White)
                 }
                 Text(
                     title.title, color = AniloverTextPrimary, fontSize = 24.sp,
@@ -198,10 +200,10 @@ fun DetailScreen(
                 ) {
                     title.year?.let { Text(it.toString(), color = AniloverTextDim, fontSize = 12.sp) }
                     if (title.episodes.isNotEmpty()) {
-                        Text("${title.episodes.size} Episode", color = AniloverTextDim, fontSize = 12.sp)
+                        Text(Str.plural(R.plurals.episodes_count_cap, title.episodes.size), color = AniloverTextDim, fontSize = 12.sp)
                     }
                     title.matchPercent?.let {
-                        Text("$it% Cocok", color = AniloverTextDim, fontSize = 12.sp)
+                        Text(Str.get(R.string.match_pct, it), color = AniloverTextDim, fontSize = 12.sp)
                     }
                 }
                 if (title.genres.isNotEmpty()) {
@@ -220,14 +222,14 @@ fun DetailScreen(
                 ) {
                     DetailAction(
                         icon = Icons.Filled.Share,
-                        label = "Bagikan",
+                        label = Str.get(R.string.share),
                         active = false,
                         onClick = {
                             val send = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "Tonton ${title.title} di Anilover")
+                                putExtra(Intent.EXTRA_TEXT, Str.get(R.string.share_watch, title.title))
                             }
-                            context.startActivity(Intent.createChooser(send, "Bagikan"))
+                            context.startActivity(Intent.createChooser(send, Str.get(R.string.share)))
                         },
                     )
                     Button(
@@ -244,20 +246,20 @@ fun DetailScreen(
                         Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(26.dp))
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            if (resume != null) "Lanjutkan" else "Putar",
+                            if (resume != null) Str.get(R.string.resume) else Str.get(R.string.play),
                             fontWeight = FontWeight.Bold, fontSize = 16.sp,
                         )
                     }
                     DetailAction(
                         icon = if (inMyList) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        label = "Daftarku",
+                        label = Str.get(R.string.my_list),
                         active = inMyList,
                         onClick = onToggleMyList,
                     )
                 }
                 if (resume != null) {
                     Text(
-                        "Lanjutkan E${resume.episode} · ${formatClock(resume.positionMs)}",
+                        Str.get(R.string.resume_ep_time, resume.episode, formatClock(resume.positionMs)),
                         color = AniloverTextDim, fontSize = 12.sp, textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                     )
@@ -270,16 +272,16 @@ fun DetailScreen(
                 ) {
                     DetailAction(
                         icon = Icons.Filled.ThumbDown,
-                        label = "Tidak Suka",
+                        label = Str.get(R.string.dislike),
                         active = rating == -1,
                         onClick = { onRate(if (rating == -1) 0 else -1) },
                     )
                     DetailAction(
                         icon = Icons.Filled.ThumbUp,
                         label = when (rating) {
-                            2 -> "Sangat Suka"
-                            1 -> "Disukai"
-                            else -> "Sukai"
+                            2 -> Str.get(R.string.love)
+                            1 -> Str.get(R.string.liked)
+                            else -> Str.get(R.string.like)
                         },
                         active = rating > 0,
                         // Ketuk berurutan ala Netflix: Suka -> Sangat Suka -> batal.
@@ -303,7 +305,7 @@ fun DetailScreen(
                         modifier = Modifier.clickable { synopsisExpanded = !synopsisExpanded },
                     )
                     Text(
-                        if (synopsisExpanded) "Tutup" else "Lainnya",
+                        if (synopsisExpanded) Str.get(R.string.close) else Str.get(R.string.more),
                         color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.clickable { synopsisExpanded = !synopsisExpanded }
                             .padding(vertical = 4.dp),
@@ -314,8 +316,8 @@ fun DetailScreen(
                     for (key in tabKeys) {
                         val label = when (key) {
                             "ep" -> "Episode"
-                            "trailer" -> "Trailer & Lainnya"
-                            else -> "Lainnya Seperti Ini"
+                            "trailer" -> Str.get(R.string.tab_trailers)
+                            else -> Str.get(R.string.tab_similar)
                         }
                         Column(
                             Modifier.weight(1f).clickable { tabKey = key },
@@ -400,15 +402,14 @@ fun DetailScreen(
                         }
                         when {
                             prog != null && prog.isFinished ->
-                                Text("Selesai ditonton", color = AniloverTextDim, fontSize = 12.sp)
+                                Text(Str.get(R.string.watched), color = AniloverTextDim, fontSize = 12.sp)
                             prog != null && prog.isStarted ->
                                 Text(
-                                    formatClock(prog.durationMs) + " · sisa " +
-                                        formatRemainingPlain(prog.positionMs, prog.durationMs),
+                                    Str.get(R.string.dur_time_left, formatClock(prog.durationMs), formatRemainingPlain(prog.positionMs, prog.durationMs)),
                                     color = AniloverTextDim, fontSize = 12.sp,
                                 )
                             dl?.state == "selesai" ->
-                                Text("Terunduh · " + formatSize(dl.sizeBytes), color = AniloverTextDim, fontSize = 12.sp)
+                                Text(Str.get(R.string.downloaded_size, formatSize(dl.sizeBytes)), color = AniloverTextDim, fontSize = 12.sp)
                         }
                     }
                     when (dl?.state) {
@@ -420,16 +421,16 @@ fun DetailScreen(
                             )
                         }
                         "selesai" -> IconButton(onClick = { onDeleteDownload(dl) }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Hapus unduhan", tint = Color.White)
+                            Icon(Icons.Filled.Delete, contentDescription = Str.get(R.string.delete_download), tint = Color.White)
                         }
                         else -> IconButton(onClick = { onDownload(ep) }) {
-                            Icon(Icons.Filled.Download, contentDescription = "Unduh episode", tint = Color.White)
+                            Icon(Icons.Filled.Download, contentDescription = Str.get(R.string.download_episode), tint = Color.White)
                         }
                     }
                 }
                 if (dl?.state == "gagal") {
                     Text(
-                        "Unduhan gagal — ketuk ikon unduh untuk mencoba lagi.",
+                        Str.get(R.string.download_failed_hint),
                         color = AniloverAccent, fontSize = 11.sp,
                         modifier = Modifier.padding(start = 42.dp, top = 2.dp),
                     )
@@ -452,14 +453,14 @@ fun DetailScreen(
                         fontSize = 14.sp, fontWeight = FontWeight.Medium,
                     )
                     Text(
-                        "Cuplikan resmi dari katalog gudang Anilover.",
+                        Str.get(R.string.trailer_desc),
                         color = AniloverTextDim, fontSize = 12.sp,
                     )
                 }
             }
         }
         if (activeTab == "similar" && similar.isNotEmpty()) {
-            item(key = "similar") { PosterRow("Judul Serupa", similar, onOpenTitle) }
+            item(key = "similar") { PosterRow(Str.get(R.string.similar_titles), similar, onOpenTitle) }
         }
         item { Spacer(Modifier.height(28.dp)) }
     }
@@ -481,7 +482,7 @@ fun DetailScreen(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    if (resume != null) "Lanjutkan E${resume.episode}" else "${title.episodes.size} episode",
+                    if (resume != null) Str.get(R.string.resume_ep, resume.episode) else Str.plural(R.plurals.episodes_count, title.episodes.size),
                     color = AniloverTextDim, fontSize = 12.sp,
                 )
             }
@@ -497,7 +498,7 @@ fun DetailScreen(
             ) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null)
                 Spacer(Modifier.width(4.dp))
-                Text(if (resume != null) "Lanjutkan" else "Putar", fontWeight = FontWeight.Bold)
+                Text(if (resume != null) Str.get(R.string.resume) else Str.get(R.string.play), fontWeight = FontWeight.Bold)
             }
         }
     }

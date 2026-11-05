@@ -1,5 +1,6 @@
 package com.app.anilover.ui
 
+import com.app.anilover.Str
 import android.util.Patterns
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -101,10 +102,10 @@ fun AuthScreen() {
     val focus = LocalFocusManager.current
 
     fun validate(needPassword: Boolean): String? = when {
-        register && needPassword && name.trim().length < 2 -> "Nama minimal 2 karakter."
-        !Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches() -> "Format email tidak valid."
-        needPassword && password.length < 6 -> "Kata sandi minimal 6 karakter."
-        register && needPassword && password != confirm -> "Konfirmasi kata sandi tidak sama."
+        register && needPassword && name.trim().length < 2 -> Str.get(R.string.val_name)
+        !Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches() -> Str.get(R.string.val_email)
+        needPassword && password.length < 6 -> Str.get(R.string.val_pass)
+        register && needPassword && password != confirm -> Str.get(R.string.val_confirm)
         else -> null
     }
 
@@ -137,14 +138,14 @@ fun AuthScreen() {
         info = null
         val problem = validate(needPassword = false)
         if (problem != null) {
-            error = "Isi email kamu dulu, lalu ketuk \"Lupa kata sandi?\"."
+            error = Str.get(R.string.fill_email_first)
             return
         }
         loading = true
         scope.launch {
             val result = AuthRepository.sendPasswordReset(email.trim())
             loading = false
-            result.onSuccess { info = "Tautan reset kata sandi dikirim ke ${email.trim()}. Cek kotak masuk atau folder spam." }
+            result.onSuccess { info = Str.get(R.string.reset_sent, email.trim()) }
             result.onFailure { error = AuthRepository.friendlyError(it) }
         }
     }
@@ -180,7 +181,7 @@ fun AuthScreen() {
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                if (register) "Buat akun untuk mulai menonton" else "Masuk untuk lanjut menonton",
+                if (register) Str.get(R.string.auth_sub_register) else Str.get(R.string.auth_sub_login),
                 color = AniloverTextDim, style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
             )
@@ -193,10 +194,10 @@ fun AuthScreen() {
                     .border(1.dp, AniloverOutline, AniloverShapes.Button)
                     .padding(4.dp),
             ) {
-                AuthTab("Masuk", !register, Modifier.weight(1f)) {
+                AuthTab(Str.get(R.string.sign_in), !register, Modifier.weight(1f)) {
                     register = false; error = null; info = null
                 }
-                AuthTab("Daftar", register, Modifier.weight(1f)) {
+                AuthTab(Str.get(R.string.sign_up), register, Modifier.weight(1f)) {
                     register = true; error = null; info = null
                 }
             }
@@ -204,7 +205,7 @@ fun AuthScreen() {
 
             if (register) {
                 AuthField(
-                    value = name, onValueChange = { name = it }, label = "Nama",
+                    value = name, onValueChange = { name = it }, label = Str.get(R.string.field_name),
                     icon = Icons.Filled.Person, enabled = !loading,
                     keyboardType = KeyboardType.Text, imeAction = ImeAction.Next,
                     onAction = { focus.moveFocus(FocusDirection.Down) },
@@ -219,7 +220,7 @@ fun AuthScreen() {
             )
             Spacer(Modifier.height(12.dp))
             AuthField(
-                value = password, onValueChange = { password = it }, label = "Kata sandi",
+                value = password, onValueChange = { password = it }, label = Str.get(R.string.field_password),
                 icon = Icons.Filled.Lock, enabled = !loading,
                 keyboardType = KeyboardType.Password,
                 imeAction = if (register) ImeAction.Next else ImeAction.Done,
@@ -230,7 +231,7 @@ fun AuthScreen() {
             if (register) {
                 Spacer(Modifier.height(12.dp))
                 AuthField(
-                    value = confirm, onValueChange = { confirm = it }, label = "Ulangi kata sandi",
+                    value = confirm, onValueChange = { confirm = it }, label = Str.get(R.string.field_confirm),
                     icon = Icons.Filled.Lock, enabled = !loading,
                     keyboardType = KeyboardType.Password, imeAction = ImeAction.Done,
                     isPassword = true, showPassword = showPass,
@@ -241,7 +242,7 @@ fun AuthScreen() {
 
             if (!register && AuthRepository.isConfigured) {
                 Text(
-                    "Lupa kata sandi?", color = AniloverAccent,
+                    Str.get(R.string.forgot_password), color = AniloverAccent,
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.align(Alignment.End)
                         .clip(AniloverShapes.Chip)
@@ -285,7 +286,7 @@ fun AuthScreen() {
                     )
                 } else {
                     Text(
-                        if (register) "Buat Akun" else "Masuk",
+                        if (register) Str.get(R.string.create_account) else Str.get(R.string.sign_in),
                         fontWeight = FontWeight.Bold, fontSize = 16.sp,
                     )
                 }
@@ -295,7 +296,7 @@ fun AuthScreen() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f).height(1.dp).background(AniloverOutline))
                 Text(
-                    "atau", color = AniloverTextDim,
+                    Str.get(R.string.or), color = AniloverTextDim,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
@@ -310,12 +311,12 @@ fun AuthScreen() {
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = AniloverTextPrimary),
                 modifier = Modifier.fillMaxWidth().height(50.dp),
             ) {
-                Text("Lanjut tanpa akun", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(Str.get(R.string.continue_guest), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                if (AuthRepository.isConfigured) "Riwayat tonton & Daftarku tersimpan di perangkat ini."
-                else "Akun, riwayat tonton, Daftarku, dan komentar tersimpan di perangkat ini.",
+                if (AuthRepository.isConfigured) Str.get(R.string.guest_note_cloud)
+                else Str.get(R.string.guest_note_local),
                 color = AniloverTextDim, style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
             )
@@ -367,7 +368,7 @@ private fun AuthField(
                 IconButton(onClick = onTogglePassword) {
                     Icon(
                         if (showPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                        contentDescription = if (showPassword) "Sembunyikan kata sandi" else "Tampilkan kata sandi",
+                        contentDescription = if (showPassword) Str.get(R.string.hide_password) else Str.get(R.string.show_password),
                         modifier = Modifier.size(20.dp),
                     )
                 }

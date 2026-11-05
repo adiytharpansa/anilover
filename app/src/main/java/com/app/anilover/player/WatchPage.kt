@@ -1,5 +1,7 @@
 package com.app.anilover.player
 
+import com.app.anilover.Str
+import com.app.anilover.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -132,7 +134,7 @@ internal fun WatchPage(
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Episode $currentEp" + if (episodes.size > 1) " dari ${episodes.size}" else "",
+                        if (episodes.size > 1) Str.get(R.string.ep_of, currentEp, episodes.size) else "Episode $currentEp",
                         color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                     )
                     if (meta.isNotBlank()) {
@@ -143,21 +145,21 @@ internal fun WatchPage(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         WatchAction(
                             icon = if (inMyList) Icons.Filled.Check else Icons.Filled.Add,
-                            label = if (inMyList) "Di Daftarku" else "Daftarku",
+                            label = if (inMyList) Str.get(R.string.in_my_list) else Str.get(R.string.my_list),
                             active = inMyList, onClick = onToggleMyList,
                         )
                         WatchAction(
-                            icon = Icons.Filled.ThumbDown, label = "Tidak Suka",
+                            icon = Icons.Filled.ThumbDown, label = Str.get(R.string.dislike),
                             active = rating == -1,
                             onClick = { onRate(if (rating == -1) 0 else -1) },
                         )
                         WatchAction(
                             icon = Icons.Filled.ThumbUp,
-                            label = when (rating) { 2 -> "Sangat Suka"; 1 -> "Disukai"; else -> "Sukai" },
+                            label = when (rating) { 2 -> Str.get(R.string.love); 1 -> Str.get(R.string.liked); else -> Str.get(R.string.like) },
                             active = rating > 0,
                             onClick = { onRate(when (rating) { 1 -> 2; 2 -> 0; else -> 1 }) },
                         )
-                        WatchAction(Icons.Filled.Share, "Bagikan", false, onShare)
+                        WatchAction(Icons.Filled.Share, Str.get(R.string.share), false, onShare)
                     }
                 }
             }
@@ -174,7 +176,7 @@ internal fun WatchPage(
                                 fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
                             )
                             Text(
-                                "Semua", color = AniloverTextDim, fontSize = 13.sp,
+                                Str.get(R.string.all), color = AniloverTextDim, fontSize = 13.sp,
                                 modifier = Modifier.clickable(onClick = onSeeAllEpisodes)
                                     .padding(vertical = 6.dp),
                             )
@@ -223,7 +225,7 @@ internal fun WatchPage(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "Komentar", color = AniloverTextPrimary, fontSize = 16.sp,
+                        Str.get(R.string.comments), color = AniloverTextPrimary, fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                     )
                     if (commentsState is CommentsState.Ready) {
@@ -231,16 +233,16 @@ internal fun WatchPage(
                         Text("$totalCount", color = AniloverTextDim, fontSize = 14.sp)
                     }
                     Spacer(Modifier.weight(1f))
-                    SortChip("Teratas", sort == CommentSort.Top) { sort = CommentSort.Top }
+                    SortChip(Str.get(R.string.top), sort == CommentSort.Top) { sort = CommentSort.Top }
                     Spacer(Modifier.width(6.dp))
-                    SortChip("Terbaru", sort == CommentSort.New) { sort = CommentSort.New }
+                    SortChip(Str.get(R.string.newest), sort == CommentSort.New) { sort = CommentSort.New }
                 }
             }
 
             if (!com.app.anilover.data.AuthRepository.isConfigured) {
                 item(key = "c-local") {
                     Text(
-                        "Komentar tersimpan di perangkat ini.",
+                        Str.get(R.string.comments_local_hint),
                         color = AniloverTextDim, fontSize = 11.sp,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     )
@@ -256,13 +258,13 @@ internal fun WatchPage(
                     }
                 }
                 CommentsState.Unavailable -> item(key = "c-off") {
-                    CommentNotice("Komentar belum aktif. Pasang Firebase (lihat PANDUAN-FIREBASE.md) untuk mengaktifkannya.")
+                    CommentNotice(Str.get(R.string.comments_off))
                 }
                 is CommentsState.Error -> item(key = "c-err") { CommentNotice(commentsState.message) }
                 is CommentsState.Ready -> {
                     if (tops.isEmpty()) {
                         item(key = "c-empty") {
-                            CommentNotice("Belum ada komentar. Jadilah yang pertama berkomentar!")
+                            CommentNotice(Str.get(R.string.comments_empty))
                         }
                     } else {
                         items(tops, key = { it.id }) { c ->
@@ -288,7 +290,7 @@ internal fun WatchPage(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Text(
-                                            if (open) "Sembunyikan balasan" else "Lihat ${replies.size} balasan",
+                                            if (open) Str.get(R.string.hide_replies) else Str.plural(R.plurals.view_replies, replies.size),
                                             color = AniloverAccent, fontSize = 13.sp,
                                             fontWeight = FontWeight.SemiBold,
                                         )
@@ -344,14 +346,14 @@ internal fun WatchPage(
     toDelete?.let { c ->
         AlertDialog(
             onDismissRequest = { toDelete = null },
-            title = { Text("Hapus komentar?") },
-            text = { Text("Komentar ini akan dihapus permanen.") },
+            title = { Text(Str.get(R.string.delete_comment_q)) },
+            text = { Text(Str.get(R.string.delete_comment_msg)) },
             confirmButton = {
                 TextButton(onClick = { CommentRepository.delete(c.id); toDelete = null }) {
-                    Text("Hapus", color = com.app.anilover.ui.AniloverDanger)
+                    Text(Str.get(R.string.delete), color = com.app.anilover.ui.AniloverDanger)
                 }
             },
-            dismissButton = { TextButton(onClick = { toDelete = null }) { Text("Batal") } },
+            dismissButton = { TextButton(onClick = { toDelete = null }) { Text(Str.get(R.string.cancel)) } },
         )
     }
 }
@@ -464,7 +466,7 @@ private fun CommentRow(
                 ) {
                     Icon(
                         if (liked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                        contentDescription = "Suka",
+                        contentDescription = Str.get(R.string.like_short),
                         tint = if (liked) AniloverAccent else AniloverTextDim,
                         modifier = Modifier.size(17.dp),
                     )
@@ -477,7 +479,7 @@ private fun CommentRow(
                     }
                 }
                 Text(
-                    "Balas", color = AniloverTextDim, fontSize = 12.sp,
+                    Str.get(R.string.reply), color = AniloverTextDim, fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.clip(AniloverShapes.Chip).clickable(onClick = onReply)
                         .padding(horizontal = 4.dp, vertical = 8.dp),
@@ -488,13 +490,13 @@ private fun CommentRow(
             Box {
                 IconButton(onClick = { menu = true }, modifier = Modifier.size(32.dp)) {
                     Icon(
-                        Icons.Filled.MoreVert, contentDescription = "Opsi",
+                        Icons.Filled.MoreVert, contentDescription = Str.get(R.string.options_short),
                         tint = AniloverTextDim, modifier = Modifier.size(18.dp),
                     )
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(
-                        text = { Text("Hapus") },
+                        text = { Text(Str.get(R.string.delete)) },
                         onClick = { menu = false; onDelete() },
                     )
                 }
@@ -530,12 +532,12 @@ private fun CommentInputBar(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Membalas ${replyTo.name}", color = AniloverTextDim, fontSize = 12.sp,
+                    Str.get(R.string.replying_to, replyTo.name), color = AniloverTextDim, fontSize = 12.sp,
                     modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
                 IconButton(onClick = onCancelReply, modifier = Modifier.size(28.dp)) {
                     Icon(
-                        Icons.Filled.Close, contentDescription = "Batal membalas",
+                        Icons.Filled.Close, contentDescription = Str.get(R.string.cancel_reply),
                         tint = AniloverTextDim, modifier = Modifier.size(16.dp),
                     )
                 }
@@ -543,7 +545,7 @@ private fun CommentInputBar(
         }
         if (user == null) {
             Text(
-                "Masuk untuk menulis komentar…", color = AniloverTextDim, fontSize = 14.sp,
+                Str.get(R.string.sign_in_to_comment), color = AniloverTextDim, fontSize = 14.sp,
                 modifier = Modifier.fillMaxWidth().clickable(onClick = onNeedLogin)
                     .padding(horizontal = 16.dp, vertical = 16.dp),
             )
@@ -562,7 +564,7 @@ private fun CommentInputBar(
                 ) {
                     if (text.isEmpty()) {
                         Text(
-                            if (replyTo != null) "Tulis balasan…" else "Tambahkan komentar…",
+                            if (replyTo != null) Str.get(R.string.write_reply) else Str.get(R.string.add_comment),
                             color = AniloverTextDim, fontSize = 14.sp,
                         )
                     }
@@ -587,7 +589,7 @@ private fun CommentInputBar(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Kirim",
+                        contentDescription = Str.get(R.string.send),
                         tint = if (canSend) AniloverAccent else AniloverTextDim.copy(alpha = 0.5f),
                     )
                 }
@@ -599,11 +601,11 @@ private fun CommentInputBar(
 private fun timeAgo(ms: Long): String {
     val s = ((System.currentTimeMillis() - ms) / 1000).coerceAtLeast(0)
     return when {
-        s < 60 -> "baru saja"
-        s < 3600 -> "${s / 60} mnt lalu"
-        s < 86_400 -> "${s / 3600} jam lalu"
-        s < 86_400 * 30 -> "${s / 86_400} hari lalu"
-        s < 86_400L * 365 -> "${s / (86_400 * 30)} bln lalu"
-        else -> "${s / (86_400L * 365)} thn lalu"
+        s < 60 -> Str.get(R.string.ago_now)
+        s < 3600 -> Str.get(R.string.ago_min, s / 60)
+        s < 86_400 -> Str.get(R.string.ago_hour, s / 3600)
+        s < 86_400 * 30 -> Str.get(R.string.ago_day, s / 86_400)
+        s < 86_400L * 365 -> Str.get(R.string.ago_month, s / (86_400 * 30))
+        else -> Str.get(R.string.ago_year, s / (86_400L * 365))
     }
 }

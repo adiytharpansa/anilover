@@ -1,5 +1,6 @@
 package com.app.anilover.player
 
+import com.app.anilover.Str
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -113,7 +114,7 @@ class PlaybackService : Service() {
         NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_anilover)
             .setContentTitle(PlaybackHolder.title.ifBlank { "Anilover" })
-            .setContentText("Memutar…")
+            .setContentText(Str.get(R.string.notif_playing))
             .setOngoing(true)
             .setSilent(true)
             .build()
@@ -126,7 +127,7 @@ class PlaybackService : Service() {
         val nm = getSystemService(NotificationManager::class.java)
         if (nm.getNotificationChannel(CHANNEL_ID) == null) {
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Pemutaran", NotificationManager.IMPORTANCE_LOW),
+                NotificationChannel(CHANNEL_ID, Str.get(R.string.notif_channel_playback), NotificationManager.IMPORTANCE_LOW),
             )
         }
     }

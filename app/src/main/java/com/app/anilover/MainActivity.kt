@@ -245,7 +245,7 @@ private fun AppRoot(
     if (crashText != null) {
         AlertDialog(
             onDismissRequest = { },
-            title = { Text("Aplikasi sempat berhenti") },
+            title = { Text(Str.get(R.string.crash_title)) },
             text = {
                 Column(Modifier.height(300.dp).verticalScroll(rememberScrollState())) {
                     Text(crashText!!, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
@@ -257,14 +257,14 @@ private fun AppRoot(
                         type = "text/plain"
                         putExtra(Intent.EXTRA_TEXT, crashText)
                     }
-                    context.startActivity(Intent.createChooser(send, "Bagikan laporan galat"))
-                }) { Text("Bagikan") }
+                    context.startActivity(Intent.createChooser(send, Str.get(R.string.share_crash_report)))
+                }) { Text(Str.get(R.string.share)) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     com.app.anilover.data.CrashReporter.clear(context)
                     crashText = null
-                }) { Text("Tutup") }
+                }) { Text(Str.get(R.string.close)) }
             },
         )
     }
@@ -289,7 +289,7 @@ private fun AppRoot(
             throw e
         } catch (e: Exception) {
             if (titles.isNullOrEmpty()) {
-                error = "Tidak bisa memuat katalog. Periksa koneksi internetmu."
+                error = Str.get(R.string.err_catalog_load)
             }
         }
         try { soon = CatalogApi.fetchSoon() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { /* Segera Tayang tambahan */ }
@@ -312,7 +312,7 @@ private fun AppRoot(
                 val ok = try { loadCatalog() } finally { refreshing = false }
                 if (!ok) {
                     android.widget.Toast.makeText(
-                        context, "Gagal menyegarkan. Periksa koneksi internetmu.",
+                        context, Str.get(R.string.err_refresh),
                         android.widget.Toast.LENGTH_SHORT,
                     ).show()
                 }
@@ -394,11 +394,11 @@ private fun AppRoot(
                         )
                     },
                 ) {
-                    NavItem(Tab.Home, tab, Icons.Filled.Home, Icons.Outlined.Home, "Beranda") { tab = it }
-                    NavItem(Tab.Search, tab, Icons.Filled.Search, Icons.Outlined.Search, "Cari") { tab = it }
-                    NavItem(Tab.New, tab, Icons.Filled.NewReleases, Icons.Outlined.NewReleases, "Baru") { tab = it }
-                    NavItem(Tab.Downloads, tab, Icons.Filled.Download, Icons.Outlined.Download, "Unduhan") { tab = it }
-                    NavItem(Tab.Profile, tab, Icons.Filled.Person, Icons.Outlined.Person, "Profil") { tab = it }
+                    NavItem(Tab.Home, tab, Icons.Filled.Home, Icons.Outlined.Home, Str.get(R.string.nav_home)) { tab = it }
+                    NavItem(Tab.Search, tab, Icons.Filled.Search, Icons.Outlined.Search, Str.get(R.string.nav_search)) { tab = it }
+                    NavItem(Tab.New, tab, Icons.Filled.NewReleases, Icons.Outlined.NewReleases, Str.get(R.string.nav_new)) { tab = it }
+                    NavItem(Tab.Downloads, tab, Icons.Filled.Download, Icons.Outlined.Download, Str.get(R.string.nav_downloads)) { tab = it }
+                    NavItem(Tab.Profile, tab, Icons.Filled.Person, Icons.Outlined.Person, Str.get(R.string.nav_profile)) { tab = it }
                 }
             }
         },
@@ -466,7 +466,7 @@ private fun AppRoot(
                         colors = ButtonDefaults.buttonColors(
                             containerColor = AniloverAccent, contentColor = AniloverOnAccent,
                         ),
-                    ) { Text("Coba Lagi") }
+                    ) { Text(Str.get(R.string.retry)) }
                 }
                 titles == null -> SkeletonHome()
                 else -> AnimatedContent(

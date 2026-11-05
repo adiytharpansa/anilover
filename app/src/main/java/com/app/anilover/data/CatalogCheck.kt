@@ -1,5 +1,6 @@
 package com.app.anilover.data
 
+import com.app.anilover.Str
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -42,17 +43,16 @@ class CatalogCheckWorker(context: Context, params: WorkerParameters) :
             val others = newTitles.filter { !reminders.contains(it.id) }
             if (reminded.isNotEmpty()) {
                 notify(
-                    "Sudah tayang di Anilover",
-                    reminded.joinToString(", ") { it.seriesName } +
-                        " — yang kamu tunggu sudah bisa ditonton.",
+                    Str.get(R.string.notif_aired_title),
+                    Str.get(R.string.notif_aired_text, reminded.joinToString(", ") { it.seriesName }),
                     1001,
                 )
                 library.removeReminders(reminded.map { it.id }.toSet())
             }
             if (others.isNotEmpty()) {
                 val names = others.take(3).joinToString(", ") { it.seriesName }
-                val suffix = if (others.size > 3) " dan ${others.size - 3} judul lain" else ""
-                notify("Judul baru di Anilover", names + suffix, 1002)
+                val suffix = if (others.size > 3) Str.plural(R.plurals.notif_more_titles, others.size - 3) else ""
+                notify(Str.get(R.string.notif_new_title), names + suffix, 1002)
             }
         }
         library.setKnownIds(freshIds)
@@ -64,7 +64,7 @@ class CatalogCheckWorker(context: Context, params: WorkerParameters) :
         val manager = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                CHANNEL_ID, "Judul & Episode Baru", NotificationManager.IMPORTANCE_DEFAULT,
+                CHANNEL_ID, Str.get(R.string.notif_channel_new), NotificationManager.IMPORTANCE_DEFAULT,
             )
             manager.createNotificationChannel(channel)
         }

@@ -1,5 +1,6 @@
 package com.app.anilover.player
 
+import com.app.anilover.Str
 import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.Intent
@@ -376,16 +377,16 @@ private fun buildPlayer(context: Context): ExoPlayer {
 private fun friendlyError(e: PlaybackException): String = when (e.errorCode) {
     PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
     PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ->
-        "Koneksi terputus atau terlalu lambat. Periksa internet lalu coba lagi."
+        Str.get(R.string.p_err_network)
     PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ->
-        "Berkas video tidak ditemukan di server."
+        Str.get(R.string.p_err_notfound)
     PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ->
-        "Server video menolak permintaan. Coba lagi beberapa saat."
+        Str.get(R.string.p_err_http)
     PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
     PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED,
     PlaybackException.ERROR_CODE_DECODING_FAILED ->
-        "Format video tidak bisa diputar di perangkat ini."
-    else -> "Gagal memutar. Periksa koneksi lalu coba lagi."
+        Str.get(R.string.p_err_format)
+    else -> Str.get(R.string.p_err_generic)
 }
 
 @Composable
@@ -444,7 +445,7 @@ private fun PlayerScreen(
         if (!url.startsWith("http")) {
             Toast.makeText(
                 context,
-                "Cast hanya untuk streaming — episode unduhan tidak bisa dikirim ke TV",
+                Str.get(R.string.cast_streaming_only),
                 Toast.LENGTH_LONG,
             ).show()
             return
@@ -460,7 +461,7 @@ private fun PlayerScreen(
         remote.load(info, true, player.currentPosition)
         player.playWhenReady = false
         casting = true
-        Toast.makeText(context, "Memutar di TV", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, Str.get(R.string.casting_to_tv), Toast.LENGTH_SHORT).show()
     }
 
     DisposableEffect(castContext) {
@@ -730,7 +731,7 @@ private fun PlayerScreen(
     fun seekBy(delta: Long) {
         val target = (player.currentPosition + delta).coerceIn(0L, if (durationMs > 0) durationMs else Long.MAX_VALUE)
         player.seekTo(target)
-        seekFeedback = if (delta > 0) "+10 dtk" else "-10 dtk"
+        seekFeedback = if (delta > 0) Str.get(R.string.seek_fwd) else Str.get(R.string.seek_back)
     }
 
     val videoLayer: @Composable (Modifier) -> Unit = { videoMod ->
@@ -801,7 +802,7 @@ private fun PlayerScreen(
                                     val act = context as android.app.Activity
                                     val frac = (startBrightness - dragAccumY / size.height).coerceIn(0.05f, 1f)
                                     act.window.attributes = act.window.attributes.apply { screenBrightness = frac }
-                                    gestureHint = "Kecerahan ${(frac * 100).toInt()}%"
+                                    gestureHint = Str.get(R.string.brightness_pct, (frac * 100).toInt())
                                     hudKind = 2
                                     hudFraction = frac
                                 }
@@ -810,7 +811,7 @@ private fun PlayerScreen(
                                     val frac = (startVolume.toFloat() / max - dragAccumY / size.height).coerceIn(0f, 1f)
                                     val vol = (frac * max).toInt()
                                     audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, vol, 0)
-                                    gestureHint = "Volume ${(frac * 100).toInt()}%"
+                                    gestureHint = Str.get(R.string.volume_pct, (frac * 100).toInt())
                                     hudKind = 3
                                     hudFraction = frac
                                 }
@@ -833,7 +834,7 @@ private fun PlayerScreen(
                 Text(errorMsg!!, color = Color.White, fontWeight = FontWeight.Medium)
                 if (errorDetail != null) {
                     Spacer(Modifier.height(4.dp))
-                    Text("Kode: $errorDetail", color = AniloverTextDim, fontSize = 11.sp)
+                    Text(Str.get(R.string.error_code, errorDetail), color = AniloverTextDim, fontSize = 11.sp)
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -843,14 +844,14 @@ private fun PlayerScreen(
                             loadEpisodeViaDoors(currentEp, currentPlaylist, positionMs)
                         },
                     ) {
-                        Text("Coba Lagi", color = AniloverOnAccent, fontWeight = FontWeight.Bold,
+                        Text(Str.get(R.string.retry), color = AniloverOnAccent, fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp))
                     }
                     Surface(
                         color = AniloverSurfaceHigh, shape = AniloverShapes.Button,
                         modifier = Modifier.clickable(onClick = onBack),
                     ) {
-                        Text("Kembali", color = Color.White,
+                        Text(Str.get(R.string.back), color = Color.White,
                             modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp))
                     }
                 }
@@ -909,7 +910,7 @@ private fun PlayerScreen(
                 onClick = { locked = false; showControls = true },
                 modifier = Modifier.align(Alignment.CenterStart).padding(20.dp),
             ) {
-                Icon(Icons.Filled.Lock, contentDescription = "Buka kunci", tint = Color.White, modifier = Modifier.size(30.dp))
+                Icon(Icons.Filled.Lock, contentDescription = Str.get(R.string.unlock), tint = Color.White, modifier = Modifier.size(30.dp))
             }
         }
 
@@ -936,12 +937,12 @@ private fun PlayerScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
+                        Icon(Icons.Filled.ArrowBack, contentDescription = Str.get(R.string.back), tint = Color.White)
                     }
                     Column(Modifier.weight(1f)) {
                         Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                         Text(
-                            "Episode $currentEp dari ${episodes.size}" + if (casting) " · Diputar di TV" else "",
+                            if (casting) Str.get(R.string.ep_of_casting, currentEp, episodes.size) else Str.get(R.string.ep_of, currentEp, episodes.size),
                             color = AniloverTextDim, fontSize = 12.sp,
                         )
                     }
@@ -963,14 +964,14 @@ private fun PlayerScreen(
                         )
                     }
                     IconButton(onClick = { panel = Panel.Tracks }) {
-                        Icon(Icons.Filled.Subtitles, contentDescription = "Audio & subtitle", tint = Color.White)
+                        Icon(Icons.Filled.Subtitles, contentDescription = Str.get(R.string.cd_audio_subtitles), tint = Color.White)
                     }
                     IconButton(onClick = onEnterPip) {
                         Icon(Icons.Filled.PictureInPicture, contentDescription = "Picture in Picture", tint = Color.White)
                     }
                     if (!compact) {
                         IconButton(onClick = { locked = true; showControls = false }) {
-                            Icon(Icons.Filled.LockOpen, contentDescription = "Kunci layar", tint = Color.White)
+                            Icon(Icons.Filled.LockOpen, contentDescription = Str.get(R.string.lock_screen), tint = Color.White)
                         }
                     }
                 }
@@ -982,7 +983,7 @@ private fun PlayerScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(onClick = { seekBy(-10_000) }, modifier = Modifier.size(56.dp)) {
-                        Icon(Icons.Filled.Replay10, contentDescription = "Mundur 10 detik", tint = Color.White, modifier = Modifier.size(38.dp))
+                        Icon(Icons.Filled.Replay10, contentDescription = Str.get(R.string.rewind_10), tint = Color.White, modifier = Modifier.size(38.dp))
                     }
                     IconButton(
                         onClick = { if (isPlaying) player.pause() else player.play() },
@@ -990,12 +991,12 @@ private fun PlayerScreen(
                     ) {
                         Icon(
                             if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = if (isPlaying) "Jeda" else "Putar",
+                            contentDescription = if (isPlaying) Str.get(R.string.pause) else Str.get(R.string.play),
                             tint = Color.White, modifier = Modifier.size(56.dp),
                         )
                     }
                     IconButton(onClick = { seekBy(10_000) }, modifier = Modifier.size(56.dp)) {
-                        Icon(Icons.Filled.Forward10, contentDescription = "Maju 10 detik", tint = Color.White, modifier = Modifier.size(38.dp))
+                        Icon(Icons.Filled.Forward10, contentDescription = Str.get(R.string.forward_10), tint = Color.White, modifier = Modifier.size(38.dp))
                     }
                 }
 
@@ -1013,18 +1014,18 @@ private fun PlayerScreen(
                         Text(formatRemaining(positionMs, durationMs), color = AniloverTextDim, fontSize = 12.sp)
                         Spacer(Modifier.weight(1f))
                         IconButton(onClick = { panel = Panel.Speed }) {
-                            Icon(Icons.Filled.Speed, contentDescription = "Kecepatan", tint = Color.White)
+                            Icon(Icons.Filled.Speed, contentDescription = Str.get(R.string.speed), tint = Color.White)
                         }
                         if (!compact) Text(speedLabel(speed), color = Color.White, fontSize = 12.sp)
                         IconButton(onClick = { panel = Panel.Quality }) {
-                            Icon(Icons.Filled.HighQuality, contentDescription = "Kualitas", tint = Color.White)
+                            Icon(Icons.Filled.HighQuality, contentDescription = Str.get(R.string.quality), tint = Color.White)
                         }
                         if (!compact) IconButton(onClick = { panel = Panel.Tracks }) {
                             Icon(Icons.Filled.Audiotrack, contentDescription = "Audio", tint = Color.White)
                         }
                         if (nextEp != null) {
                             IconButton(onClick = { switchTo(nextEp) }) {
-                                Icon(Icons.Filled.SkipNext, contentDescription = "Episode berikutnya", tint = Color.White)
+                                Icon(Icons.Filled.SkipNext, contentDescription = Str.get(R.string.next_episode_lc), tint = Color.White)
                             }
                         }
                         if (!compact) IconButton(onClick = { panel = Panel.Episodes }) {
@@ -1037,12 +1038,12 @@ private fun PlayerScreen(
                                 else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
                             }
                         }) {
-                            Icon(Icons.Filled.AspectRatio, contentDescription = "Ukuran layar", tint = Color.White)
+                            Icon(Icons.Filled.AspectRatio, contentDescription = Str.get(R.string.screen_size), tint = Color.White)
                         }
                         IconButton(onClick = onToggleFullscreen) {
                             Icon(
                                 if (compact) Icons.Filled.Fullscreen else Icons.Filled.FullscreenExit,
-                                contentDescription = if (compact) "Layar penuh" else "Keluar layar penuh",
+                                contentDescription = if (compact) Str.get(R.string.fullscreen) else Str.get(R.string.exit_fullscreen),
                                 tint = Color.White,
                             )
                         }
@@ -1070,7 +1071,7 @@ private fun PlayerScreen(
                     },
             ) {
                 Text(
-                    "Lewati Intro", color = AniloverOnAccent, fontWeight = FontWeight.Bold,
+                    Str.get(R.string.skip_intro), color = AniloverOnAccent, fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
                 )
             }
@@ -1088,7 +1089,7 @@ private fun PlayerScreen(
                     .clickable { switchTo(nextEp) },
             ) {
                 Text(
-                    "Episode Berikutnya", color = Color.White, fontWeight = FontWeight.Bold,
+                    Str.get(R.string.next_episode), color = Color.White, fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
                 )
             }
@@ -1104,14 +1105,14 @@ private fun PlayerScreen(
                     .padding(if (compact) 10.dp else 16.dp),
             ) {
                 Column {
-                    Text("Episode Berikutnya", color = AniloverTextDim, fontSize = 12.sp)
+                    Text(Str.get(R.string.next_episode), color = AniloverTextDim, fontSize = 12.sp)
                     Text("Episode ${nextEp.number}", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
                     Text(
                         when {
-                            postPlayIn != null -> "Diputar dalam $postPlayIn detik…"
+                            postPlayIn != null -> Str.plural(R.plurals.play_in_seconds, postPlayIn ?: 0)
                             autoplayNext -> ""
-                            else -> "Autoplay nonaktif — putar manual bila siap."
+                            else -> Str.get(R.string.autoplay_off_hint)
                         },
                         color = AniloverTextDim, fontSize = 12.sp,
                     )
@@ -1121,14 +1122,14 @@ private fun PlayerScreen(
                             color = AniloverAccent, shape = AniloverShapes.Button,
                             modifier = Modifier.clickable { switchTo(nextEp) },
                         ) {
-                            Text("Putar Sekarang", color = AniloverOnAccent, fontWeight = FontWeight.Bold,
+                            Text(Str.get(R.string.play_now), color = AniloverOnAccent, fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
                         }
                         Surface(
                             color = AniloverSurfaceHigh, shape = AniloverShapes.Button,
                             modifier = Modifier.clickable { postPlayIn = null },
                         ) {
-                            Text("Batal", color = Color.White, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+                            Text(Str.get(R.string.cancel), color = Color.White, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
                         }
                     }
                 }
@@ -1139,7 +1140,7 @@ private fun PlayerScreen(
                 onClick = { player.seekTo(0); player.play() },
                 modifier = Modifier.align(Alignment.Center).size(72.dp),
             ) {
-                Icon(Icons.Filled.Replay, contentDescription = "Putar ulang", tint = Color.White, modifier = Modifier.size(56.dp))
+                Icon(Icons.Filled.Replay, contentDescription = Str.get(R.string.replay), tint = Color.White, modifier = Modifier.size(56.dp))
             }
         }
 
@@ -1166,16 +1167,16 @@ private fun PlayerScreen(
                     onShare = {
                         val send = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, "Tonton $title di Anilover")
+                            putExtra(Intent.EXTRA_TEXT, Str.get(R.string.share_watch, title))
                         }
-                        context.startActivity(Intent.createChooser(send, "Bagikan"))
+                        context.startActivity(Intent.createChooser(send, Str.get(R.string.share)))
                     },
                     thread = thread,
                     commentsState = commentsState,
                     user = account,
                     onNeedLogin = {
                         Toast.makeText(
-                            context, "Masuk atau daftar lewat tab Profil untuk berkomentar",
+                            context, Str.get(R.string.need_login_comment),
                             Toast.LENGTH_LONG,
                         ).show()
                     },
@@ -1188,7 +1189,7 @@ private fun PlayerScreen(
 
         when (panel) {
             Panel.Speed -> PanelSheet(onClose = { panel = Panel.None }) {
-                Text("Kecepatan Putar", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(Str.get(R.string.playback_speed), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Spacer(Modifier.height(8.dp))
                 for (s in SPEEDS) {
                     Row(
@@ -1251,13 +1252,13 @@ private fun PanelSheet(onClose: () -> Unit, content: @Composable () -> Unit) {
 private fun TracksPanel(player: ExoPlayer, onClose: () -> Unit) {
     var refresh by remember { mutableIntStateOf(0) }
     PanelSheet(onClose = onClose) {
-        Text("Audio & Subtitle", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text(Str.get(R.string.title_audio_subtitles), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Spacer(Modifier.height(8.dp))
         val groups = player.currentTracks.groups
         val audio = groups.filter { it.type == C.TRACK_TYPE_AUDIO }
         val text = groups.filter { it.type == C.TRACK_TYPE_TEXT }
         if (audio.isEmpty() && text.isEmpty()) {
-            Text("Tidak ada trek audio/subtitle tambahan pada episode ini.", color = AniloverTextDim, fontSize = 13.sp)
+            Text(Str.get(R.string.no_extra_tracks), color = AniloverTextDim, fontSize = 13.sp)
         }
         if (audio.isNotEmpty()) {
             Text("Audio", color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -1290,7 +1291,7 @@ private fun TracksPanel(player: ExoPlayer, onClose: () -> Unit) {
                 }.padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Nonaktif", color = Color.White, modifier = Modifier.weight(1f))
+                Text(Str.get(R.string.off), color = Color.White, modifier = Modifier.weight(1f))
             }
             for (g in text) {
                 for (i in 0 until g.length) {
@@ -1319,7 +1320,7 @@ private fun TracksPanel(player: ExoPlayer, onClose: () -> Unit) {
 private fun QualityPanel(player: ExoPlayer, onClose: () -> Unit) {
     var refresh by remember { mutableIntStateOf(0) }
     PanelSheet(onClose = onClose) {
-        Text("Kualitas Video", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text(Str.get(R.string.video_quality), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Spacer(Modifier.height(8.dp))
         val videoGroups = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
         Row(
@@ -1330,10 +1331,10 @@ private fun QualityPanel(player: ExoPlayer, onClose: () -> Unit) {
             }.padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Otomatis (disarankan)", color = Color.White, modifier = Modifier.weight(1f))
+            Text(Str.get(R.string.auto_recommended), color = Color.White, modifier = Modifier.weight(1f))
         }
         if (videoGroups.isEmpty()) {
-            Text("Hanya satu kualitas tersedia dari gudang untuk episode ini.", color = AniloverTextDim, fontSize = 13.sp)
+            Text(Str.get(R.string.one_quality), color = AniloverTextDim, fontSize = 13.sp)
         }
         for (g in videoGroups) {
             for (i in 0 until g.length) {
@@ -1341,7 +1342,7 @@ private fun QualityPanel(player: ExoPlayer, onClose: () -> Unit) {
                 val label = when {
                     f.height > 0 -> "${f.height}p"
                     f.bitrate > 0 -> "${f.bitrate / 1000} kbps"
-                    else -> "Kualitas ${i + 1}"
+                    else -> Str.get(R.string.quality_n, i + 1)
                 }
                 Row(
                     Modifier.fillMaxWidth().clickable {
@@ -1363,7 +1364,7 @@ private fun QualityPanel(player: ExoPlayer, onClose: () -> Unit) {
 private fun trackLabel(language: String?, label: String?, fallback: String): String {
     if (!label.isNullOrBlank()) return label
     if (!language.isNullOrBlank() && language != "und") {
-        return Locale(language).getDisplayLanguage(Locale("id")).ifBlank { language }
+        return Locale(language).getDisplayLanguage(Locale.getDefault()).ifBlank { language }
     }
     return fallback
 }

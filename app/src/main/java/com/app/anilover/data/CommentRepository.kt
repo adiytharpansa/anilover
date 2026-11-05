@@ -1,5 +1,7 @@
 package com.app.anilover.data
 
+import com.app.anilover.Str
+import com.app.anilover.R
 import android.content.Context
 import android.content.SharedPreferences
 import com.google.firebase.firestore.DocumentSnapshot
@@ -74,7 +76,7 @@ object CommentRepository {
                 if (err != null) {
                     trySend(
                         CommentsState.Error(
-                            "Komentar tidak bisa dimuat. Periksa koneksi atau aturan Firestore."
+                            Str.get(R.string.comments_load_err)
                         )
                     )
                     return@addSnapshotListener
@@ -95,7 +97,7 @@ object CommentRepository {
             id = id,
             parentId = getString("parentId")?.takeIf { it.isNotBlank() },
             uid = uid,
-            name = getString("name") ?: "Pengguna",
+            name = getString("name") ?: Str.get(R.string.user_default),
             text = text,
             createdAt = ts?.toDate()?.time ?: System.currentTimeMillis(),
             likedBy = liked,
@@ -117,7 +119,7 @@ object CommentRepository {
         val data = hashMapOf<String, Any>(
             "thread" to thread,
             "uid" to user.uid,
-            "name" to user.name.ifBlank { user.email?.substringBefore('@') ?: "Pengguna" },
+            "name" to user.name.ifBlank { user.email?.substringBefore('@') ?: Str.get(R.string.user_default) },
             "text" to clean,
             "likedBy" to emptyList<String>(),
             "createdAt" to FieldValue.serverTimestamp(),
@@ -180,7 +182,7 @@ object CommentRepository {
                         id = o.optString("id"),
                         parentId = o.optString("p").takeIf { it.isNotBlank() },
                         uid = o.optString("uid"),
-                        name = o.optString("name").ifBlank { "Pengguna" },
+                        name = o.optString("name").ifBlank { Str.get(R.string.user_default) },
                         text = o.optString("text"),
                         createdAt = o.optLong("at"),
                         likedBy = liked,
@@ -224,7 +226,7 @@ object CommentRepository {
                 id = UUID.randomUUID().toString(),
                 parentId = parentId,
                 uid = user.uid,
-                name = user.name.ifBlank { user.email?.substringBefore('@') ?: "Pengguna" },
+                name = user.name.ifBlank { user.email?.substringBefore('@') ?: Str.get(R.string.user_default) },
                 text = clean,
                 createdAt = System.currentTimeMillis(),
                 likedBy = emptySet(),

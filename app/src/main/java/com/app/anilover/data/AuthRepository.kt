@@ -1,5 +1,7 @@
 package com.app.anilover.data
 
+import com.app.anilover.Str
+import com.app.anilover.R
 import android.content.Context
 import android.util.Base64
 import com.google.android.gms.tasks.Task
@@ -119,7 +121,7 @@ object AuthRepository {
             try {
                 val auth = FirebaseAuth.getInstance()
                 val user = auth.createUserWithEmailAndPassword(email, password).await()?.user
-                    ?: throw IllegalStateException("Akun gagal dibuat.")
+                    ?: throw IllegalStateException(Str.get(R.string.auth_err_create))
                 // Nama gagal disimpan tidak boleh membatalkan pendaftaran.
                 try {
                     user.updateProfile(
@@ -142,7 +144,7 @@ object AuthRepository {
     suspend fun sendPasswordReset(email: String): Result<Unit> {
         if (!isConfigured) {
             return Result.failure(
-                LocalAuthException("Reset kata sandi lewat email hanya tersedia bila Firebase dipasang.")
+                LocalAuthException(Str.get(R.string.auth_err_reset_local))
             )
         }
         return try {
@@ -204,7 +206,7 @@ object AuthRepository {
             setGuest(false)
             return Result.success(Unit)
         }
-        return Result.failure(LocalAuthException("Email atau kata sandi salah."))
+        return Result.failure(LocalAuthException(Str.get(R.string.auth_err_credentials)))
     }
 
     @Synchronized
@@ -213,7 +215,7 @@ object AuthRepository {
         val arr = localAccounts()
         for (i in 0 until arr.length()) {
             if (arr.optJSONObject(i)?.optString("email") == key) {
-                return Result.failure(LocalAuthException("Email ini sudah terdaftar. Silakan masuk."))
+                return Result.failure(LocalAuthException(Str.get(R.string.auth_err_exists)))
             }
         }
         val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
@@ -240,22 +242,22 @@ object AuthRepository {
 
     /** Pesan galat berbahasa Indonesia yang ramah untuk ditampilkan di layar. */
     fun friendlyError(e: Throwable): String = when (e) {
-        is LocalAuthException -> e.message ?: "Terjadi kesalahan. Coba lagi."
-        is FirebaseNetworkException -> "Tidak ada koneksi internet. Periksa jaringan lalu coba lagi."
+        is LocalAuthException -> e.message ?: Str.get(R.string.err_generic)
+        is FirebaseNetworkException -> Str.get(R.string.auth_err_network)
         // WeakPassword adalah turunan InvalidCredentials, jadi harus diperiksa lebih dulu.
-        is FirebaseAuthWeakPasswordException -> "Kata sandi terlalu lemah. Gunakan minimal 6 karakter."
-        is FirebaseAuthUserCollisionException -> "Email ini sudah terdaftar. Silakan masuk."
-        is FirebaseAuthInvalidCredentialsException -> "Email atau kata sandi salah."
-        is FirebaseAuthInvalidUserException -> "Akun tidak ditemukan atau dinonaktifkan."
-        is FirebaseTooManyRequestsException -> "Terlalu banyak percobaan. Coba lagi beberapa saat lagi."
-        else -> e.localizedMessage?.takeIf { it.isNotBlank() } ?: "Terjadi kesalahan. Coba lagi."
+        is FirebaseAuthWeakPasswordException -> Str.get(R.string.auth_err_weak)
+        is FirebaseAuthUserCollisionException -> Str.get(R.string.auth_err_exists)
+        is FirebaseAuthInvalidCredentialsException -> Str.get(R.string.auth_err_credentials)
+        is FirebaseAuthInvalidUserException -> Str.get(R.string.auth_err_user)
+        is FirebaseTooManyRequestsException -> Str.get(R.string.auth_err_many)
+        else -> e.localizedMessage?.takeIf { it.isNotBlank() } ?: Str.get(R.string.err_generic)
     }
 
     private fun FirebaseUser.toAuthUser() = AuthUser(
         uid = uid,
         name = displayName?.takeIf { it.isNotBlank() }
             ?: email?.substringBefore("@")?.takeIf { it.isNotBlank() }
-            ?: "Pengguna",
+            ?: Str.get(R.string.user_default),
         email = email,
     )
 

@@ -1,5 +1,7 @@
 package com.app.anilover.ui
 
+import com.app.anilover.Str
+import com.app.anilover.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -125,12 +127,12 @@ fun SearchScreen(
     val showTrending = query.isBlank() && genre == null && trending.size >= 3
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Spacer(Modifier.height(14.dp))
-        Text("Cari", color = AniloverTextPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp)
+        Text(Str.get(R.string.nav_search), color = AniloverTextPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp)
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            placeholder = { Text("Cari judul atau genre…", color = AniloverTextDim) },
+            placeholder = { Text(Str.get(R.string.search_hint), color = AniloverTextDim) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = Color.White) },
             trailingIcon = {
                 IconButton(onClick = {
@@ -141,14 +143,14 @@ fun SearchScreen(
                                     RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                                     RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
                                 )
-                                putExtra(RecognizerIntent.EXTRA_PROMPT, "Sebutkan judul anime…")
+                                putExtra(RecognizerIntent.EXTRA_PROMPT, Str.get(R.string.voice_prompt))
                             },
                         )
                     } catch (e: Exception) {
-                        Toast.makeText(context, "Pencarian suara tidak tersedia", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, Str.get(R.string.voice_unavailable), Toast.LENGTH_SHORT).show()
                     }
                 }) {
-                    Icon(Icons.Filled.Mic, contentDescription = "Pencarian suara", tint = Color.White)
+                    Icon(Icons.Filled.Mic, contentDescription = Str.get(R.string.voice_search), tint = Color.White)
                 }
             },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -185,11 +187,11 @@ fun SearchScreen(
             Spacer(Modifier.height(14.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Pencarian Terakhir", color = AniloverTextPrimary, fontSize = 16.sp,
+                    Str.get(R.string.recent_searches), color = AniloverTextPrimary, fontSize = 16.sp,
                     fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
                 )
                 Text(
-                    "Hapus", color = AniloverDanger, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                    Str.get(R.string.clear_all), color = AniloverDanger, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                     modifier = Modifier.clickable { onClearRecents() }.padding(4.dp),
                 )
             }
@@ -213,7 +215,7 @@ fun SearchScreen(
         }
         if (showTrending) {
             Spacer(Modifier.height(14.dp))
-            Text("Sedang Tren Sekarang", color = AniloverTextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(Str.get(R.string.trending_now), color = AniloverTextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
             for ((idx, t) in trending.withIndex()) {
                 Row(
@@ -247,17 +249,17 @@ fun SearchScreen(
         if (results.isEmpty()) {
             if (query.isBlank()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Tidak ada judul untuk filter ini.", color = AniloverTextDim, fontSize = 14.sp)
+                    Text(Str.get(R.string.no_titles_filter), color = AniloverTextDim, fontSize = 14.sp)
                 }
             } else {
                 // Hasil kosong yang membantu: pesan + saran judul (skor tertinggi).
                 Column(Modifier.fillMaxSize()) {
                     Text(
-                        "Tidak ada hasil untuk \"$query\".",
+                        Str.get(R.string.no_results, query),
                         color = AniloverTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium,
                     )
                     Text(
-                        "Periksa ejaan, atau coba salah satu judul populer ini:",
+                        Str.get(R.string.check_spelling),
                         color = AniloverTextDim, fontSize = 13.sp,
                     )
                     Spacer(Modifier.height(12.dp))
@@ -319,12 +321,12 @@ fun CategoryScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
+                Icon(Icons.Filled.ArrowBack, contentDescription = Str.get(R.string.back), tint = Color.White)
             }
             Text(genre, color = AniloverTextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(6.dp))
             Text(
-                "${titles.size} judul", color = AniloverTextDim, fontSize = 13.sp,
+                Str.plural(R.plurals.titles_count, titles.size), color = AniloverTextDim, fontSize = 13.sp,
                 modifier = Modifier.padding(top = 3.dp),
             )
         }
@@ -352,10 +354,10 @@ fun NewScreen(
 ) {
     LazyColumn(Modifier.fillMaxSize()) {
         item {
-            ScreenTitle("Baru & Populer", "Judul terbaru dan yang segera tayang")
+            ScreenTitle(Str.get(R.string.new_popular), Str.get(R.string.new_popular_sub))
         }
         if (soon.isNotEmpty()) {
-            item { SectionTitle("Segera Tayang") }
+            item { SectionTitle(Str.get(R.string.coming_soon)) }
             items(soon) { s ->
                 SoonCard(
                     s = s,
@@ -363,7 +365,7 @@ fun NewScreen(
                     onToggleReminder = { onToggleReminder(s) },
                 )
             }
-            item { SectionTitle("Baru Ditambahkan") }
+            item { SectionTitle(Str.get(R.string.recently_added)) }
         }
         items(titles.reversed()) { t ->
             Column(
@@ -401,7 +403,7 @@ fun NewScreen(
                 }
                 val meta = listOfNotNull(
                     t.year?.toString(), t.statusLabel,
-                    if (t.episodes.isNotEmpty()) "${t.episodes.size} Episode" else null,
+                    if (t.episodes.isNotEmpty()) Str.plural(R.plurals.episodes_count_cap, t.episodes.size) else null,
                     if (t.genres.isNotEmpty()) t.genres.joinToString(", ") else null,
                 ).joinToString("  •  ")
                 if (meta.isNotBlank()) Text(meta, color = AniloverTextDim, fontSize = 12.sp)
@@ -432,7 +434,7 @@ private fun SoonCard(
                 modifier = Modifier.fillMaxSize(),
             )
             Text(
-                "SEGERA", color = AniloverOnAccent, fontSize = 10.sp, fontWeight = FontWeight.Black,
+                Str.get(R.string.badge_soon), color = AniloverOnAccent, fontSize = 10.sp, fontWeight = FontWeight.Black,
                 modifier = Modifier.align(Alignment.TopStart)
                     .background(AniloverGold, RoundedCornerShape(bottomEnd = 8.dp))
                     .padding(horizontal = 6.dp, vertical = 3.dp),
@@ -451,7 +453,7 @@ private fun SoonCard(
         }
         val meta = listOfNotNull(
             s.year?.toString(),
-            if (s.totalEpisodes > 0) "${s.totalEpisodes} Episode" else null,
+            if (s.totalEpisodes > 0) Str.plural(R.plurals.episodes_count_cap, s.totalEpisodes) else null,
             if (s.genres.isNotEmpty()) s.genres.joinToString(", ") else null,
         ).joinToString("  •  ")
         if (meta.isNotBlank()) Text(meta, color = AniloverTextDim, fontSize = 12.sp)
@@ -475,7 +477,7 @@ private fun SoonCard(
             )
             Spacer(Modifier.width(6.dp))
             Text(
-                if (reminded) "Diingatkan" else "Ingatkan Saya",
+                if (reminded) Str.get(R.string.reminded) else Str.get(R.string.remind_me),
                 color = if (reminded) AniloverOnAccent else Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
             )
         }
@@ -509,11 +511,11 @@ fun DownloadsScreen(
     }
     LazyColumn(Modifier.fillMaxSize()) {
         item {
-            ScreenTitle("Unduhan")
+            ScreenTitle(Str.get(R.string.nav_downloads))
             val done = downloads.filter { it.state == "selesai" }
             if (done.isNotEmpty()) {
                 Text(
-                    "${done.size} episode terunduh · " + formatSize(done.sumOf { it.sizeBytes }),
+                    Str.plural(R.plurals.downloaded_summary, done.size, done.size, formatSize(done.sumOf { it.sizeBytes })),
                     color = AniloverTextDim, fontSize = 13.sp,
                     modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
                 )
@@ -521,8 +523,7 @@ fun DownloadsScreen(
             if (storage.first > 0) {
                 val usedFrac = 1f - storage.second.toFloat() / storage.first.toFloat()
                 Text(
-                    "Penyimpanan perangkat: " + formatSize(storage.second) + " bebas dari " +
-                        formatSize(storage.first),
+                    Str.get(R.string.storage_free, formatSize(storage.second), formatSize(storage.first)),
                     color = AniloverTextDim, fontSize = 12.sp,
                     modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
                 )
@@ -543,9 +544,9 @@ fun DownloadsScreen(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Unduhan Cerdas", color = AniloverTextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text(Str.get(R.string.smart_downloads), color = AniloverTextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         Text(
-                            "Episode berikutnya terunduh otomatis; episode yang selesai ditonton terhapus sendiri.",
+                            Str.get(R.string.smart_downloads_desc),
                             color = AniloverTextDim, fontSize = 12.sp,
                         )
                     }
@@ -558,8 +559,8 @@ fun DownloadsScreen(
                 if (settings.smartDownloads) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("Hanya lewat Wi-Fi", color = AniloverTextPrimary, fontSize = 13.sp)
-                            Text("Unduhan Cerdas berhenti saat memakai data seluler.", color = AniloverTextDim, fontSize = 12.sp)
+                            Text(Str.get(R.string.wifi_only), color = AniloverTextPrimary, fontSize = 13.sp)
+                            Text(Str.get(R.string.wifi_only_desc), color = AniloverTextDim, fontSize = 12.sp)
                         }
                         Switch(
                             checked = settings.wifiOnlyDownloads,
@@ -584,15 +585,15 @@ fun DownloadsScreen(
                         Icon(Icons.Filled.Download, contentDescription = null, tint = AniloverTextDim, modifier = Modifier.size(40.dp))
                     }
                     Spacer(Modifier.height(14.dp))
-                    Text("Belum ada unduhan", color = AniloverTextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(Str.get(R.string.no_downloads), color = AniloverTextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Unduh episode dari halaman detail judul untuk menonton tanpa internet.",
+                        Str.get(R.string.no_downloads_hint),
                         color = AniloverTextDim, fontSize = 13.sp,
                     )
                     Spacer(Modifier.height(14.dp))
                     Text(
-                        "Jelajahi judul", color = AniloverAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                        Str.get(R.string.browse_titles), color = AniloverAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.clickable { onBrowse() },
                     )
                 }
@@ -621,9 +622,9 @@ fun DownloadsScreen(
                     )
                     Text(
                         "Episode ${d.episode} · " + when (d.state) {
-                            "selesai" -> formatSize(d.sizeBytes) + " · terunduh"
-                            "mengunduh" -> "mengunduh ${(d.fraction * 100).toInt()}%"
-                            else -> "gagal — buka detail untuk coba lagi"
+                            "selesai" -> Str.get(R.string.size_downloaded, formatSize(d.sizeBytes))
+                            "mengunduh" -> Str.get(R.string.downloading_pct, (d.fraction * 100).toInt())
+                            else -> Str.get(R.string.failed_open_detail)
                         },
                         color = AniloverTextDim, fontSize = 12.sp,
                     )
@@ -641,7 +642,7 @@ fun DownloadsScreen(
                     CircularProgressIndicator(color = AniloverAccent, modifier = Modifier.size(22.dp))
                 } else {
                     IconButton(onClick = { onDeleteDownload(d) }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Hapus unduhan", tint = Color.White)
+                        Icon(Icons.Filled.Delete, contentDescription = Str.get(R.string.delete_download), tint = Color.White)
                     }
                 }
             }
@@ -672,7 +673,7 @@ fun ProfileScreen(
     var cleared by remember { mutableStateOf(false) }
     var confirmLogout by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val displayName = accountName ?: if (onLogout == null) "Adiyth" else "Tamu"
+    val displayName = accountName ?: if (onLogout == null) "Adiyth" else Str.get(R.string.guest)
     LazyColumn(Modifier.fillMaxSize()) {
         item {
             Column(
@@ -696,22 +697,22 @@ fun ProfileScreen(
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(displayName, color = AniloverTextPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                Text(accountEmail ?: "Akun lokal di perangkat ini", color = AniloverTextDim, fontSize = 12.sp)
+                Text(accountEmail ?: Str.get(R.string.local_account), color = AniloverTextDim, fontSize = 12.sp)
             }
             Spacer(Modifier.height(18.dp))
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 20.dp).panel().padding(vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                StatColumn("$finishedEpisodes", "Episode selesai")
-                StatColumn("$watchedTitles", "Judul ditonton")
-                StatColumn("${myListTitles.size}", "Di Daftarku")
+                StatColumn("$finishedEpisodes", Str.get(R.string.stat_episodes))
+                StatColumn("$watchedTitles", Str.get(R.string.stat_titles))
+                StatColumn("${myListTitles.size}", Str.get(R.string.in_my_list))
             }
             Spacer(Modifier.height(8.dp))
         }
         item { PosterRowOrEmpty(myListTitles, onOpenTitle) }
         item {
-            SectionTitle("Pengaturan Putar")
+            SectionTitle(Str.get(R.string.playback_settings))
             Column(Modifier.padding(horizontal = 20.dp).panel()) {
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -720,8 +721,8 @@ fun ProfileScreen(
                 SettingsIcon(Icons.Filled.PlayCircle)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Autoplay episode berikutnya", color = AniloverTextPrimary, fontSize = 14.sp)
-                    Text("Hitung mundur lalu putar otomatis", color = AniloverTextDim, fontSize = 12.sp)
+                    Text(Str.get(R.string.autoplay_next), color = AniloverTextPrimary, fontSize = 14.sp)
+                    Text(Str.get(R.string.autoplay_next_desc), color = AniloverTextDim, fontSize = 12.sp)
                 }
                 Switch(
                     checked = settings.autoplayNext,
@@ -740,11 +741,11 @@ fun ProfileScreen(
                 SettingsIcon(Icons.Filled.Subtitles)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Subtitle bawaan", color = AniloverTextPrimary, fontSize = 14.sp)
-                    Text("Dipilih otomatis saat episode mulai diputar", color = AniloverTextDim, fontSize = 12.sp)
+                    Text(Str.get(R.string.default_subtitle), color = AniloverTextPrimary, fontSize = 14.sp)
+                    Text(Str.get(R.string.default_subtitle_desc), color = AniloverTextDim, fontSize = 12.sp)
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for ((value, label) in listOf("id" to "Indonesia", "en" to "Inggris", "off" to "Nonaktif")) {
+                        for ((value, label) in listOf("id" to Str.get(R.string.lang_indonesian), "en" to Str.get(R.string.lang_english), "off" to Str.get(R.string.off))) {
                             FilterChip(
                                 selected = settings.subtitleDefault == value,
                                 onClick = { onSubtitleChange(value) },
@@ -766,13 +767,13 @@ fun ProfileScreen(
                 SettingsIcon(Icons.Filled.Subtitles)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Tampilan Subtitle", color = AniloverTextPrimary, fontSize = 14.sp)
-                    Text("Ukuran dan warna teks subtitle di pemutar", color = AniloverTextDim, fontSize = 12.sp)
+                    Text(Str.get(R.string.subtitle_style), color = AniloverTextPrimary, fontSize = 14.sp)
+                    Text(Str.get(R.string.subtitle_style_desc), color = AniloverTextDim, fontSize = 12.sp)
                     Spacer(Modifier.height(8.dp))
-                    Text("Ukuran", color = AniloverTextDim, fontSize = 12.sp)
+                    Text(Str.get(R.string.size), color = AniloverTextDim, fontSize = 12.sp)
                     Spacer(Modifier.height(4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for ((value, label) in listOf("kecil" to "Kecil", "sedang" to "Sedang", "besar" to "Besar")) {
+                        for ((value, label) in listOf("kecil" to Str.get(R.string.small), "sedang" to Str.get(R.string.medium), "besar" to Str.get(R.string.large))) {
                             FilterChip(
                                 selected = settings.subtitleSize == value,
                                 onClick = { onSubtitleStyleChange(value, settings.subtitleColor) },
@@ -782,10 +783,10 @@ fun ProfileScreen(
                         }
                     }
                     Spacer(Modifier.height(8.dp))
-                    Text("Warna", color = AniloverTextDim, fontSize = 12.sp)
+                    Text(Str.get(R.string.color), color = AniloverTextDim, fontSize = 12.sp)
                     Spacer(Modifier.height(4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for ((value, label) in listOf("putih" to "Putih", "kuning" to "Kuning", "hijau" to "Hijau")) {
+                        for ((value, label) in listOf("putih" to Str.get(R.string.white), "kuning" to Str.get(R.string.yellow), "hijau" to Str.get(R.string.green))) {
                             FilterChip(
                                 selected = settings.subtitleColor == value,
                                 onClick = { onSubtitleStyleChange(settings.subtitleSize, value) },
@@ -799,7 +800,7 @@ fun ProfileScreen(
             }
         }
         item {
-            SectionTitle("Riwayat")
+            SectionTitle(Str.get(R.string.history))
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.Top,
@@ -809,15 +810,15 @@ fun ProfileScreen(
                 Column(Modifier.weight(1f)) {
                     Text(
                         when {
-                            cleared -> "Riwayat sudah dibersihkan."
-                            historyCount == 0 -> "Belum ada riwayat tonton."
-                            else -> "$historyCount riwayat tonton tersimpan."
+                            cleared -> Str.get(R.string.history_cleared)
+                            historyCount == 0 -> Str.get(R.string.history_none)
+                            else -> Str.plural(R.plurals.history_saved, historyCount)
                         },
                         color = AniloverTextDim, fontSize = 13.sp,
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Bersihkan riwayat tonton", color = AniloverDanger, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                        Str.get(R.string.clear_history), color = AniloverDanger, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.clickable {
                             onClearHistory()
                             cleared = true
@@ -846,22 +847,22 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                     ) {
                         Text(
-                            if (isGuest) "Masuk atau daftar" else "Keluar dari akun",
+                            if (isGuest) Str.get(R.string.sign_in_or_up) else Str.get(R.string.sign_out),
                             fontWeight = FontWeight.SemiBold,
                         )
                     }
                     Spacer(Modifier.height(20.dp))
                 }
-                Text("Anilover versi ${versionName ?: "-"}", color = AniloverTextDim, fontSize = 12.sp)
+                Text(Str.get(R.string.version_fmt, versionName ?: "-"), color = AniloverTextDim, fontSize = 12.sp)
                 Spacer(Modifier.height(24.dp))
                 if (confirmLogout) {
                     androidx.compose.material3.AlertDialog(
                         onDismissRequest = { confirmLogout = false },
                         containerColor = AniloverSurface,
-                        title = { Text("Keluar dari akun?", color = AniloverTextPrimary) },
+                        title = { Text(Str.get(R.string.sign_out_q), color = AniloverTextPrimary) },
                         text = {
                             Text(
-                                "Kamu bisa masuk lagi kapan saja dengan email dan kata sandi.",
+                                Str.get(R.string.sign_out_msg),
                                 color = AniloverTextDim,
                             )
                         },
@@ -869,11 +870,11 @@ fun ProfileScreen(
                             androidx.compose.material3.TextButton(onClick = {
                                 confirmLogout = false
                                 onLogout?.invoke()
-                            }) { Text("Keluar", color = AniloverDanger, fontWeight = FontWeight.Bold) }
+                            }) { Text(Str.get(R.string.sign_out_btn), color = AniloverDanger, fontWeight = FontWeight.Bold) }
                         },
                         dismissButton = {
                             androidx.compose.material3.TextButton(onClick = { confirmLogout = false }) {
-                                Text("Batal", color = AniloverTextDim)
+                                Text(Str.get(R.string.cancel), color = AniloverTextDim)
                             }
                         },
                     )
@@ -932,13 +933,13 @@ fun EmptyState(
 @Composable
 private fun PosterRowOrEmpty(myListTitles: List<Title>, onOpenTitle: (Title) -> Unit) {
     if (myListTitles.isNotEmpty()) {
-        PosterRow("Daftarku", myListTitles, onOpenTitle)
+        PosterRow(Str.get(R.string.my_list), myListTitles, onOpenTitle)
     } else {
-        SectionTitle("Daftarku")
+        SectionTitle(Str.get(R.string.my_list))
         EmptyState(
             icon = Icons.Filled.PlayCircle,
-            title = "Daftarku masih kosong",
-            subtitle = "Tambahkan judul dari tombol + di beranda atau halaman detail supaya mudah ditemukan lagi.",
+            title = Str.get(R.string.my_list_empty),
+            subtitle = Str.get(R.string.my_list_empty_hint),
         )
     }
 }

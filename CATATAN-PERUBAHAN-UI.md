@@ -68,3 +68,13 @@ Berkas diubah
 - data/CommentRepository.kt : komentar lokal (balasan, suka, hapus, urutan Teratas/Terbaru) saat Firebase belum aktif; Firestore tetap dipakai bila ada.
 - MainActivity.kt & PlayerActivity.kt : memanggil AuthRepository.init + CommentRepository.init; tombol Keluar selalu tersedia di Profil.
 - player/WatchPage.kt : keterangan "Komentar tersimpan di perangkat ini" di mode lokal.
+
+---
+# Tambahan: Bahasa mengikuti perangkat
+
+- Semua teks tampilan dipindah ke resource: res/values/strings.xml (Inggris, bahasa cadangan) dan res/values-in/strings.xml (Indonesia). HP berbahasa Indonesia -> Indonesia; bahasa lain -> Inggris.
+- Str.kt : Str.get(R.string.x, ...) / Str.plural(R.plurals.x, n) bisa dipanggil dari mana saja (Composable, Service, Worker). AniloverApp.kt mengisinya saat aplikasi mulai (didaftarkan di AndroidManifest.xml).
+- res/xml/locales_config.xml + android:localeConfig : di Android 13+ muncul pilihan bahasa per-aplikasi (Pengaturan > Aplikasi > Anilover > Bahasa).
+- Format angka skor & nama bahasa trek audio/subtitle memakai bahasa perangkat.
+- Menambah bahasa baru: salin values/strings.xml ke values-<kode>/ lalu terjemahkan, tambahkan <locale> di locales_config.xml.
+- Tidak ikut diterjemahkan: judul, sinopsis, dan genre dari katalog (datanya dari server), serta pesan diagnostik teknis internal.

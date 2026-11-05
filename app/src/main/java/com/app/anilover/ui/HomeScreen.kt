@@ -1,5 +1,6 @@
 package com.app.anilover.ui
 
+import com.app.anilover.Str
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -197,7 +198,7 @@ fun HomeScreen(
             }
             if (resume.isNotEmpty()) {
                 item(key = "continue") {
-                    SectionTitle("Lanjutkan Menonton")
+                    SectionTitle(Str.get(R.string.continue_watching))
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 20.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -217,7 +218,7 @@ fun HomeScreen(
             }
             if (top10.size >= 5) {
                 item(key = "top10") {
-                    SectionTitle("Top 10 Skor Tertinggi")
+                    SectionTitle(Str.get(R.string.top10))
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 20.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -231,14 +232,14 @@ fun HomeScreen(
             if (fresh.isNotEmpty()) {
                 item(key = "fresh") {
                     LandscapeRow(
-                        "Baru Ditambahkan", fresh, onOpen, newIds = newIds, myList = myList,
+                        Str.get(R.string.recently_added), fresh, onOpen, newIds = newIds, myList = myList,
                         onToggleMyList = onToggleMyList, onSeeAll = onSeeNew,
                     )
                 }
             }
             if (genreList.isNotEmpty()) {
                 item(key = "genres") {
-                    SectionTitle("Jelajahi Genre")
+                    SectionTitle(Str.get(R.string.browse_genres))
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 20.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -250,7 +251,7 @@ fun HomeScreen(
             genreRows.forEach { (g, list) ->
                 item(key = "genre-row-$g") {
                     PosterRow(
-                        "Pilihan $g", list.take(10), onOpen, newIds = newIds, myList = myList,
+                        Str.get(R.string.picks_genre, g), list.take(10), onOpen, newIds = newIds, myList = myList,
                         onPlayFirst = playFirst, onToggleMyList = onToggleMyList,
                         onDownloadFirst = onDownloadFirst,
                         cardWidth = posterW, onSeeAll = { onGenre(g) },
@@ -258,7 +259,7 @@ fun HomeScreen(
                 }
             }
             if (rest.isNotEmpty()) {
-                item(key = "all-title") { SectionTitle("Koleksi Lainnya") }
+                item(key = "all-title") { SectionTitle(Str.get(R.string.more_collection)) }
                 items(rest.chunked(3), key = { row -> "rest-" + row.first().id }) { row ->
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 14.dp),
@@ -267,7 +268,7 @@ fun HomeScreen(
                         row.forEach { t ->
                             PosterCard(
                                 t = t, modifier = Modifier.weight(1f),
-                                badge = if (newIds.contains(t.id)) "BARU" else null,
+                                badge = if (newIds.contains(t.id)) Str.get(R.string.badge_new) else null,
                                 progress = resume[t.id]?.fraction,
                                 inMyList = myList.contains(t.id),
                                 onPlayFirst = { playFirst(t) },
@@ -317,7 +318,7 @@ private fun HomeHeader(alpha: Float, onBell: () -> Unit, modifier: Modifier = Mo
                 style = MaterialTheme.typography.titleLarge,
             )
             Spacer(Modifier.weight(1f))
-            HeaderAction(Icons.Outlined.Notifications, "Judul baru & segera tayang", onBell)
+            HeaderAction(Icons.Outlined.Notifications, Str.get(R.string.bell_desc), onBell)
         }
         Box(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(1.dp)
@@ -413,7 +414,7 @@ fun PosterRow(
                 modifier = Modifier.width(cardWidth),
                 appearDelayMs = i.coerceAtMost(6) * 45,
                 parallax = true,
-                badge = if (newIds.contains(t.id)) "BARU" else null,
+                badge = if (newIds.contains(t.id)) Str.get(R.string.badge_new) else null,
                 inMyList = myList?.contains(t.id) ?: false,
                 onPlayFirst = onPlayFirst?.let { f -> { f(t) } },
                 onToggleMyList = onToggleMyList?.let { f -> { f(t) } },
@@ -632,14 +633,14 @@ private fun Billboard(
                     modifier = Modifier.width(80.dp).clickable {
                         val send = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, "Tonton ${t.title} di Anilover")
+                            putExtra(Intent.EXTRA_TEXT, Str.get(R.string.share_watch, t.title))
                         }
-                        context.startActivity(Intent.createChooser(send, "Bagikan"))
+                        context.startActivity(Intent.createChooser(send, Str.get(R.string.share)))
                     },
                 ) {
-                    Icon(Icons.Filled.Share, contentDescription = "Bagikan", tint = Color.White, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Filled.Share, contentDescription = Str.get(R.string.share), tint = Color.White, modifier = Modifier.size(24.dp))
                     Spacer(Modifier.height(2.dp))
-                    Text("Bagikan", color = AniloverTextDim, fontSize = 12.sp)
+                    Text(Str.get(R.string.share), color = AniloverTextDim, fontSize = 12.sp)
                 }
                 Button(
                     onClick = {
@@ -654,7 +655,7 @@ private fun Billboard(
                 ) {
                     Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(26.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text(if (resume != null) "Lanjutkan" else "Putar", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(if (resume != null) Str.get(R.string.resume) else Str.get(R.string.play), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -662,12 +663,12 @@ private fun Billboard(
                 ) {
                     Icon(
                         if (inMyList) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = "Daftarku",
+                        contentDescription = Str.get(R.string.my_list),
                         tint = if (inMyList) AniloverAccent else Color.White,
                         modifier = Modifier.size(24.dp),
                     )
                     Spacer(Modifier.height(2.dp))
-                    Text("Daftarku", color = AniloverTextDim, fontSize = 12.sp)
+                    Text(Str.get(R.string.my_list), color = AniloverTextDim, fontSize = 12.sp)
                 }
             }
         }
@@ -692,7 +693,7 @@ fun SectionTitle(text: String, onSeeAll: (() -> Unit)? = null) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Lihat semua", color = AniloverAccent,
+                    Str.get(R.string.see_all), color = AniloverAccent,
                     style = MaterialTheme.typography.labelMedium,
                 )
                 Icon(
@@ -734,7 +735,7 @@ private fun ongoingLabel(t: Title): String? {
 }
 
 private fun scoreText(t: Title): String? =
-    t.score?.takeIf { it > 0.0 }?.let { "★ " + String.format(java.util.Locale("id", "ID"), "%.1f", it) }
+    t.score?.takeIf { it > 0.0 }?.let { "★ " + String.format(java.util.Locale.getDefault(), "%.1f", it) }
 
 /** Pill skor di pojok poster (latar gelap transparan agar terbaca di gambar apa pun). */
 @Composable
@@ -763,7 +764,7 @@ private fun MyListFab(inMyList: Boolean, modifier: Modifier = Modifier, onClick:
     ) {
         Icon(
             if (inMyList) Icons.Filled.Check else Icons.Filled.Add,
-            contentDescription = if (inMyList) "Hapus dari Daftarku" else "Tambah ke Daftarku",
+            contentDescription = if (inMyList) Str.get(R.string.remove_from_list) else Str.get(R.string.add_to_list),
             tint = if (inMyList) AniloverAccent else Color.White,
             modifier = Modifier.size(16.dp),
         )
@@ -892,19 +893,19 @@ fun PosterCard(
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 if (onPlayFirst != null) {
                     DropdownMenuItem(
-                        text = { Text("Putar") },
+                        text = { Text(Str.get(R.string.play)) },
                         leadingIcon = { Icon(Icons.Filled.PlayArrow, contentDescription = null) },
                         onClick = { menuOpen = false; onPlayFirst() },
                     )
                 }
                 DropdownMenuItem(
-                    text = { Text("Detail") },
+                    text = { Text(Str.get(R.string.details)) },
                     leadingIcon = { Icon(Icons.Filled.Info, contentDescription = null) },
                     onClick = { menuOpen = false; onClick() },
                 )
                 if (onToggleMyList != null) {
                     DropdownMenuItem(
-                        text = { Text(if (inMyList) "Hapus dari Daftarku" else "Tambah ke Daftarku") },
+                        text = { Text(if (inMyList) Str.get(R.string.remove_from_list) else Str.get(R.string.add_to_list)) },
                         leadingIcon = {
                             Icon(if (inMyList) Icons.Filled.Check else Icons.Filled.Add, contentDescription = null)
                         },
@@ -913,7 +914,7 @@ fun PosterCard(
                 }
                 if (onDownloadFirst != null && t.episodes.isNotEmpty()) {
                     DropdownMenuItem(
-                        text = { Text("Unduh Episode 1") },
+                        text = { Text(Str.get(R.string.download_ep1)) },
                         leadingIcon = { Icon(Icons.Filled.Download, contentDescription = null) },
                         onClick = { menuOpen = false; onDownloadFirst() },
                     )
@@ -988,7 +989,7 @@ fun LandscapeCard(
             )
             if (isNew) {
                 Text(
-                    "BARU", color = AniloverOnAccent, fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                    Str.get(R.string.badge_new), color = AniloverOnAccent, fontSize = 9.sp, fontWeight = FontWeight.Bold,
                     letterSpacing = 0.4.sp,
                     modifier = Modifier.align(Alignment.TopStart).padding(8.dp)
                         .background(AniloverGold, RoundedCornerShape(5.dp))
@@ -1065,9 +1066,9 @@ fun EpisodeCard(t: Title, episode: Int, entry: WatchEntry?, onClick: () -> Unit)
         )
         Text(
             when {
-                entry != null && entry.isFinished -> "Selesai ditonton"
+                entry != null && entry.isFinished -> Str.get(R.string.watched)
                 entry != null && entry.isStarted ->
-                    "Sisa " + formatRemainingPlain(entry.positionMs, entry.durationMs)
+                    Str.get(R.string.time_left, formatRemainingPlain(entry.positionMs, entry.durationMs))
                 else -> t.seriesName
             },
             color = AniloverTextDim, fontSize = 11.sp,
@@ -1133,12 +1134,12 @@ private fun ContinueCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    Icons.Filled.PlayArrow, contentDescription = "Lanjutkan",
+                    Icons.Filled.PlayArrow, contentDescription = Str.get(R.string.resume),
                     tint = Color.White, modifier = Modifier.size(26.dp),
                 )
             }
             Text(
-                "E${entry.episode} · Sisa " + formatRemainingPlain(entry.positionMs, entry.durationMs),
+                Str.get(R.string.ep_time_left, entry.episode, formatRemainingPlain(entry.positionMs, entry.durationMs)),
                 color = Color.White, style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 10.dp),
             )
@@ -1161,15 +1162,15 @@ private fun ContinueCard(
             )
             Box {
                 IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "Pilihan", tint = AniloverTextDim, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Filled.MoreVert, contentDescription = Str.get(R.string.options_menu), tint = AniloverTextDim, modifier = Modifier.size(20.dp))
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
-                        text = { Text("Detail") },
+                        text = { Text(Str.get(R.string.details)) },
                         onClick = { menuOpen = false; onInfo() },
                     )
                     DropdownMenuItem(
-                        text = { Text("Hapus dari baris") },
+                        text = { Text(Str.get(R.string.remove_from_row)) },
                         onClick = { menuOpen = false; onRemove() },
                     )
                 }

@@ -1,5 +1,7 @@
 package com.app.anilover.data
 
+import com.app.anilover.Str
+import com.app.anilover.R
 import android.content.Context
 import com.app.anilover.BuildConfig
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -94,9 +96,9 @@ data class Title(
         }
     val statusLabel: String?
         get() = when (status) {
-            "FINISHED" -> "Tamat"
-            "RELEASING" -> "Sedang Tayang"
-            "NOT_YET_RELEASED" -> "Segera"
+            "FINISHED" -> Str.get(R.string.status_finished)
+            "RELEASING" -> Str.get(R.string.status_airing)
+            "NOT_YET_RELEASED" -> Str.get(R.string.status_soon)
             else -> status
         }
 }
