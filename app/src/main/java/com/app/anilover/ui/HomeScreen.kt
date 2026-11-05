@@ -162,10 +162,10 @@ fun HomeScreen(
     }
     val rest = remember(titles, freshIds) { titles.reversed().filter { !freshIds.contains(it.id) } }
 
-    // Lebar poster seragam di semua baris & grid: 3 kolom, dengan ~8dp kartu ke-4 mengintip.
-    val posterW: Dp = ((LocalConfiguration.current.screenWidthDp - 64) / 3f).dp
-    // Baru Ditambahkan: poster potret sedikit lebih besar (± 2,7 kartu terlihat), ala Netflix.
-    val freshW: Dp = (LocalConfiguration.current.screenWidthDp * 0.34f).dp.coerceIn(120.dp, 180.dp)
+    // Lebar poster seragam di SEMUA baris & grid Beranda: mengacu ke "Baru Ditambahkan".
+    val posterW: Dp = uniformPosterWidth()
+    val freshW: Dp = posterW
+    val screenW = LocalConfiguration.current.screenWidthDp
 
     // Prefetch: poster/banner bagian atas Beranda dimuat lebih dulu ke cache
     // (memori + disk) begitu data tiba, sebelum baris-barisnya sempat digulir ke layar.
@@ -250,7 +250,7 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         itemsIndexed(top10, key = { _, t -> t.id }) { i, t ->
-                            Top10Card(rank = i + 1, t = t, onClick = { onOpen(t) })
+                            Top10Card(rank = i + 1, t = t, posterW = posterW, onClick = { onOpen(t) })
                         }
                     }
                 }
@@ -277,14 +277,15 @@ fun HomeScreen(
             }
             if (rest.isNotEmpty()) {
                 item(key = "all-title") { SectionTitle(Str.get(R.string.more_collection)) }
-                items(rest.chunked(3), key = { row -> "rest-" + row.first().id }) { row ->
+                val cols = ((screenW - 40 + 12) / (posterW.value + 12f)).toInt().coerceAtLeast(2)
+                items(rest.chunked(cols), key = { row -> "rest-" + row.first().id }) { row ->
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 14.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         row.forEach { t ->
                             PosterCard(
-                                t = t, modifier = Modifier.weight(1f),
+                                t = t, modifier = Modifier.width(posterW),
                                 badge = if (newIds.contains(t.id)) Str.get(R.string.badge_new) else null,
                                 progress = resume[t.id]?.fraction,
                                 inMyList = myList.contains(t.id),
@@ -294,7 +295,6 @@ fun HomeScreen(
                                 onClick = { onOpen(t) },
                             )
                         }
-                        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
             }
@@ -407,6 +407,11 @@ private fun HeroPager(
     }
 }
 
+/** Lebar poster standar seluruh aplikasi (potret 2:3), acuan: baris "Baru Ditambahkan". */
+@Composable
+fun uniformPosterWidth(): Dp =
+    (LocalConfiguration.current.screenWidthDp * 0.34f).dp.coerceIn(120.dp, 180.dp)
+
 @Composable
 fun PosterRow(
     title: String,
@@ -417,7 +422,7 @@ fun PosterRow(
     onPlayFirst: ((Title) -> Unit)? = null,
     onToggleMyList: ((Title) -> Unit)? = null,
     onDownloadFirst: ((Title) -> Unit)? = null,
-    cardWidth: Dp = 116.dp,
+    cardWidth: Dp = uniformPosterWidth(),
     onSeeAll: (() -> Unit)? = null,
 ) {
     SectionTitle(title, onSeeAll)
@@ -474,10 +479,8 @@ internal fun TrailerPlayer(url: String, controls: Boolean = false) {
 
 /** Kartu Top 10 gaya Netflix: angka raksasa bergaris tepi abu-abu + poster besar yang menimpanya. */
 @Composable
-fun Top10Card(rank: Int, t: Title, onClick: () -> Unit) {
+fun Top10Card(rank: Int, t: Title, posterW: Dp = uniformPosterWidth(), onClick: () -> Unit) {
     val pressSource = remember { MutableInteractionSource() }
-    // Ukuran mengikuti lebar layar (± 2,5 kartu terlihat, seperti Netflix seluler).
-    val posterW: Dp = (LocalConfiguration.current.screenWidthDp * 0.33f).dp.coerceIn(112.dp, 170.dp)
     val numStyle = TextStyle(
         fontFamily = AniloverFont,
         fontSize = (posterW.value * (if (rank < 10) 1.2f else 0.9f)).sp,
