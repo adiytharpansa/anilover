@@ -189,7 +189,7 @@ fun SearchScreen(
                     fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
                 )
                 Text(
-                    "Hapus", color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                    "Hapus", color = AniloverDanger, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                     modifier = Modifier.clickable { onClearRecents() }.padding(4.dp),
                 )
             }
@@ -683,7 +683,7 @@ fun ProfileScreen(
                     Modifier.size(76.dp)
                         .background(
                             androidx.compose.ui.graphics.Brush.linearGradient(
-                                listOf(AniloverAccent, AniloverGold)
+                                listOf(AniloverAccent, AniloverAccentSoft)
                             ),
                             RoundedCornerShape(50),
                         ),
@@ -817,7 +817,7 @@ fun ProfileScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Bersihkan riwayat tonton", color = AniloverAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                        "Bersihkan riwayat tonton", color = AniloverDanger, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.clickable {
                             onClearHistory()
                             cleared = true
@@ -869,7 +869,7 @@ fun ProfileScreen(
                             androidx.compose.material3.TextButton(onClick = {
                                 confirmLogout = false
                                 onLogout?.invoke()
-                            }) { Text("Keluar", color = AniloverAccent, fontWeight = FontWeight.Bold) }
+                            }) { Text("Keluar", color = AniloverDanger, fontWeight = FontWeight.Bold) }
                         },
                         dismissButton = {
                             androidx.compose.material3.TextButton(onClick = { confirmLogout = false }) {

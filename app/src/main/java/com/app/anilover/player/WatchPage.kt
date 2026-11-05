@@ -338,7 +338,7 @@ internal fun WatchPage(
             text = { Text("Komentar ini akan dihapus permanen.") },
             confirmButton = {
                 TextButton(onClick = { CommentRepository.delete(c.id); toDelete = null }) {
-                    Text("Hapus", color = AniloverAccent)
+                    Text("Hapus", color = com.app.anilover.ui.AniloverDanger)
                 }
             },
             dismissButton = { TextButton(onClick = { toDelete = null }) { Text("Batal") } },

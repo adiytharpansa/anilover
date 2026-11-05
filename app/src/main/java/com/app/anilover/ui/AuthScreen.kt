@@ -68,7 +68,7 @@ import com.app.anilover.R
 import com.app.anilover.data.AuthRepository
 import kotlinx.coroutines.launch
 
-private val AuthError = Color(0xFFFF6B6B)
+private val AuthError = AniloverDanger
 
 /**
  * Pintu masuk aplikasi: bila Firebase belum dikonfigurasi, langsung tampilkan aplikasi

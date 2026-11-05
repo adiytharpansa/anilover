@@ -32,18 +32,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 
-// ── Token warna: gaya AniLab — hitam pekat, permukaan abu gelap, aksen merah ──
+// ── Token warna: mengikuti ikon aplikasi — hitam pekat, putih, aksen hijau neon (#6FFA42) ──
 val AniloverBackground = Color(0xFF000000)
 val AniloverSurface = Color(0xFF121212)
 val AniloverSurfaceHigh = Color(0xFF2B2B2B)
 val AniloverOutline = Color(0xFF2E2E2E)
-val AniloverAccent = Color(0xFFD9232E)
-/** Teks/ikon di atas aksen merah. */
-val AniloverOnAccent = Color(0xFFFFFFFF)
-val AniloverGold = Color(0xFFFFC857)
+val AniloverAccent = Color(0xFF6FFA42)
+/** Hijau lebih lembut untuk gradasi di samping aksen. */
+val AniloverAccentSoft = Color(0xFFB6FF9E)
+/** Teks/ikon di atas aksen hijau: hitam, supaya kontras tinggi (sama seperti ikon). */
+val AniloverOnAccent = Color(0xFF000000)
+/** Dulu emas; kini disatukan dengan aksen hijau agar palet hanya hitam-putih-hijau. */
+val AniloverGold = AniloverAccent
 val AniloverTextPrimary = Color(0xFFFFFFFF)
 val AniloverTextDim = Color(0xFFB3B3B3)
-val AniloverGreen = Color(0xFF3DD68C)
+val AniloverGreen = AniloverAccent
+/** Merah hanya untuk aksi berbahaya (hapus, keluar) dan galat. */
+val AniloverDanger = Color(0xFFFF6B6B)
 
 /** Skala radius: kecil (lencana), sedang (poster/kartu), besar (tombol/panel). */
 object AniloverShapes {
