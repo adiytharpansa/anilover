@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -104,6 +105,7 @@ import com.app.anilover.data.Title
 import com.app.anilover.player.PlayerActivity
 import com.app.anilover.ui.CategoryScreen
 import com.app.anilover.ui.DetailScreen
+import com.app.anilover.ui.AniloverNavIcons
 import com.app.anilover.ui.DownloadsScreen
 import com.app.anilover.ui.HomeScreen
 import com.app.anilover.ui.NewScreen
@@ -453,11 +455,11 @@ private fun AppRoot(
                         )
                     },
                 ) {
-                    NavItem(Tab.Home, tab, Icons.Filled.Home, Icons.Outlined.Home, Str.get(R.string.nav_home)) { tab = it }
-                    NavItem(Tab.Search, tab, Icons.Filled.Search, Icons.Outlined.Search, Str.get(R.string.nav_search)) { tab = it }
-                    NavItem(Tab.New, tab, Icons.Filled.NewReleases, Icons.Outlined.NewReleases, Str.get(R.string.nav_new)) { tab = it }
-                    NavItem(Tab.Downloads, tab, Icons.Filled.Download, Icons.Outlined.Download, Str.get(R.string.nav_downloads)) { tab = it }
-                    NavItem(Tab.Profile, tab, Icons.Filled.Person, Icons.Outlined.Person, Str.get(R.string.nav_profile)) { tab = it }
+                    NavItem(Tab.Home, tab, AniloverNavIcons.HomeActive, AniloverNavIcons.Home, Str.get(R.string.nav_home)) { tab = it }
+                    NavItem(Tab.Search, tab, AniloverNavIcons.SearchActive, AniloverNavIcons.Search, Str.get(R.string.nav_search)) { tab = it }
+                    NavItem(Tab.New, tab, AniloverNavIcons.NewActive, AniloverNavIcons.New, Str.get(R.string.nav_new)) { tab = it }
+                    NavItem(Tab.Downloads, tab, AniloverNavIcons.DownloadsActive, AniloverNavIcons.Downloads, Str.get(R.string.nav_downloads)) { tab = it }
+                    NavItem(Tab.Profile, tab, AniloverNavIcons.ProfileActive, AniloverNavIcons.Profile, Str.get(R.string.nav_profile)) { tab = it }
                 }
             }
         },
@@ -663,9 +665,21 @@ private fun androidx.compose.foundation.layout.RowScope.NavItem(
     NavigationBarItem(
         selected = selected,
         onClick = { onSelect(item) },
-        // Ikon terisi untuk tab aktif, ikon garis untuk yang lain.
-        icon = { Icon(if (selected) selectedIcon else unselectedIcon, contentDescription = label) },
-        label = { Text(label, fontSize = 11.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal) },
+        // Ikon garis tipis seragam; aktif = goresan lebih tebal + isian lembut + sedikit membesar.
+        icon = {
+            val scale by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = if (selected) 1.1f else 1f,
+                animationSpec = androidx.compose.animation.core.tween(180),
+                label = "navIconScale",
+            )
+            Icon(
+                if (selected) selectedIcon else unselectedIcon,
+                contentDescription = label,
+                modifier = Modifier.size(26.dp).scale(scale),
+            )
+        },
+        alwaysShowLabel = true,
+        label = { Text(label, fontSize = 11.sp, letterSpacing = 0.1.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium) },
         colors = NavigationBarItemDefaults.colors(
             selectedIconColor = AniloverAccent,
             selectedTextColor = AniloverAccent,

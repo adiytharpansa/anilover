@@ -129,3 +129,9 @@ Berkas diubah
 - Beranda: turunan katalog (hero, Top 10, genre, koleksi) dibungkus remember; Cari: hasil pencarian di-remember.
 - Tab, pengaturan, genre, dan judul yang dibuka kini bertahan bila aplikasi dimatikan Android di latar (rememberSaveable; judul dipulihkan lewat id).
 - Teks "Episode" di pemutar & Detail kini lewat strings (episode_n, episodes_label); `!!` berisiko di MainActivity/Detail/Beranda diganti pengaman null.
+
+---
+# Tambahan: ikon bilah navigasi bawah
+
+- ui/NavIcons.kt (baru): set ikon garis tipis seragam (Beranda, Cari, Baru = kilau/sparkles, Unduhan, Profil), ujung bulat, goresan 1,8; aktif = goresan 2,1 + isian lembut. Bentuk mengacu ke Lucide (ISC). Ikon "Baru" tak lagi memakai lencana tanda seru yang mirip peringatan.
+- MainActivity.kt: NavItem memakai ikon baru, ikon aktif sedikit membesar dengan animasi, label Medium/SemiBold.
