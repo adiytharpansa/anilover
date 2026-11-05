@@ -18,7 +18,15 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
@@ -126,38 +134,91 @@ object CatalogApi {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    private fun httpGetText(url: String, timeoutMs: Int = 15000): String {
-        val client = httpClient.newBuilder()
-            .connectTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
-            .readTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
-            .build()
-        val req = Request.Builder()
-            .url(url)
-            .header("Accept", "application/json")
-            .header("User-Agent", "Mozilla/5.0 (Anilover Android)")
-            .build()
-        client.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) {
-                throw java.io.IOException("HTTP " + resp.code + " dari " + url)
-            }
-            return resp.body?.string() ?: throw java.io.IOException("respons kosong dari " + url)
-        }
-    }
+    /**
+     * Ambil byte lewat OkHttp secara asinkron. Pembatalan coroutine ikut
+     * membatalkan panggilan jaringan (termasuk saat badan respons sedang
+     * dibaca), sehingga pengambilan beruntun/paralel bisa dihentikan segera
+     * begitu salah satu sumber menang — tanpa menunggu timeout sumber lain.
+     */
+    private suspend fun httpGetBytes(url: String, timeoutMs: Int = 15000, json: Boolean = false): ByteArray =
+        suspendCancellableCoroutine { cont ->
+            val client = httpClient.newBuilder()
+                .connectTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+                .readTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+                .callTimeout(timeoutMs.toLong() * 2, TimeUnit.MILLISECONDS)
+                .build()
+            val rb = Request.Builder()
+                .url(url)
+                .header("User-Agent", "Mozilla/5.0 (Anilover Android)")
+            if (json) rb.header("Accept", "application/json")
+            val call = client.newCall(rb.build())
+            cont.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : okhttp3.Callback {
+                override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
+                    if (cont.isActive) cont.resumeWithException(e)
+                }
 
-    private fun httpGetBytes(url: String, timeoutMs: Int = 15000): ByteArray {
-        val client = httpClient.newBuilder()
-            .connectTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
-            .readTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
-            .build()
-        val req = Request.Builder()
-            .url(url)
-            .header("User-Agent", "Mozilla/5.0 (Anilover Android)")
-            .build()
-        client.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) {
-                throw java.io.IOException("HTTP " + resp.code + " dari " + url)
+                override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                    response.use { resp ->
+                        try {
+                            if (!resp.isSuccessful) {
+                                throw java.io.IOException("HTTP " + resp.code + " dari " + url)
+                            }
+                            val bytes = resp.body?.bytes()
+                                ?: throw java.io.IOException("respons kosong dari " + url)
+                            if (cont.isActive) cont.resume(bytes)
+                        } catch (e: Exception) {
+                            if (cont.isActive) cont.resumeWithException(e)
+                        }
+                    }
+                }
+            })
+        }
+
+    private suspend fun httpGetText(url: String, timeoutMs: Int = 15000): String =
+        String(httpGetBytes(url, timeoutMs, json = true), Charsets.UTF_8)
+
+    /**
+     * Balapan berjenjang ("hedged request"): percobaan ke-0 jalan langsung;
+     * percobaan berikutnya baru dimulai bila yang sebelumnya gagal ATAU belum
+     * selesai setelah [staggerMs] ms. Hasil pertama yang berhasil menang dan
+     * sisanya dibatalkan. Mengembalikan null bila semuanya gagal.
+     * (Dulu sumber dicoba satu per satu dengan timeout 30 dtk x 5 sumber x 2
+     * putaran, sehingga satu sumber macet bisa menahan layar sampai menit.)
+     */
+    private suspend fun <T : Any> hedgedFirst(
+        count: Int,
+        staggerMs: Long,
+        onError: (Int, Exception) -> Unit = { _, _ -> },
+        attempt: suspend (Int) -> T,
+    ): T? {
+        if (count <= 0) return null
+        return coroutineScope {
+            val result = CompletableDeferred<T?>()
+            val started = List(count) { CompletableDeferred<Unit>() }
+            val failed = List(count) { CompletableDeferred<Unit>() }
+            val pending = java.util.concurrent.atomic.AtomicInteger(count)
+            val jobs = (0 until count).map { i ->
+                launch(Dispatchers.IO) {
+                    if (i > 0) {
+                        started[i - 1].await()
+                        withTimeoutOrNull(staggerMs) { failed[i - 1].await() }
+                    }
+                    started[i].complete(Unit)
+                    try {
+                        if (!result.isCompleted) result.complete(attempt(i))
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        onError(i, e)
+                    }
+                    failed[i].complete(Unit)
+                    if (pending.decrementAndGet() == 0) result.complete(null)
+                }
             }
-            return resp.body?.bytes() ?: throw java.io.IOException("respons kosong dari " + url)
+            val r = result.await()
+            jobs.forEach { it.cancel() }
+            r
         }
     }
 
@@ -191,6 +252,10 @@ object CatalogApi {
         )
         return cipher.doFinal(data.copyOfRange(12, data.size))
     }
+
+    /** Parse di luar main thread (katalog besar membuat UI macet bila di-parse di Main). */
+    suspend fun parseCatalogAsync(body: String): List<Title> =
+        withContext(Dispatchers.Default) { parseCatalog(body) }
 
     fun parseCatalog(body: String): List<Title> {
         val root = JSONObject(body)
@@ -282,35 +347,45 @@ object CatalogApi {
      * dicoba dua putaran sebelum menyerah; tiap kegagalan dicatat di
      * [lastCatalogError] agar penyebab aslinya terlihat di layar galat.
      */
-    suspend fun fetchRawCatalog(): String = withContext(Dispatchers.IO) {
-        val sources = listOf(
+    @Volatile
+    private var lastGoodCatalogSource: String? = null
+
+    suspend fun fetchRawCatalog(): String {
+        val all = listOf(
             "Pages" to CATALOG_PAGES,
             "jsDelivr" to CATALOG_MIRROR,
             "gcore" to CATALOG_MIRROR_GCORE,
             "raw" to CATALOG_MIRROR2,
             "fastly" to CATALOG_MIRROR_FASTLY,
         )
-        val errs = ArrayList<String>()
-        var last: Exception? = null
+        // Sumber yang terakhir berhasil dicoba paling dulu (sortedBy stabil).
+        val preferred = lastGoodCatalogSource
+        val sources = if (preferred == null) all else all.sortedBy { if (it.first == preferred) 0 else 1 }
         for (round in 1..2) {
-            for ((name, u) in sources) {
-                try {
-                    val body = decodeCatalogBody(httpGetBytes(u, 30000))
-                    if (!body.trimStart().startsWith("{")) {
-                        throw java.io.IOException("isi katalog tidak dikenal dari " + name)
-                    }
-                    lastCatalogError = null
-                    return@withContext body
-                } catch (e: Exception) {
-                    last = e
-                    if (round == 2) {
-                        errs.add("$name: ${e.javaClass.simpleName}: ${e.message?.take(90) ?: "?"}")
-                    }
+            val errs = java.util.Collections.synchronizedList(ArrayList<String>())
+            val won = hedgedFirst(
+                count = sources.size,
+                staggerMs = 1500L,
+                onError = { i, e ->
+                    errs.add("${sources[i].first}: ${e.javaClass.simpleName}: ${e.message?.take(90) ?: "?"}")
+                },
+            ) { i ->
+                val (name, u) = sources[i]
+                val body = decodeCatalogBody(httpGetBytes(u, 20000))
+                if (!body.trimStart().startsWith("{")) {
+                    throw java.io.IOException("isi katalog tidak dikenal dari " + name)
                 }
+                name to body
             }
+            if (won != null) {
+                lastGoodCatalogSource = won.first
+                lastCatalogError = null
+                return won.second
+            }
+            lastCatalogError = errs.joinToString(" · ")
+            if (round == 1) delay(800)
         }
-        lastCatalogError = errs.joinToString(" · ")
-        throw last ?: java.io.IOException("semua sumber katalog gagal")
+        throw java.io.IOException(lastCatalogError ?: "semua sumber katalog gagal")
     }
 
     suspend fun fetchCatalog(): List<Title> = parseCatalog(fetchRawCatalog())
@@ -343,26 +418,42 @@ object CatalogApi {
         )
     }
 
-    /** Pilih pintu pertama yang menjawab playlist valid (#EXTM3U). */
-    suspend fun pickDoor(url: String): String = withContext(Dispatchers.IO) {
+    @Volatile
+    private var lastGoodDoorHost: String? = null
+
+    private fun hostOf(u: String): String? = try { java.net.URI(u).host } catch (e: Exception) { null }
+
+    /**
+     * Pilih pintu yang menjawab playlist valid (#EXTM3U). Pintu diuji berjenjang
+     * (bukan satu per satu dengan timeout 5 dtk): pintu berikutnya ikut jalan bila
+     * yang sebelumnya gagal atau lambat > 1,2 dtk; pintu yang terakhir berhasil
+     * dicoba paling dulu.
+     */
+    suspend fun pickDoor(url: String): String {
         val doors = doorVariants(url)
-        if (doors.size == 1) return@withContext url
-        for (d in doors) {
-            try {
-                if (httpGetText(d, timeoutMs = 5000).trimStart().startsWith("#EXTM3U")) {
-                    return@withContext d
-                }
-            } catch (e: Exception) {
-                // pintu ini gagal -> coba pintu berikutnya
+        if (doors.size == 1) return url
+        val pref = lastGoodDoorHost
+        val ordered = if (pref == null) doors else doors.sortedBy { if (hostOf(it) == pref) 0 else 1 }
+        val won = hedgedFirst(count = ordered.size, staggerMs = 1200L) { i ->
+            val d = ordered[i]
+            if (!httpGetText(d, timeoutMs = 5000).trimStart().startsWith("#EXTM3U")) {
+                throw java.io.IOException("bukan playlist valid")
             }
+            d
         }
-        url
+        if (won != null) {
+            lastGoodDoorHost = hostOf(won)
+            return won
+        }
+        return url
     }
 
     /** Daftar "Segera Tayang": judul antrean gudang yang belum terbit. */
-    suspend fun fetchSoon(): List<SoonTitle> = withContext(Dispatchers.IO) {
+    suspend fun fetchSoonAll(): List<SoonTitle> = withContext(Dispatchers.IO) {
         val body = try {
             decodeCatalogBody(httpGetBytes(SOON_PAGES))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             httpGetText(SOON_MIRROR)
         }
@@ -393,10 +484,18 @@ object CatalogApi {
                 )
             )
         }
-        // Judul yang sudah tayang tidak ditampilkan sebagai "segera tayang"
-        // (penyaringan ini biasanya dilakukan Worker; cermin perlu disaring di sini).
-        out.filter { !lastCatalogIds.contains(it.id) }
+        out
     }
+
+    /**
+     * Judul yang sudah tayang tidak ditampilkan sebagai "segera tayang"
+     * (penyaringan ini biasanya dilakukan Worker; cermin perlu disaring di sini).
+     * Dipisah dari [fetchSoonAll] agar daftar bisa diambil paralel dengan katalog.
+     */
+    fun filterSoon(list: List<SoonTitle>): List<SoonTitle> =
+        list.filter { !lastCatalogIds.contains(it.id) }
+
+    suspend fun fetchSoon(): List<SoonTitle> = filterSoon(fetchSoonAll())
 }
 
 /** Judul yang sedang disalin ke gudang dan akan segera tayang (tab Baru). */
@@ -441,7 +540,8 @@ private val REMINDERS_KEY = stringPreferencesKey("reminders_json")
 private val KNOWN_IDS_KEY = stringPreferencesKey("known_catalog_ids")
 private val SMART_KEY = booleanPreferencesKey("smart_downloads")
 private val WIFIONLY_KEY = booleanPreferencesKey("wifi_only_downloads")
-private val CACHE_KEY = stringPreferencesKey("catalog_cache")
+private val CACHE_KEY = stringPreferencesKey("catalog_cache") // lama: kini disimpan sebagai berkas
+private const val CACHE_FILE = "catalog-cache.json"
 private val RECENT_KEY = stringPreferencesKey("recent_searches_json")
 private val DOWNLOADS_KEY = stringPreferencesKey("downloads_json")
 
@@ -682,13 +782,45 @@ class LibraryStore(private val context: Context) {
         context.dataStore.edit { it[WIFIONLY_KEY] = value }
     }
 
+    /**
+     * Cache katalog disimpan sebagai berkas biasa, BUKAN di DataStore Preferences:
+     * DataStore menulis ulang seluruh berkas preferensi pada setiap edit (riwayat
+     * tonton, Daftarku, dsb.) dan mem-parse-nya pada setiap pembacaan, jadi string
+     * katalog berukuran MB membuat semua operasi itu lambat.
+     */
     suspend fun saveCatalogCache(raw: String) {
-        context.dataStore.edit { it[CACHE_KEY] = raw }
+        withContext(Dispatchers.IO) {
+            val f = File(context.filesDir, CACHE_FILE)
+            val tmp = File(context.filesDir, "$CACHE_FILE.tmp")
+            tmp.writeText(raw)
+            if (!tmp.renameTo(f)) {
+                f.delete()
+                tmp.renameTo(f)
+            }
+            Unit
+        }
+    }
+
+    /** Baca cache mentah; bila masih tersimpan di DataStore (versi lama), pindahkan ke berkas. */
+    suspend fun readCatalogCacheRaw(): String? = withContext(Dispatchers.IO) {
+        val f = File(context.filesDir, CACHE_FILE)
+        if (f.exists()) {
+            f.readText().ifBlank { null }
+        } else {
+            val legacy = context.dataStore.data.first()[CACHE_KEY]
+            if (legacy != null) {
+                try {
+                    f.writeText(legacy)
+                    context.dataStore.edit { it.remove(CACHE_KEY) }
+                } catch (e: Exception) { /* abaikan */ }
+            }
+            legacy
+        }
     }
 
     suspend fun readCatalogCache(): List<Title> {
-        val raw = context.dataStore.data.first()[CACHE_KEY] ?: return emptyList()
-        return try { CatalogApi.parseCatalog(raw) } catch (e: Exception) { emptyList() }
+        val raw = readCatalogCacheRaw() ?: return emptyList()
+        return try { CatalogApi.parseCatalogAsync(raw) } catch (e: CancellationException) { throw e } catch (e: Exception) { emptyList() }
     }
 
     suspend fun upsertDownload(item: DownloadItem) {

@@ -135,3 +135,11 @@ Berkas diubah
 
 - ui/NavIcons.kt (baru): set ikon garis tipis seragam (Beranda, Cari, Baru = kilau/sparkles, Unduhan, Profil), ujung bulat, goresan 1,8; aktif = goresan 2,1 + isian lembut. Bentuk mengacu ke Lucide (ISC). Ikon "Baru" tak lagi memakai lencana tanda seru yang mirip peringatan.
 - MainActivity.kt: NavItem memakai ikon baru, ikon aktif sedikit membesar dengan animasi, label Medium/SemiBold.
+
+---
+# 2.7.8: Poster dan banner lebih cepat tampil
+
+- AniloverApp.kt: pemuat gambar Coil bersama untuk seluruh aplikasi: cache memori 25% RAM, cache disk 256 MB, header cache server diabaikan, OkHttp sendiri (User-Agent tetap, 48 permintaan paralel), RGB565 untuk hemat memori. Poster yang pernah dilihat tampil langsung, juga setelah aplikasi dibuka ulang.
+- ui/Components.kt: PosterImage memakai AsyncImage + shimmer di belakangnya (bukan SubcomposeAsyncImage), jadi tiap kartu tidak lagi melakukan subkomposisi; gulir baris poster lebih ringan.
+- ui/HomeScreen.kt: poster hero, Top 10, dan Baru Ditambahkan dimuat lebih dulu ke cache begitu katalog tiba. Baris chip "Jelajahi Genre" dihapus dari Beranda (chip genre hanya di halaman Cari).
+- gradle.properties: build paralel + cache build.

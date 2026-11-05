@@ -167,6 +167,19 @@ fun HomeScreen(
     // Baru Ditambahkan: poster potret sedikit lebih besar (± 2,7 kartu terlihat), ala Netflix.
     val freshW: Dp = (LocalConfiguration.current.screenWidthDp * 0.34f).dp.coerceIn(120.dp, 180.dp)
 
+    // Prefetch: poster/banner bagian atas Beranda dimuat lebih dulu ke cache
+    // (memori + disk) begitu data tiba, sebelum baris-barisnya sempat digulir ke layar.
+    val appContext = LocalContext.current.applicationContext
+    LaunchedEffect(heroes, top10, fresh) {
+        val loader = coil.Coil.imageLoader(appContext)
+        val urls = (heroes.mapNotNull { it.poster ?: it.banner } +
+            top10.take(6).mapNotNull { it.poster ?: it.banner } +
+            fresh.take(6).mapNotNull { it.poster ?: it.banner }).distinct()
+        for (u in urls) {
+            loader.enqueue(coil.request.ImageRequest.Builder(appContext).data(u).build())
+        }
+    }
+
     val listState = rememberLazyListState()
     val fadePx = with(LocalDensity.current) { 240.dp.toPx() }
     val headerAlpha by remember {
@@ -250,17 +263,6 @@ fun HomeScreen(
                         onDownloadFirst = onDownloadFirst,
                         cardWidth = freshW, onSeeAll = onSeeNew,
                     )
-                }
-            }
-            if (genreList.isNotEmpty()) {
-                item(key = "genres") {
-                    SectionTitle(Str.get(R.string.browse_genres))
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        items(genreList, key = { it }) { g -> GenreChip(g) { onGenre(g) } }
-                    }
                 }
             }
             genreRows.forEach { (g, list) ->

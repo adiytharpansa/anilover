@@ -125,6 +125,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.border
 import com.app.anilover.ui.ShimmerBox
 import com.app.anilover.ui.SearchScreen
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -300,16 +302,33 @@ private fun AppRoot(
 
     // Ambil katalog terbaru. Mengembalikan true bila berhasil. Bila gagal, data lama
     // tetap tampil (galat layar penuh hanya muncul saat belum ada data sama sekali).
-    suspend fun loadCatalog(): Boolean {
+    // Hash isi katalog terakhir yang sudah tampil: bila hasil unduhan sama persis,
+    // parse & recompose ulang seluruh Beranda dilewati (muat berkala tiap 5 menit).
+    val lastRawHash = remember { intArrayOf(0) }
+
+    suspend fun loadCatalog(): Boolean = coroutineScope {
         var ok = false
+        // "Segera Tayang" diambil paralel dengan katalog (dulu menunggu katalog selesai dulu).
+        val soonJob = async {
+            try {
+                CatalogApi.fetchSoonAll()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+        }
         try {
             val raw = CatalogApi.fetchRawCatalog()
-            val fresh = CatalogApi.parseCatalog(raw)
-            titles = fresh
+            val h = raw.hashCode()
+            if (h != lastRawHash[0] || titles.isNullOrEmpty()) {
+                titles = CatalogApi.parseCatalogAsync(raw)
+                lastRawHash[0] = h
+                try { library.saveCatalogCache(raw) } catch (e: Exception) { }
+            }
             error = null
             ok = true
             lastLoad = System.currentTimeMillis()
-            try { library.saveCatalogCache(raw) } catch (e: Exception) { }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -317,16 +336,30 @@ private fun AppRoot(
                 error = Str.get(R.string.err_catalog_load)
             }
         }
-        try { soon = CatalogApi.fetchSoon() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { /* Segera Tayang tambahan */ }
-        return ok
+        val soonAll = soonJob.await()
+        if (soonAll != null) soon = CatalogApi.filterSoon(soonAll)
+        ok
     }
 
     LaunchedEffect(reloadKey) {
-        if (titles.isNullOrEmpty()) {
-            val cached = try { library.readCatalogCache() } catch (e: Exception) { emptyList() }
-            if (cached.isNotEmpty()) titles = cached
+        coroutineScope {
+            // Baca cache & unduh katalog berjalan bersamaan: jaringan tidak lagi
+            // menunggu cache selesai di-parse. Cache hanya dipakai bila data segar
+            // belum lebih dulu tiba.
+            if (titles.isNullOrEmpty()) {
+                launch {
+                    val cachedRaw = try { library.readCatalogCacheRaw() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { null }
+                    if (cachedRaw != null) {
+                        val cached = try { CatalogApi.parseCatalogAsync(cachedRaw) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { emptyList() }
+                        if (cached.isNotEmpty() && titles.isNullOrEmpty()) {
+                            titles = cached
+                            lastRawHash[0] = cachedRaw.hashCode()
+                        }
+                    }
+                }
+            }
+            loadCatalog()
         }
-        loadCatalog()
     }
 
     // Tarik-untuk-segarkan di Beranda.

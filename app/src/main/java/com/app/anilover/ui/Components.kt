@@ -15,7 +15,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -26,7 +29,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.SubcomposeAsyncImage
+import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 
 /**
@@ -51,17 +55,33 @@ fun PosterImage(
     }
     val context = LocalContext.current
     val request = remember(model) {
-        ImageRequest.Builder(context).data(model).crossfade(300).build()
+        ImageRequest.Builder(context)
+            .data(model)
+            .crossfade(200)
+            .build()
     }
-    SubcomposeAsyncImage(
-        model = request,
-        contentDescription = contentDescription,
-        modifier = modifier,
-        alignment = alignment,
-        contentScale = contentScale,
-        loading = { ShimmerBox(Modifier.fillMaxSize(), RectangleShape) },
-        error = { PosterFallback(label, Modifier.fillMaxSize()) },
-    )
+    // AsyncImage biasa (bukan SubcomposeAsyncImage): tidak ada subkomposisi per
+    // kartu, jadi gulir baris poster jauh lebih ringan. Shimmer digambar di
+    // belakang gambar dan hilang sendiri begitu gambar sukses dimuat.
+    var state by remember(model) {
+        mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty)
+    }
+    Box(modifier) {
+        when (state) {
+            is AsyncImagePainter.State.Error ->
+                PosterFallback(label, Modifier.fillMaxSize())
+            is AsyncImagePainter.State.Success -> Unit
+            else -> ShimmerBox(Modifier.fillMaxSize(), RectangleShape)
+        }
+        AsyncImage(
+            model = request,
+            contentDescription = contentDescription,
+            modifier = Modifier.fillMaxSize(),
+            alignment = alignment,
+            contentScale = contentScale,
+            onState = { state = it },
+        )
+    }
 }
 
 /** Kartu cadangan: gradasi warna khas per judul + inisial besar (bukan kotak abu-abu). */
