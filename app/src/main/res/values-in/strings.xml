@@ -281,4 +281,7 @@
     <string name="resume_episode_n">Lanjutkan Episode %1$d</string>
     <string name="resume_from">Dilanjutkan dari %1$s</string>
     <string name="play_ep">Putar E%1$s</string>
+    <string name="downloads_saved_in">Tersimpan di penyimpanan perangkat: %1$s</string>
+    <string name="downloading_title">sedang mengunduh…</string>
+    <string name="episode_n">Episode %1$d</string>
 </resources>

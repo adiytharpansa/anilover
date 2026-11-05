@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -582,6 +583,7 @@ fun DownloadsScreen(
     downloads: List<DownloadItem>,
     titles: List<Title>,
     settings: AniloverSettings,
+    storageRoot: java.io.File,
     onPlayDownload: (DownloadItem) -> Unit,
     onDeleteDownload: (DownloadItem) -> Unit,
     onSmartChange: (Boolean) -> Unit,
@@ -590,56 +592,81 @@ fun DownloadsScreen(
 ) {
     val byId = titles.associateBy { it.id }
     val context = LocalContext.current
-    val storage = remember {
+    // Ukur ruang pada volume tempat unduhan disimpan (penyimpanan perangkat).
+    val storage = remember(storageRoot) {
         try {
-            val stat = android.os.StatFs(context.filesDir.absolutePath)
-            val total = stat.totalBytes
-            val free = stat.availableBytes
-            total to free
+            var probe: java.io.File? = storageRoot
+            while (probe != null && !probe.exists()) probe = probe.parentFile
+            val stat = android.os.StatFs((probe ?: context.filesDir).absolutePath)
+            stat.totalBytes to stat.availableBytes
         } catch (e: Exception) {
             0L to 0L
         }
     }
-    LazyColumn(Modifier.fillMaxSize()) {
+    val done = downloads.filter { it.state == "selesai" }
+    val appBytes = done.sumOf { it.sizeBytes }
+    // Kelompokkan per judul; judul dengan unduhan terbaru tampil paling atas.
+    val groups = remember(downloads) {
+        downloads.groupBy { it.titleId }.values
+            .map { list -> list.sortedBy { it.episode } }
+            .sortedByDescending { list -> list.maxOf { it.updatedAt } }
+    }
+
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         item {
             ScreenTitle(Str.get(R.string.nav_downloads))
-            val done = downloads.filter { it.state == "selesai" }
-            if (done.isNotEmpty()) {
-                Text(
-                    Str.plural(R.plurals.downloaded_summary, done.size, done.size, formatSize(done.sumOf { it.sizeBytes })),
-                    color = AniloverTextDim, fontSize = 13.sp,
-                    modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
-                )
-            }
+            Spacer(Modifier.height(4.dp))
+
+            // Kartu penyimpanan
             if (storage.first > 0) {
-                val usedFrac = 1f - storage.second.toFloat() / storage.first.toFloat()
-                Text(
-                    Str.get(R.string.storage_free, formatSize(storage.second), formatSize(storage.first)),
-                    color = AniloverTextDim, fontSize = 12.sp,
-                    modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
-                )
-                Box(
-                    Modifier.padding(horizontal = 20.dp).fillMaxWidth().height(6.dp)
-                        .background(AniloverSurfaceHigh, AniloverShapes.Pill),
+                val total = storage.first.toFloat()
+                val usedFrac = (1f - storage.second.toFloat() / total).coerceIn(0f, 1f)
+                val appFrac = if (appBytes > 0) (appBytes / total).coerceIn(0.015f, usedFrac.coerceAtLeast(0.015f)) else 0f
+                Column(
+                    Modifier.padding(horizontal = 20.dp).fillMaxWidth().panel()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
                 ) {
-                    Box(
-                        Modifier.fillMaxWidth(usedFrac.coerceIn(0f, 1f)).height(6.dp)
-                            .background(AniloverAccent, AniloverShapes.Pill),
+                    Text(
+                        Str.get(R.string.storage_free, formatSize(storage.second), formatSize(storage.first)),
+                        color = AniloverTextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium,
                     )
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            Column(
-                Modifier.padding(horizontal = 20.dp).fillMaxWidth().panel()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(Str.get(R.string.smart_downloads), color = AniloverTextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(10.dp))
+                    Box(Modifier.fillMaxWidth().height(8.dp).clip(AniloverShapes.Pill).background(AniloverSurfaceHigh)) {
+                        Box(Modifier.fillMaxWidth(usedFrac).height(8.dp).background(Color(0xFF5C5C5C)))
+                        if (appFrac > 0f) {
+                            Box(Modifier.fillMaxWidth(appFrac).height(8.dp).background(AniloverAccent))
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(8.dp).background(AniloverAccent, androidx.compose.foundation.shape.CircleShape))
+                        Spacer(Modifier.width(6.dp))
                         Text(
-                            Str.get(R.string.smart_downloads_desc),
+                            if (done.isNotEmpty())
+                                Str.plural(R.plurals.downloaded_summary, done.size, done.size, formatSize(appBytes))
+                            else Str.get(R.string.no_downloads),
                             color = AniloverTextDim, fontSize = 12.sp,
                         )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        Str.get(R.string.downloads_saved_in, "Movies/Anilover"),
+                        color = AniloverTextDim, fontSize = 11.sp,
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
+            // Unduhan Cerdas
+            Column(
+                Modifier.padding(horizontal = 20.dp).fillMaxWidth().panel()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                        Text(Str.get(R.string.smart_downloads), color = AniloverTextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(2.dp))
+                        Text(Str.get(R.string.smart_downloads_desc), color = AniloverTextDim, fontSize = 12.sp)
                     }
                     Switch(
                         checked = settings.smartDownloads,
@@ -648,8 +675,11 @@ fun DownloadsScreen(
                     )
                 }
                 if (settings.smartDownloads) {
+                    Spacer(Modifier.height(6.dp))
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(AniloverOutline))
+                    Spacer(Modifier.height(6.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
                             Text(Str.get(R.string.wifi_only), color = AniloverTextPrimary, fontSize = 13.sp)
                             Text(Str.get(R.string.wifi_only_desc), color = AniloverTextDim, fontSize = 12.sp)
                         }
@@ -661,84 +691,127 @@ fun DownloadsScreen(
                     }
                 }
             }
+            Spacer(Modifier.height(8.dp))
         }
+
         if (downloads.isEmpty()) {
             item {
                 Column(
-                    Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 60.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 56.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Box(
                         Modifier.size(88.dp).background(AniloverSurface, androidx.compose.foundation.shape.CircleShape)
-                .border(1.dp, AniloverOutline, androidx.compose.foundation.shape.CircleShape),
+                            .border(1.dp, AniloverOutline, androidx.compose.foundation.shape.CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(Icons.Filled.Download, contentDescription = null, tint = AniloverTextDim, modifier = Modifier.size(40.dp))
                     }
-                    Spacer(Modifier.height(14.dp))
-                    Text(Str.get(R.string.no_downloads), color = AniloverTextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        Str.get(R.string.no_downloads), color = AniloverTextPrimary,
+                        fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
                     Spacer(Modifier.height(6.dp))
                     Text(
                         Str.get(R.string.no_downloads_hint),
                         color = AniloverTextDim, fontSize = 13.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(16.dp))
                     Text(
                         Str.get(R.string.browse_titles), color = AniloverAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { onBrowse() },
+                        modifier = Modifier.clip(AniloverShapes.Pill).clickable { onBrowse() }
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 }
             }
         }
-        items(downloads) { d ->
-            val t = byId[d.titleId]
-            Row(
-                Modifier.fillMaxWidth()
-                    .clickable(enabled = d.state == "selesai") { onPlayDownload(d) }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+
+        items(groups, key = { it.first().titleId }) { eps ->
+            val first = eps.first()
+            val t = byId[first.titleId]
+            val doneEps = eps.filter { it.state == "selesai" }
+            Column(
+                Modifier.padding(horizontal = 20.dp, vertical = 6.dp).fillMaxWidth().panel(),
             ) {
-                PosterImage(
-                    model = t?.poster ?: t?.banner,
-                    contentDescription = d.titleName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.width(52.dp).aspectRatio(2f / 3f)
-                        .clip(AniloverShapes.Chip).background(AniloverSurface),
-                )
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        d.titleName, color = AniloverTextPrimary, fontSize = 14.sp,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                // Kepala kartu: poster + judul + ringkasan
+                Row(
+                    Modifier.fillMaxWidth().padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PosterImage(
+                        model = t?.poster ?: t?.banner,
+                        contentDescription = first.titleName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.width(56.dp).aspectRatio(2f / 3f)
+                            .clip(AniloverShapes.Chip).background(AniloverSurfaceHigh),
                     )
-                    Text(
-                        "Episode ${d.episode} · " + when (d.state) {
-                            "selesai" -> Str.get(R.string.size_downloaded, formatSize(d.sizeBytes))
-                            "mengunduh" -> Str.get(R.string.downloading_pct, (d.fraction * 100).toInt())
-                            else -> Str.get(R.string.failed_open_detail)
-                        },
-                        color = AniloverTextDim, fontSize = 12.sp,
-                    )
-                    if (d.state == "mengunduh") {
-                        Spacer(Modifier.height(4.dp))
-                        Box(
-                            Modifier.fillMaxWidth().height(5.dp)
-                                .background(AniloverSurfaceHigh, AniloverShapes.Pill),
-                        ) {
-                            Box(Modifier.fillMaxWidth(d.fraction).height(5.dp).background(AniloverAccent, AniloverShapes.Pill))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            first.titleName, color = AniloverTextPrimary, fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        )
+                        Spacer(Modifier.height(3.dp))
+                        Text(
+                            if (doneEps.isNotEmpty())
+                                Str.plural(R.plurals.downloaded_summary, doneEps.size, doneEps.size, formatSize(doneEps.sumOf { it.sizeBytes }))
+                            else Str.get(R.string.downloading_title),
+                            color = AniloverTextDim, fontSize = 12.sp,
+                        )
+                    }
+                }
+                // Baris episode
+                for (d in eps) {
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(AniloverOutline))
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .clickable(enabled = d.state == "selesai") { onPlayDownload(d) }
+                            .heightIn(min = 52.dp)
+                            .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (d.state == "selesai") {
+                            Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = AniloverAccent, modifier = Modifier.size(20.dp))
+                        } else {
+                            Spacer(Modifier.width(20.dp))
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                            Text(
+                                Str.get(R.string.episode_n, d.episode),
+                                color = AniloverTextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                            )
+                            when (d.state) {
+                                "selesai" -> Text(formatSize(d.sizeBytes), color = AniloverTextDim, fontSize = 11.sp)
+                                "mengunduh" -> {
+                                    Text(
+                                        Str.get(R.string.downloading_pct, (d.fraction * 100).toInt()),
+                                        color = AniloverTextDim, fontSize = 11.sp,
+                                    )
+                                    Spacer(Modifier.height(3.dp))
+                                    Box(Modifier.fillMaxWidth().height(4.dp).clip(AniloverShapes.Pill).background(AniloverSurfaceHigh)) {
+                                        Box(Modifier.fillMaxWidth(d.fraction.coerceAtLeast(0.02f)).height(4.dp).background(AniloverAccent))
+                                    }
+                                }
+                                else -> Text(Str.get(R.string.failed_open_detail), color = AniloverDanger, fontSize = 11.sp)
+                            }
+                        }
+                        if (d.state == "mengunduh") {
+                            Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = AniloverAccent, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                            }
+                        } else {
+                            IconButton(onClick = { onDeleteDownload(d) }) {
+                                Icon(Icons.Filled.Delete, contentDescription = Str.get(R.string.delete_download), tint = AniloverTextDim)
+                            }
                         }
                     }
                 }
-                if (d.state == "mengunduh") {
-                    CircularProgressIndicator(color = AniloverAccent, modifier = Modifier.size(22.dp))
-                } else {
-                    IconButton(onClick = { onDeleteDownload(d) }) {
-                        Icon(Icons.Filled.Delete, contentDescription = Str.get(R.string.delete_download), tint = Color.White)
-                    }
-                }
             }
         }
-        item { Spacer(Modifier.height(24.dp)) }
     }
 }
 

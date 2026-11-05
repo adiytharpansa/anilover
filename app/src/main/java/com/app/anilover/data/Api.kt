@@ -2,7 +2,17 @@ package com.app.anilover.data
 
 import com.app.anilover.Str
 import com.app.anilover.R
+import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import java.io.IOException
+import java.io.OutputStream
+import javax.crypto.Cipher
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
 import com.app.anilover.BuildConfig
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -759,6 +769,7 @@ class LibraryStore(private val context: Context) {
                         doneSegs = o.optInt("ds"),
                         sizeBytes = o.optLong("b"),
                         updatedAt = o.optLong("u"),
+                        uri = o.optString("c", ""),
                     )
                 )
             }
@@ -774,7 +785,7 @@ class LibraryStore(private val context: Context) {
                     .put("t", d.titleId).put("n", d.titleName).put("e", d.episode)
                     .put("p", d.playlist).put("s", d.state)
                     .put("ts", d.totalSegs).put("ds", d.doneSegs)
-                    .put("b", d.sizeBytes).put("u", d.updatedAt)
+                    .put("b", d.sizeBytes).put("u", d.updatedAt).put("c", d.uri)
             )
         }
         return arr.toString()
@@ -792,6 +803,8 @@ data class DownloadItem(
     val doneSegs: Int = 0,
     val sizeBytes: Long = 0,
     val updatedAt: Long = 0,
+    /** Alamat berkas video hasil unduhan di penyimpanan perangkat (content:// atau file://). Kosong = unduhan model lama. */
+    val uri: String = "",
 ) {
     val fraction: Float
         get() = if (totalSegs > 0) (doneSegs.toFloat() / totalSegs).coerceIn(0f, 1f) else 0f
@@ -811,7 +824,28 @@ class DownloadManager(private val context: Context, private val library: Library
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val running = HashSet<String>()
 
+    @Volatile private var storedUris: Map<String, String> = emptyMap()
+
     init {
+        // Simpan peta episode -> alamat video; sekali di awal, buang catatan yang
+        // videonya sudah dihapus pengguna dari Galeri/File.
+        scope.launch {
+            var verified = false
+            try {
+                library.downloads.collect { list ->
+                    storedUris = list.filter { it.state == "selesai" && it.uri.isNotBlank() }
+                        .associate { "${it.titleId}|${it.episode}" to it.uri }
+                    if (!verified) {
+                        verified = true
+                        for (d in list) {
+                            if (d.state == "selesai" && d.uri.isNotBlank() && !storedExists(d.uri)) {
+                                library.removeDownload(d.titleId, d.episode)
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) { /* abaikan */ }
+        }
         // Unduhan yang tertinggal berstatus "mengunduh" karena aplikasi dimatikan
         // paksa ditandai gagal agar bisa dicoba lagi (bukan berputar selamanya).
         scope.launch {
@@ -827,12 +861,46 @@ class DownloadManager(private val context: Context, private val library: Library
         }
     }
 
-    fun dirFor(titleId: String, episode: Int): File =
+    /**
+     * Folder unduhan di penyimpanan perangkat. Android 10+: Movies/Anilover pada memori
+     * bersama (lewat MediaStore, muncul di Galeri/File, tetap ada walau aplikasi dihapus,
+     * tanpa izin tambahan). Android 9 ke bawah: folder Movies milik aplikasi di memori
+     * bersama (izin tulis umum tidak diminta). Bila memori eksternal tak tersedia: internal.
+     */
+    fun storageRoot(): File {
+        if (Build.VERSION.SDK_INT >= 29) {
+            @Suppress("DEPRECATION")
+            return File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "Anilover")
+        }
+        val ext = try {
+            context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
+        } catch (e: Exception) { null }
+        val base = if (ext != null && (ext.exists() || ext.mkdirs())) ext else context.filesDir
+        return File(base, "Anilover")
+    }
+
+    /** Lokasi lama (versi sebelumnya menyimpan di penyimpanan internal aplikasi). */
+    private fun legacyDirFor(titleId: String, episode: Int): File =
         File(context.filesDir, "downloads/$titleId/ep$episode")
+
+    /** Folder HLS cadangan (hanya dipakai untuk aliran yang tak bisa digabung jadi satu video). */
+    fun dirFor(titleId: String, episode: Int): File {
+        val ext = try { context.getExternalFilesDir(Environment.DIRECTORY_MOVIES) } catch (e: Exception) { null }
+        return File(File(ext ?: context.filesDir, "Anilover"), "$titleId/ep$episode")
+    }
+
+    /** Folder tempat episode ini benar-benar tersimpan (baru, atau lokasi lama bila unduhan lama). */
+    private fun existingDir(titleId: String, episode: Int): File {
+        val fresh = dirFor(titleId, episode)
+        if (File(fresh, "playlist.m3u8").exists()) return fresh
+        val old = legacyDirFor(titleId, episode)
+        return if (File(old, "playlist.m3u8").exists()) old else fresh
+    }
 
     /** URI playlist lokal hanya bila SEMUA berkas yang dirujuknya ada dan tidak kosong. */
     fun localPlaylistUri(titleId: String, episode: Int): String? {
-        val dir = dirFor(titleId, episode)
+        storedUris["$titleId|$episode"]?.let { if (storedExists(it)) return it }
+        val dir = existingDir(titleId, episode)
         val f = File(dir, "playlist.m3u8")
         if (!f.exists() || f.length() == 0L) return null
         return try {
@@ -869,8 +937,6 @@ class DownloadManager(private val context: Context, private val library: Library
             try {
                 library.upsertDownload(item)
                 val dir = dirFor(title.id, episode.number)
-                dir.mkdirs()
-                File(dir, "playlist.m3u8").delete()
 
                 var playlistUrl = episode.playlist
                 var text = httpGetText(playlistUrl)
@@ -879,6 +945,17 @@ class DownloadManager(private val context: Context, private val library: Library
                     playlistUrl = pickVariant(playlistUrl, text)
                     text = httpGetText(playlistUrl)
                 }
+
+                // Utama: gabungkan semua segmen jadi SATU berkas video di penyimpanan perangkat.
+                val plan = parsePlan(playlistUrl, text)
+                if (plan != null) {
+                    downloadMerged(title, episode, plan, item)
+                    return@launch
+                }
+
+                // Cadangan (aliran tak lazim, mis. SAMPLE-AES/byte-range): salinan HLS di folder aplikasi.
+                dir.mkdirs()
+                File(dir, "playlist.m3u8").delete()
 
                 val urlToName = LinkedHashMap<String, String>()
                 fun nameFor(ref: String): String {
@@ -946,9 +1023,270 @@ class DownloadManager(private val context: Context, private val library: Library
 
     fun delete(item: DownloadItem) {
         scope.launch {
+            if (item.uri.isNotBlank()) deleteStored(item.uri)
             try { dirFor(item.titleId, item.episode).deleteRecursively() } catch (e: Exception) { }
+            try { legacyDirFor(item.titleId, item.episode).deleteRecursively() } catch (e: Exception) { }
             library.removeDownload(item.titleId, item.episode)
         }
+    }
+
+    // ---------- Unduh & gabung jadi satu video ----------
+
+    private class Seg(val url: String, val key: String?, val iv: ByteArray?)
+    private class MergePlan(val init: String?, val segs: List<Seg>, val ext: String)
+
+    private fun hexToBytes(hex: String): ByteArray {
+        val h = hex.padStart(32, '0').takeLast(32)
+        return ByteArray(16) { i -> h.substring(i * 2, i * 2 + 2).toInt(16).toByte() }
+    }
+
+    private fun ivFromSeq(n: Long): ByteArray {
+        val b = ByteArray(16)
+        for (i in 0 until 8) b[15 - i] = ((n shr (8 * i)) and 0xFF).toByte()
+        return b
+    }
+
+    /** Null bila aliran tak bisa digabung dengan aman (byte-range, SAMPLE-AES, dll). */
+    private fun parsePlan(base: String, text: String): MergePlan? {
+        var seq = 0L
+        var key: String? = null
+        var iv: ByteArray? = null
+        var initUrl: String? = null
+        var idx = 0
+        val segs = ArrayList<Seg>()
+        for (raw in text.lines()) {
+            val line = raw.trim()
+            when {
+                line.isEmpty() -> Unit
+                line.startsWith("#EXT-X-MEDIA-SEQUENCE:") ->
+                    seq = line.substringAfter(":").trim().toLongOrNull() ?: 0L
+                line.startsWith("#EXT-X-BYTERANGE") -> return null
+                line.startsWith("#EXT-X-MAP:") -> {
+                    if (line.contains("BYTERANGE")) return null
+                    initUrl = URI_ATTR.find(line)?.groupValues?.get(1)?.let { resolveUrl(base, it) }
+                }
+                line.startsWith("#EXT-X-KEY:") -> {
+                    when (Regex("METHOD=([A-Z0-9-]+)").find(line)?.groupValues?.get(1)) {
+                        "NONE" -> { key = null; iv = null }
+                        "AES-128" -> {
+                            key = URI_ATTR.find(line)?.groupValues?.get(1)?.let { resolveUrl(base, it) }
+                                ?: return null
+                            iv = Regex("IV=0[xX]([0-9A-Fa-f]+)").find(line)?.groupValues?.get(1)?.let { hexToBytes(it) }
+                        }
+                        else -> return null
+                    }
+                }
+                line.startsWith("#") -> Unit
+                else -> {
+                    val segIv = if (key != null) (iv ?: ivFromSeq(seq + idx)) else null
+                    segs.add(Seg(resolveUrl(base, line), key, segIv))
+                    idx++
+                }
+            }
+        }
+        if (segs.isEmpty()) return null
+        val firstPath = segs.first().url.substringBefore("?").substringBefore("#").lowercase()
+        val fragmented = firstPath.endsWith(".m4s") || firstPath.endsWith(".mp4") ||
+            firstPath.endsWith(".m4v") || firstPath.endsWith(".cmfv")
+        if (fragmented && initUrl == null) return null
+        return MergePlan(initUrl, segs, if (initUrl != null || fragmented) "mp4" else "ts")
+    }
+
+    private fun httpBytes(url: String): ByteArray {
+        var last: Exception? = null
+        repeat(3) {
+            try {
+                val conn = connect(url, 60000)
+                try { return conn.inputStream.use { it.readBytes() } } finally { conn.disconnect() }
+            } catch (e: Exception) { last = e }
+        }
+        throw last ?: IOException("gagal mengunduh $url")
+    }
+
+    private fun safeName(s: String): String =
+        s.replace(Regex("[\\\\/:*?\"<>|\\u0000-\\u001F]"), "").trim().take(100).ifBlank { "Anilover" }
+
+    private fun uniqueFile(dir: File, name: String): File {
+        var f = File(dir, name)
+        var n = 1
+        val stem = name.substringBeforeLast(".")
+        val ext = name.substringAfterLast(".", "")
+        while (f.exists()) { f = File(dir, "$stem ($n).$ext"); n++ }
+        return f
+    }
+
+    /**
+     * Kemas ulang (tanpa encode ulang) MPEG-TS / fMP4 menjadi berkas MP4 biasa.
+     * False bila kodek/kontainer tak didukung perangkat; berkas tujuan dibuang oleh pemanggil.
+     */
+    private fun remuxToMp4(src: File, dst: File, videoOnly: Boolean = false): Boolean {
+        val ex = android.media.MediaExtractor()
+        var muxer: android.media.MediaMuxer? = null
+        try {
+            ex.setDataSource(src.absolutePath)
+            muxer = android.media.MediaMuxer(dst.absolutePath, android.media.MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+            val map = HashMap<Int, Int>()
+            var hasVideo = false
+            for (i in 0 until ex.trackCount) {
+                val f = ex.getTrackFormat(i)
+                val mime = f.getString(android.media.MediaFormat.KEY_MIME) ?: continue
+                if (mime.startsWith("video/")) {
+                    map[i] = muxer.addTrack(f)   // video wajib didukung
+                    ex.selectTrack(i)
+                    hasVideo = true
+                } else if (mime.startsWith("audio/") && !videoOnly) {
+                    // Audio yang kodeknya tak didukung MP4 dilewati, jangan menggagalkan unduhan.
+                    try {
+                        map[i] = muxer.addTrack(f)
+                        ex.selectTrack(i)
+                    } catch (e: Exception) { /* lewati trek ini */ }
+                }
+            }
+            if (map.isEmpty() || !hasVideo) return false
+            muxer.start()
+            var buf = java.nio.ByteBuffer.allocate(4 * 1024 * 1024)
+            val info = android.media.MediaCodec.BufferInfo()
+            var base = -1L
+            while (true) {
+                val need = ex.sampleSize
+                if (need > buf.capacity()) buf = java.nio.ByteBuffer.allocate((need * 2).coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+                buf.clear()
+                val n = ex.readSampleData(buf, 0)
+                if (n < 0) break
+                val t = ex.sampleTime
+                if (base < 0) base = t
+                val flags = if (ex.sampleFlags and android.media.MediaExtractor.SAMPLE_FLAG_SYNC != 0)
+                    android.media.MediaCodec.BUFFER_FLAG_KEY_FRAME else 0
+                info.set(0, n, (t - base).coerceAtLeast(0L), flags)
+                val track = map[ex.sampleTrackIndex]
+                if (track != null) muxer.writeSampleData(track, buf, info)
+                ex.advance()
+            }
+            muxer.stop()
+            return dst.length() > 0
+        } catch (e: Exception) {
+            return false
+        } finally {
+            try { muxer?.release() } catch (ignored: Exception) { }
+            try { ex.release() } catch (ignored: Exception) { }
+        }
+    }
+
+    private suspend fun downloadMerged(title: Title, episode: Episode, plan: MergePlan, base: DownloadItem) {
+        var item = base.copy(totalSegs = plan.segs.size + (if (plan.init != null) 1 else 0))
+        library.upsertDownload(item)
+        val resolver = context.contentResolver
+        val tag = "${title.id}_${episode.number}".replace(Regex("[^A-Za-z0-9_-]"), "_")
+        val tmpSrc = File(context.cacheDir, "dl_$tag.${plan.ext}.tmp")
+        val tmpMp4 = File(context.cacheDir, "dl_$tag.mp4.tmp")
+        var mediaUri: Uri? = null
+        var file: File? = null
+        try {
+            // 1) Unduh semua segmen (dekripsi bila perlu) ke berkas sementara.
+            var bytes = 0L
+            var done = 0
+            val keyCache = HashMap<String, ByteArray>()
+            tmpSrc.outputStream().buffered(256 * 1024).use { tmpOut ->
+                plan.init?.let {
+                    val b = httpBytes(it)
+                    tmpOut.write(b); done++
+                }
+                for ((i, seg) in plan.segs.withIndex()) {
+                    var data = httpBytes(seg.url)
+                    if (seg.key != null && seg.iv != null) {
+                        val k = keyCache.getOrPut(seg.key) { httpBytes(seg.key) }
+                        val c = Cipher.getInstance("AES/CBC/PKCS5Padding")
+                        c.init(Cipher.DECRYPT_MODE, SecretKeySpec(k, "AES"), IvParameterSpec(seg.iv))
+                        data = c.doFinal(data)
+                    }
+                    tmpOut.write(data)
+                    bytes += data.size
+                    done++
+                    if (done % 3 == 0 || i == plan.segs.lastIndex) {
+                        item = item.copy(doneSegs = done, sizeBytes = bytes, updatedAt = System.currentTimeMillis())
+                        library.upsertDownload(item)
+                    }
+                }
+            }
+
+            // 2) Kemas ulang menjadi MP4. Bila perangkat tak bisa (kodek tak lazim):
+            //    aliran fMP4 tetap berekstensi .mp4; aliran TS disimpan apa adanya (.ts).
+            var finalSrc = tmpSrc
+            var ext = plan.ext
+            var ok = remuxToMp4(tmpSrc, tmpMp4)
+            if (!ok) {
+                // Percobaan kedua: hanya video + audio yang didukung, lalu video saja.
+                tmpMp4.delete()
+                ok = remuxToMp4(tmpSrc, tmpMp4, videoOnly = true)
+            }
+            if (ok) {
+                finalSrc = tmpMp4
+                ext = "mp4"
+                tmpSrc.delete()
+            } else {
+                tmpMp4.delete()
+                // fMP4 hasil gabungan sudah berupa berkas .mp4 yang sah; aliran TS yang gagal
+                // dikemas ditandai gagal (tidak disimpan sebagai .ts).
+                if (plan.ext != "mp4") throw IOException("gagal mengemas ke MP4")
+            }
+            val mime = if (ext == "mp4") "video/mp4" else "video/mp2t"
+            val name = safeName("${title.title} - Episode ${episode.number}") + "." + ext
+
+            // 3) Salin ke penyimpanan perangkat.
+            val out: OutputStream
+            if (Build.VERSION.SDK_INT >= 29) {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+                    put(MediaStore.MediaColumns.MIME_TYPE, mime)
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Movies/Anilover")
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+                mediaUri = resolver.insert(MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values)
+                    ?: throw IOException("tidak bisa membuat berkas di penyimpanan perangkat")
+                out = resolver.openOutputStream(mediaUri)?.buffered(256 * 1024)
+                    ?: throw IOException("tidak bisa membuka berkas di penyimpanan perangkat")
+            } else {
+                val dir = storageRoot()
+                dir.mkdirs()
+                file = uniqueFile(dir, name)
+                out = file.outputStream().buffered(256 * 1024)
+            }
+            val finalSize = finalSrc.length()
+            out.use { o -> finalSrc.inputStream().use { it.copyTo(o, 256 * 1024) } }
+
+            val finalUri: Uri = if (mediaUri != null) {
+                val v = ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }
+                resolver.update(mediaUri, v, null, null)
+                mediaUri
+            } else Uri.fromFile(file!!)
+            library.upsertDownload(
+                item.copy(
+                    state = "selesai", doneSegs = item.totalSegs, sizeBytes = finalSize,
+                    uri = finalUri.toString(), updatedAt = System.currentTimeMillis(),
+                )
+            )
+        } catch (e: Exception) {
+            try { mediaUri?.let { resolver.delete(it, null, null) } } catch (ignored: Exception) { }
+            try { file?.delete() } catch (ignored: Exception) { }
+            throw e
+        } finally {
+            tmpSrc.delete()
+            tmpMp4.delete()
+        }
+    }
+
+    private fun storedExists(uriStr: String): Boolean = try {
+        val u = Uri.parse(uriStr)
+        if (u.scheme == "file") File(u.path ?: "").let { it.exists() && it.length() > 0 }
+        else context.contentResolver.openAssetFileDescriptor(u, "r")?.use { true } ?: false
+    } catch (e: Exception) { false }
+
+    private fun deleteStored(uriStr: String) {
+        try {
+            val u = Uri.parse(uriStr)
+            if (u.scheme == "file") File(u.path ?: "").delete()
+            else context.contentResolver.delete(u, null, null)
+        } catch (e: Exception) { /* sudah hilang */ }
     }
 
     private fun resolveUrl(base: String, ref: String): String {

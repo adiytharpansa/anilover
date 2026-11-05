@@ -603,9 +603,13 @@ private fun PlayerScreen(
                 setPreferredTextLanguage(wantedLang)
             }
         }.build()
-        player.setMediaItem(
-            MediaItem.Builder().setUri(playlist).setMimeType(MimeTypes.APPLICATION_M3U8).build()
-        )
+        // Unduhan berupa satu berkas video (content:// atau file://) dikenali otomatis;
+        // hanya playlist HLS yang diberi tipe M3U8.
+        val isLocalVideo = (playlist.startsWith("content://") || playlist.startsWith("file://")) &&
+            !playlist.substringBefore("?").endsWith(".m3u8")
+        val itemBuilder = MediaItem.Builder().setUri(playlist)
+        if (!isLocalVideo) itemBuilder.setMimeType(MimeTypes.APPLICATION_M3U8)
+        player.setMediaItem(itemBuilder.build())
         player.prepare()
         if (pos > 0) player.seekTo(pos)
         player.playWhenReady = true

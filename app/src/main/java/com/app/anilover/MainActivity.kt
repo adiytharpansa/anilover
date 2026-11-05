@@ -580,6 +580,7 @@ private fun AppRoot(
                         downloads = downloads,
                         titles = titles!!,
                         settings = settings,
+                        storageRoot = downloader.storageRoot(),
                         onPlayDownload = { item ->
                             titles!!.firstOrNull { it.id == item.titleId }?.let { t ->
                                 val entry = history.firstOrNull {

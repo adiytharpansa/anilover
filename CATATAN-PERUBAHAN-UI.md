@@ -110,3 +110,12 @@ Berkas diubah
 - "Sedang Tren": angka peringkat besar bergaris tepi, poster 68dp, judul 2 baris, genre, skor ★ + jumlah episode (persentase kembar dihapus).
 - Grid poster kini punya judul bagian: "Telusuri Semua Judul" / "N hasil"; hasil kosong menampilkan "Rekomendasi untuk Anda".
 - String baru: search_browse_all, search_results_count, search_suggestions, clear_search (id & en).
+
+---
+# Tambahan: Unduhan ke penyimpanan perangkat + layar Unduhan dirapikan
+
+- data/Api.kt (DownloadManager): segmen HLS digabung (dekripsi AES-128 bila ada) menjadi SATU berkas video MP4 (dikemas ulang tanpa encode ulang lewat MediaExtractor+MediaMuxer; audio berkodek tak didukung dilewati, dicoba ulang video-saja; fMP4 tetap .mp4, aliran TS yang tetap gagal dikemas ditandai gagal) di penyimpanan perangkat: Movies/Anilover lewat MediaStore (Android 10+, muncul di Galeri/File, tetap ada setelah aplikasi dihapus, tanpa izin). Android 9 ke bawah: folder Movies milik aplikasi. Aliran tak lazim (byte-range/SAMPLE-AES) memakai salinan HLS di folder aplikasi seperti sebelumnya. DownloadItem.uri menyimpan alamat video; catatan otomatis dibuang bila videonya dihapus dari Galeri/File.
+- player/PlayerActivity.kt: berkas video lokal (content:// / file://) diputar tanpa memaksa tipe M3U8.
+- ui/Screens.kt (DownloadsScreen): kartu penyimpanan (bar: terpakai lain vs unduhan Anilover), Unduhan Cerdas di kartu sendiri, unduhan dikelompokkan per judul (poster + ringkasan + baris episode dengan ikon putar/progres/hapus), status kosong rata tengah.
+- MainActivity.kt: meneruskan downloader.storageRoot() ke DownloadsScreen.
+- strings (id/en): downloads_saved_in, downloading_title, episode_n.
