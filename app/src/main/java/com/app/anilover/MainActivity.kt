@@ -306,12 +306,12 @@ private fun AppRoot(
     // parse & recompose ulang seluruh Beranda dilewati (muat berkala tiap 5 menit).
     val lastRawHash = remember { intArrayOf(0) }
 
-    suspend fun loadCatalog(): Boolean = coroutineScope {
+    suspend fun loadCatalog(fresh: Boolean = false): Boolean = coroutineScope {
         var ok = false
         // "Segera Tayang" diambil paralel dengan katalog (dulu menunggu katalog selesai dulu).
         val soonJob = async {
             try {
-                CatalogApi.fetchSoonAll()
+                CatalogApi.fetchSoonAll(fresh)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -319,7 +319,7 @@ private fun AppRoot(
             }
         }
         try {
-            val raw = CatalogApi.fetchRawCatalog()
+            val raw = CatalogApi.fetchRawCatalog(fresh)
             val h = raw.hashCode()
             if (h != lastRawHash[0] || titles.isNullOrEmpty()) {
                 titles = CatalogApi.parseCatalogAsync(raw)
@@ -365,9 +365,16 @@ private fun AppRoot(
     // Tarik-untuk-segarkan di Beranda.
     val refreshHome: () -> Unit = {
         if (!refreshing) {
+            // Set sinkron sebelum launch: tarikan ganda berturutan tidak memicu dua unduhan.
+            refreshing = true
             scope.launch {
-                refreshing = true
-                val ok = try { loadCatalog() } finally { refreshing = false }
+                // Data harus benar-benar terbaru (lewati cache CDN) dan tidak boleh menggantung
+                // lama: batas 25 detik supaya indikator selalu berhenti.
+                val ok = try {
+                    kotlinx.coroutines.withTimeoutOrNull(25_000L) { loadCatalog(fresh = true) } ?: false
+                } finally {
+                    refreshing = false
+                }
                 if (!ok) {
                     android.widget.Toast.makeText(
                         context, Str.get(R.string.err_refresh),

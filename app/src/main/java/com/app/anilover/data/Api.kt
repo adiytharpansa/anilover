@@ -140,16 +140,19 @@ object CatalogApi {
      * dibaca), sehingga pengambilan beruntun/paralel bisa dihentikan segera
      * begitu salah satu sumber menang — tanpa menunggu timeout sumber lain.
      */
-    private suspend fun httpGetBytes(url: String, timeoutMs: Int = 15000, json: Boolean = false): ByteArray =
+    private suspend fun httpGetBytes(url: String, timeoutMs: Int = 15000, json: Boolean = false, fresh: Boolean = false): ByteArray =
         suspendCancellableCoroutine { cont ->
             val client = httpClient.newBuilder()
                 .connectTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
                 .readTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
                 .callTimeout(timeoutMs.toLong() * 2, TimeUnit.MILLISECONDS)
                 .build()
+            // fresh = tarik-untuk-segarkan: minta data terbaru, jangan pakai salinan cache.
+            val reqUrl = if (fresh) url + (if (url.contains('?')) "&" else "?") + "_=" + System.currentTimeMillis() else url
             val rb = Request.Builder()
-                .url(url)
+                .url(reqUrl)
                 .header("User-Agent", "Mozilla/5.0 (Anilover Android)")
+            if (fresh) rb.header("Cache-Control", "no-cache").header("Pragma", "no-cache")
             if (json) rb.header("Accept", "application/json")
             val call = client.newCall(rb.build())
             cont.invokeOnCancellation { call.cancel() }
@@ -175,8 +178,8 @@ object CatalogApi {
             })
         }
 
-    private suspend fun httpGetText(url: String, timeoutMs: Int = 15000): String =
-        String(httpGetBytes(url, timeoutMs, json = true), Charsets.UTF_8)
+    private suspend fun httpGetText(url: String, timeoutMs: Int = 15000, fresh: Boolean = false): String =
+        String(httpGetBytes(url, timeoutMs, json = true, fresh = fresh), Charsets.UTF_8)
 
     /**
      * Balapan berjenjang ("hedged request"): percobaan ke-0 jalan langsung;
@@ -350,7 +353,7 @@ object CatalogApi {
     @Volatile
     private var lastGoodCatalogSource: String? = null
 
-    suspend fun fetchRawCatalog(): String {
+    suspend fun fetchRawCatalog(fresh: Boolean = false): String {
         val all = listOf(
             "Pages" to CATALOG_PAGES,
             "jsDelivr" to CATALOG_MIRROR,
@@ -371,7 +374,7 @@ object CatalogApi {
                 },
             ) { i ->
                 val (name, u) = sources[i]
-                val body = decodeCatalogBody(httpGetBytes(u, 20000))
+                val body = decodeCatalogBody(httpGetBytes(u, 20000, fresh = fresh))
                 if (!body.trimStart().startsWith("{")) {
                     throw java.io.IOException("isi katalog tidak dikenal dari " + name)
                 }
@@ -449,13 +452,13 @@ object CatalogApi {
     }
 
     /** Daftar "Segera Tayang": judul antrean gudang yang belum terbit. */
-    suspend fun fetchSoonAll(): List<SoonTitle> = withContext(Dispatchers.IO) {
+    suspend fun fetchSoonAll(fresh: Boolean = false): List<SoonTitle> = withContext(Dispatchers.IO) {
         val body = try {
-            decodeCatalogBody(httpGetBytes(SOON_PAGES))
+            decodeCatalogBody(httpGetBytes(SOON_PAGES, fresh = fresh))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            httpGetText(SOON_MIRROR)
+            httpGetText(SOON_MIRROR, fresh = fresh)
         }
         // API membungkus {titles:[...]}; berkas cermin adalah array telanjang.
         val trimmed = body.trimStart()
