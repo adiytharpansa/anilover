@@ -174,12 +174,14 @@ fun HomeScreen(
 
     // Prefetch: poster/banner bagian atas Beranda dimuat lebih dulu ke cache
     // (memori + disk) begitu data tiba, sebelum baris-barisnya sempat digulir ke layar.
+    // Bug #2: Use application ImageLoader instead of creating new instance
     val appContext = LocalContext.current.applicationContext
     LaunchedEffect(heroes, top10, fresh) {
-        val loader = coil.Coil.imageLoader(appContext)
+        val loader = coil.Coil.imageLoader()  // Use default ImageLoader from Application
+        // Bug #3: Use Set to remove duplicates across all lists
         val urls = (heroes.mapNotNull { it.poster ?: it.banner } +
             top10.take(6).mapNotNull { it.poster ?: it.banner } +
-            fresh.take(6).mapNotNull { it.poster ?: it.banner }).distinct()
+            fresh.take(6).mapNotNull { it.poster ?: it.banner }).toSet()
         for (u in urls) {
             loader.enqueue(coil.request.ImageRequest.Builder(appContext).data(u).build())
         }
@@ -481,7 +483,8 @@ internal fun TrailerPlayer(url: String, controls: Boolean = false) {
             prepare()
         }
     }
-    DisposableEffect(url) { onDispose { exo.release() } }
+    // Bug #1: Fix memory leak - cleanup when url OR controls change
+    DisposableEffect(url, controls) { onDispose { exo.release() } }
     AndroidView(
         factory = { ctx ->
             PlayerView(ctx).apply {

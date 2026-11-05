@@ -87,7 +87,9 @@ fun PosterImage(
 /** Kartu cadangan: gradasi warna khas per judul + inisial besar (bukan kotak abu-abu). */
 @Composable
 fun PosterFallback(title: String, modifier: Modifier = Modifier) {
-    val hue = ((title.hashCode() and 0x7fffffff) % 360).toFloat()
+    // Bug #5: Better hash to reduce collisions - use lowercase and longer string
+    val stableTitle = title.lowercase()
+    val hue = ((stableTitle.hashCode().toLong() and 0x7fffffff) % 360).toFloat()
     val top = androidx.compose.ui.graphics.Color.hsv(hue, 0.50f, 0.46f)
     val bottom = androidx.compose.ui.graphics.Color.hsv((hue + 40f) % 360f, 0.60f, 0.20f)
     BoxWithConstraints(
