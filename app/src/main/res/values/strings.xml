@@ -194,6 +194,10 @@
     <string name="status_finished">Finished</string>
     <string name="status_soon">Coming soon</string>
     <string name="storage_free">Device storage: %1$s free of %2$s</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_hint">Playback, subtitles, downloads and account</string>
+    <string name="settings_playback">Playback</string>
+    <string name="settings_account">Account</string>
     <string name="subtitle_preview">Sample subtitle text looks like this</string>
     <string name="subtitle_style">Subtitle Style</string>
     <string name="subtitle_style_desc">Size and color of subtitle text in the player</string>

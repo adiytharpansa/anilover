@@ -193,6 +193,10 @@
     <string name="status_finished">Tamat</string>
     <string name="status_soon">Segera</string>
     <string name="storage_free">Penyimpanan perangkat: %1$s bebas dari %2$s</string>
+    <string name="settings_title">Pengaturan</string>
+    <string name="settings_hint">Pemutaran, subtitle, unduhan, dan akun</string>
+    <string name="settings_playback">Pemutaran</string>
+    <string name="settings_account">Akun</string>
     <string name="subtitle_preview">Contoh teks subtitle seperti ini</string>
     <string name="subtitle_style">Tampilan Subtitle</string>
     <string name="subtitle_style_desc">Ukuran dan warna teks subtitle di pemutar</string>

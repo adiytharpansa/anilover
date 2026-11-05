@@ -86,3 +86,10 @@ Berkas diubah
 - Pengaturan dipecah jadi kartu: Autoplay, Subtitle bawaan (segmented, tidak lagi terpotong "No na ktif"), Tampilan Subtitle (pratinjau langsung, segmented ukuran, pilihan warna bulat).
 - Riwayat: tombol bersihkan selebar penuh (nonaktif bila kosong). Keluar: merah + ikon; tamu: tombol hijau Masuk/Daftar.
 - String baru: `subtitle_preview` (id & en).
+
+## Pengaturan — halaman tersendiri
+- Layar baru `ui/SettingsScreen.kt`, dibuka dari ikon gear / menu "Pengaturan" di Profil; tombol Kembali sistem menutupnya.
+- Kelompok: Pemutaran (autoplay, subtitle bawaan, tampilan subtitle + pratinjau), Unduhan (Unduhan Cerdas, Hanya Wi-Fi), Riwayat, Akun (keluar / masuk), versi aplikasi.
+- Profil kini hanya: header, statistik, Daftarku, menu Pengaturan (+ tombol Masuk untuk tamu). Parameter `ProfileScreen` disederhanakan.
+- Komponen bersama (SettingCard, Segmented, ColorSwatch, dll.) ada di SettingsScreen.kt.
+- String baru: settings_title, settings_hint, settings_playback, settings_account (id & en).

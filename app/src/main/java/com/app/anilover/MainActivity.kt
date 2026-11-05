@@ -107,6 +107,7 @@ import com.app.anilover.ui.DownloadsScreen
 import com.app.anilover.ui.HomeScreen
 import com.app.anilover.ui.NewScreen
 import com.app.anilover.ui.ProfileScreen
+import com.app.anilover.ui.SettingsScreen
 import com.app.anilover.ui.AniloverAccent
 import com.app.anilover.ui.AuthGate
 import com.app.anilover.ui.OnboardingScreen
@@ -227,6 +228,7 @@ private fun AppRoot(
     var selected by remember { mutableStateOf<Title?>(null) }
     var genreSel by remember { mutableStateOf<String?>(null) }
     var tab by remember { mutableStateOf(Tab.Home) }
+    var showSettings by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val history by store.entries.collectAsState(initial = emptyList())
@@ -397,6 +399,7 @@ private fun AppRoot(
         return
     }
 
+    BackHandler(enabled = selected == null && showSettings) { showSettings = false }
     BackHandler(enabled = selected != null) { selected = null }
     BackHandler(enabled = selected == null && genreSel != null) { genreSel = null }
 
@@ -405,7 +408,7 @@ private fun AppRoot(
         containerColor = AniloverBackground,
         contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         bottomBar = {
-            if (selected == null && genreSel == null) {
+            if (selected == null && genreSel == null && !showSettings) {
                 // Garis tipis hanya di sisi atas (bukan kotak penuh).
                 NavigationBar(
                     containerColor = Color.Black,
@@ -430,7 +433,7 @@ private fun AppRoot(
     ) { padding ->
         // Layar penuh (detail, genre, error, skeleton) memberi ruang status bar sendiri;
         // konten tab menanganinya di dalam AnimatedContent agar tidak melompat saat berpindah tab.
-        val tabContent = selected == null && genreSel == null && titles != null
+        val tabContent = selected == null && genreSel == null && !showSettings && titles != null
         Box(
             Modifier.fillMaxSize()
                 .padding(padding)
@@ -479,6 +482,21 @@ private fun AppRoot(
                     titles = (titles ?: emptyList()).filter { it.genres.contains(genreSel) },
                     onOpen = { selected = it },
                     onBack = { genreSel = null },
+                )
+                showSettings && titles != null -> SettingsScreen(
+                    settings = settings,
+                    historyCount = history.size,
+                    accountEmail = account?.email,
+                    onBack = { showSettings = false },
+                    onAutoplayChange = { v -> scope.launch { library.setAutoplay(v) } },
+                    onSubtitleChange = { v -> scope.launch { library.setSubtitleDefault(v) } },
+                    onSubtitleStyleChange = { size, color ->
+                        scope.launch { library.setSubtitleStyle(size, color) }
+                    },
+                    onSmartChange = { v -> scope.launch { library.setSmartDownloads(v) } },
+                    onWifiOnlyChange = { v -> scope.launch { library.setWifiOnlyDownloads(v) } },
+                    onClearHistory = { scope.launch { store.clearAll() } },
+                    onLogout = { showSettings = false; AuthRepository.signOut() },
                 )
                 error != null && titles == null -> Column(
                     Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
@@ -563,17 +581,10 @@ private fun AppRoot(
                     )
                     Tab.Profile -> ProfileScreen(
                         myListTitles = titles!!.filter { myList.contains(it.id) },
-                        historyCount = history.size,
                         finishedEpisodes = history.count { it.isFinished },
                         watchedTitles = history.map { it.titleId }.distinct().size,
-                        settings = settings,
                         onOpenTitle = { selected = it },
-                        onAutoplayChange = { v -> scope.launch { library.setAutoplay(v) } },
-                        onSubtitleChange = { v -> scope.launch { library.setSubtitleDefault(v) } },
-                        onSubtitleStyleChange = { size, color ->
-                            scope.launch { library.setSubtitleStyle(size, color) }
-                        },
-                        onClearHistory = { scope.launch { store.clearAll() } },
+                        onOpenSettings = { showSettings = true },
                         accountName = account?.name,
                         accountEmail = account?.email,
                         accountVerified = account?.emailVerified ?: true,
