@@ -1,6 +1,7 @@
 # Panduan memasang Firebase Auth (Masuk / Daftar)
 
-> STATUS 5 Nov 2026: FIREBASE SUDAH AKTIF. Proyek "Anilover" (ID reaa-a6573) sudah dibuat,
+> STATUS 5 Nov 2026: FIREBASE SUDAH AKTIF. Proyek "Anilover" (ID anilover-app; proyek pertama
+> reaa-a6573 diganti hari yang sama supaya konsisten dan ditinggalkan) sudah dibuat,
 > Email/Password sudah dinyalakan, Cloud Firestore sudah dibuat dengan aturan keamanan
 > (users hanya bisa mengakses dokumennya sendiri; komentar bisa dibaca publik, dibuat oleh
 > pengguna masuk, disukai pengguna masuk, dihapus pemiliknya), dan app/google-services.json

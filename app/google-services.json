@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "552670209592",
-    "project_id": "reaa-a6573",
-    "storage_bucket": "reaa-a6573.firebasestorage.app"
+    "project_number": "740345438003",
+    "project_id": "anilover-app",
+    "storage_bucket": "anilover-app.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:552670209592:android:ceb9200f5f00e6d267e8cd",
+        "mobilesdk_app_id": "1:740345438003:android:01fc225198bfd2484b2846",
         "android_client_info": {
           "package_name": "com.app.anilover"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyADNhjTrfaqUbJxwjOvGw2l1mui7qDDfps"
+          "current_key": "AIzaSyBZpMdHT4FzmbCGXjiVlzSlGY6swDWV4aw"
         }
       ],
       "services": {

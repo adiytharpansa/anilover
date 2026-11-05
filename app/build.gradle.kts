@@ -18,8 +18,8 @@ android {
         applicationId = "com.app.anilover"
         minSdk = 24
         targetSdk = 34
-        versionCode = 18
-        versionName = "2.7.5"
+        versionCode = 19
+        versionName = "2.7.6"
         // Kunci katalog (tersamar) dari rahasia CI; kosong pada build lokal.
         val catalogKeyX = System.getenv("CATALOG_KEY") ?: ""
         buildConfigField("String", "CATALOG_KEY_X", "\"$catalogKeyX\"")
