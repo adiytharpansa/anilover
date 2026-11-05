@@ -51,3 +51,11 @@ Berkas diubah
 - data/CommentRepository.kt (baru) : komentar realtime di Firestore, per episode.
 - MainActivity.kt : kirim info skor/tahun/genre ke pemutar. AndroidManifest.xml : orientasi tidak lagi dikunci lanskap.
 - app/build.gradle.kts : dependensi firebase-firestore. Setup: lihat PANDUAN-FIREBASE.md (bagian Komentar).
+
+---
+# Tambahan: Palet warna mengikuti ikon
+
+- ui/Theme.kt : AniloverAccent = #6FFA42 (hijau ikon), AniloverOnAccent = hitam, AniloverGold & AniloverGreen = alias aksen, AniloverAccentSoft (gradasi), AniloverDanger (merah hanya untuk Hapus/Keluar/galat).
+- res/values/themes.xml : colorAccent tema pemutar & Cast jadi hijau.
+- Semua halaman (Masuk/Daftar, Beranda, Detail, Cari, Baru, Daftarku, Unduhan, Profil, Pemutar, Komentar) memakai token yang sama, jadi otomatis ikut.
+- WatchPage.kt : avatar komentar memakai palet hijau/putih/abu; PlayerActivity.kt : spinner memuat hijau; AuthScreen.kt : semburat atas lebih halus.

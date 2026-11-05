@@ -821,7 +821,7 @@ private fun PlayerScreen(
 
         // Indikator buffering / galat
         if (isBuffering && errorMsg == null) {
-            CircularProgressIndicator(color = Color.White, modifier = Modifier.align(Alignment.Center))
+            CircularProgressIndicator(color = AniloverAccent, modifier = Modifier.align(Alignment.Center))
         }
         if (errorMsg != null) {
             Column(

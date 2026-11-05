@@ -397,9 +397,10 @@ private fun CommentNotice(text: String) {
 
 @Composable
 private fun Avatar(name: String, uid: String, size: androidx.compose.ui.unit.Dp) {
+    // Palet mengikuti ikon: hijau, putih, dan abu terang (teks hitam di atasnya).
     val palette = listOf(
-        Color(0xFFE5557D), Color(0xFF7C5CFF), Color(0xFF2E9BFF),
-        Color(0xFF1FB58F), Color(0xFFE88A2E), Color(0xFFB04FD6),
+        com.app.anilover.ui.AniloverAccent, com.app.anilover.ui.AniloverAccentSoft,
+        Color(0xFFFFFFFF), Color(0xFF4CC22B), Color(0xFFD4D4D4), Color(0xFF9BE37D),
     )
     val bg = palette[(uid.hashCode() and 0x7fffffff) % palette.size]
     Box(
@@ -408,7 +409,7 @@ private fun Avatar(name: String, uid: String, size: androidx.compose.ui.unit.Dp)
     ) {
         Text(
             name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-            color = Color.White, fontWeight = FontWeight.Bold,
+            color = Color.Black, fontWeight = FontWeight.Bold,
             fontSize = (size.value * 0.42f).sp,
         )
     }

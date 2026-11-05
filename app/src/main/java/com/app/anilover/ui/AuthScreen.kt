@@ -159,7 +159,7 @@ fun AuthScreen() {
         Box(
             Modifier.fillMaxWidth().height(340.dp).background(
                 Brush.verticalGradient(
-                    listOf(AniloverAccent.copy(alpha = 0.26f), Color.Transparent),
+                    listOf(AniloverAccent.copy(alpha = 0.14f), Color.Transparent),
                 ),
             ),
         )
