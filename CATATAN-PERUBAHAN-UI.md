@@ -102,3 +102,11 @@ Berkas diubah
 ## Beranda — ukuran poster ala Netflix
 - Top 10: poster ±33% lebar layar (min 112dp, maks 170dp), angka bergaris ikut membesar proporsional; poster menimpa angka ±12% lebarnya.
 - Baru Ditambahkan: dari banner lanskap 16:9 menjadi poster potret 2:3 (±34% lebar layar, ±2,7 kartu terlihat), dengan lencana BARU, menu tekan-lama, dan tombol + seperti baris poster lain.
+
+## Cari — dirapikan
+- Judul + kolom cari tetap di atas; semua isi di bawahnya satu halaman gulir (LazyColumn), tidak ada lagi grid yang menggulir sendiri di sisa ruang.
+- Kolom cari berbentuk pil dengan tombol hapus (×) saat mengetik + tombol mikrofon.
+- Chip genre & riwayat memakai gaya bulat bersemburat hijau (terpilih = hijau penuh) dan menggulir sampai tepi layar.
+- "Sedang Tren": angka peringkat besar bergaris tepi, poster 68dp, judul 2 baris, genre, skor ★ + jumlah episode (persentase kembar dihapus).
+- Grid poster kini punya judul bagian: "Telusuri Semua Judul" / "N hasil"; hasil kosong menampilkan "Rekomendasi untuk Anda".
+- String baru: search_browse_all, search_results_count, search_suggestions, clear_search (id & en).

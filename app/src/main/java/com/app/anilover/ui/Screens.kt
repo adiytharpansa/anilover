@@ -36,6 +36,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
@@ -125,32 +126,45 @@ fun SearchScreen(
         titles.sortedByDescending { it.score ?: 0.0 }.take(6)
     }
     val showTrending = query.isBlank() && genre == null && trending.size >= 3
-    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        Spacer(Modifier.height(14.dp))
-        Text(Str.get(R.string.nav_search), color = AniloverTextPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp)
-        Spacer(Modifier.height(10.dp))
+    val showRecents = query.isBlank() && genre == null && recents.isNotEmpty()
+    val noQuery = query.isBlank() && genre == null
+
+    Column(Modifier.fillMaxSize()) {
+        // Judul + kolom cari tetap di atas; semua isi di bawahnya satu halaman gulir.
+        Text(
+            Str.get(R.string.nav_search), color = AniloverTextPrimary,
+            fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp,
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 10.dp),
+        )
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
             placeholder = { Text(Str.get(R.string.search_hint), color = AniloverTextDim) },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = Color.White) },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = AniloverTextDim) },
             trailingIcon = {
-                IconButton(onClick = {
-                    try {
-                        voiceLauncher.launch(
-                            Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                putExtra(
-                                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
-                                )
-                                putExtra(RecognizerIntent.EXTRA_PROMPT, Str.get(R.string.voice_prompt))
-                            },
-                        )
-                    } catch (e: Exception) {
-                        Toast.makeText(context, Str.get(R.string.voice_unavailable), Toast.LENGTH_SHORT).show()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { query = "" }) {
+                            Icon(Icons.Filled.Close, contentDescription = Str.get(R.string.clear_search), tint = AniloverTextDim)
+                        }
                     }
-                }) {
-                    Icon(Icons.Filled.Mic, contentDescription = Str.get(R.string.voice_search), tint = Color.White)
+                    IconButton(onClick = {
+                        try {
+                            voiceLauncher.launch(
+                                Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                    putExtra(
+                                        RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+                                    )
+                                    putExtra(RecognizerIntent.EXTRA_PROMPT, Str.get(R.string.voice_prompt))
+                                },
+                            )
+                        } catch (e: Exception) {
+                            Toast.makeText(context, Str.get(R.string.voice_unavailable), Toast.LENGTH_SHORT).show()
+                        }
+                    }) {
+                        Icon(Icons.Filled.Mic, contentDescription = Str.get(R.string.voice_search), tint = Color.White)
+                    }
                 }
             },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -158,8 +172,8 @@ fun SearchScreen(
                 if (query.isNotBlank()) onSaveRecent(query)
             }),
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            shape = AniloverShapes.Button,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            shape = AniloverShapes.Pill,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
@@ -170,121 +184,198 @@ fun SearchScreen(
                 cursorColor = AniloverAccent,
             ),
         )
-        if (genres.isNotEmpty()) {
-            Spacer(Modifier.height(10.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(genres) { g ->
-                    FilterChip(
-                        selected = genre == g,
-                        onClick = { genre = if (genre == g) null else g },
-                        label = { Text(g) },
-                        colors = aniloverChipColors(),
-                    )
-                }
-            }
-        }
-        if (query.isBlank() && genre == null && recents.isNotEmpty()) {
-            Spacer(Modifier.height(14.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    Str.get(R.string.recent_searches), color = AniloverTextPrimary, fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
-                )
-                Text(
-                    Str.get(R.string.clear_all), color = AniloverDanger, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable { onClearRecents() }.padding(4.dp),
-                )
-            }
-            Spacer(Modifier.height(6.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(recents) { r ->
-                    FilterChip(
-                        selected = false,
-                        onClick = { query = r },
-                        label = { Text(r) },
-                        leadingIcon = {
-                            Icon(Icons.Filled.History, contentDescription = null, modifier = Modifier.size(16.dp))
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            labelColor = Color.White,
-                            containerColor = Color.Transparent,
-                        ),
-                    )
-                }
-            }
-        }
-        if (showTrending) {
-            Spacer(Modifier.height(14.dp))
-            Text(Str.get(R.string.trending_now), color = AniloverTextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(6.dp))
-            for ((idx, t) in trending.withIndex()) {
-                Row(
-                    Modifier.fillMaxWidth().clickable { openSaving(t) }.padding(vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "${idx + 1}", color = AniloverAccent, fontSize = 17.sp, fontWeight = FontWeight.Black,
-                        modifier = Modifier.width(30.dp),
-                    )
-                    PosterImage(
-                        model = t.poster ?: t.banner,
-                        contentDescription = t.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.width(40.dp).aspectRatio(2f / 3f)
-                            .clip(RoundedCornerShape(4.dp)).background(AniloverSurface),
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        t.title, color = AniloverTextPrimary, fontSize = 14.sp,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                    t.matchPercent?.let {
-                        Text("$it%", color = AniloverGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+            // Chip genre: menggulir sampai tepi layar (bukan terpotong di margin).
+            if (genres.isNotEmpty()) {
+                item(key = "genres") {
+                    LazyRow(
+                        modifier = Modifier.padding(top = 14.dp),
+                        contentPadding = PaddingValues(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(genres, key = { it }) { g ->
+                            SearchChip(g, selected = genre == g) { genre = if (genre == g) null else g }
+                        }
                     }
                 }
             }
-        }
-        Spacer(Modifier.height(12.dp))
-        if (results.isEmpty()) {
-            if (query.isBlank()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(Str.get(R.string.no_titles_filter), color = AniloverTextDim, fontSize = 14.sp)
+            if (showRecents) {
+                item(key = "recents") {
+                    Column {
+                        Row(
+                            Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 24.dp, bottom = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                Str.get(R.string.recent_searches), color = AniloverTextPrimary,
+                                style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                Str.get(R.string.clear_all), color = AniloverDanger, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                                modifier = Modifier.clip(AniloverShapes.Pill).clickable { onClearRecents() }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                            )
+                        }
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            items(recents) { r ->
+                                SearchChip(r, selected = false, icon = Icons.Filled.History) { query = r }
+                            }
+                        }
+                    }
+                }
+            }
+            if (showTrending) {
+                item(key = "trending-title") { SectionTitle(Str.get(R.string.trending_now)) }
+                items(trending.withIndex().toList(), key = { "trend-" + it.value.id }) { (idx, t) ->
+                    TrendingRow(rank = idx + 1, t = t) { openSaving(t) }
+                }
+            }
+
+            // Judul bagian untuk grid poster di bawahnya.
+            if (results.isNotEmpty()) {
+                item(key = "grid-title") {
+                    SectionTitle(
+                        if (noQuery) Str.get(R.string.search_browse_all)
+                        else Str.get(R.string.search_results_count, results.size),
+                    )
+                }
+                items(results.chunked(3), key = { row -> "res-" + row.first().id }) { row ->
+                    PosterGridRow(row) { openSaving(it) }
+                }
+            } else if (query.isBlank()) {
+                item(key = "empty-filter") {
+                    Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
+                        Text(Str.get(R.string.no_titles_filter), color = AniloverTextDim, fontSize = 14.sp)
+                    }
                 }
             } else {
                 // Hasil kosong yang membantu: pesan + saran judul (skor tertinggi).
-                Column(Modifier.fillMaxSize()) {
-                    Text(
-                        Str.get(R.string.no_results, query),
-                        color = AniloverTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium,
-                    )
-                    Text(
-                        Str.get(R.string.check_spelling),
-                        color = AniloverTextDim, fontSize = 13.sp,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(bottom = 24.dp),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        items(suggestions) { t -> GridPoster(t) { openSaving(t) } }
+                item(key = "no-results") {
+                    Column(Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
+                        Text(
+                            Str.get(R.string.no_results, query),
+                            color = AniloverTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium,
+                        )
+                        Text(
+                            Str.get(R.string.check_spelling),
+                            color = AniloverTextDim, fontSize = 13.sp,
+                        )
                     }
                 }
-            }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 24.dp),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                items(results) { t -> GridPoster(t) { openSaving(t) } }
+                item(key = "suggest-title") { SectionTitle(Str.get(R.string.search_suggestions)) }
+                items(suggestions.chunked(3), key = { row -> "sug-" + row.first().id }) { row ->
+                    PosterGridRow(row) { openSaving(it) }
+                }
             }
         }
+    }
+}
+
+/** Chip genre/riwayat: bulat, tipis; terpilih = hijau penuh, biasa = semburat hijau lembut. */
+@Composable
+private fun SearchChip(
+    text: String,
+    selected: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    onClick: () -> Unit,
+) {
+    Row(
+        Modifier.clip(AniloverShapes.Pill)
+            .background(if (selected) AniloverAccent else AniloverAccent.copy(alpha = 0.08f))
+            .border(1.dp, if (selected) AniloverAccent else AniloverOutline, AniloverShapes.Pill)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon != null) {
+            Icon(icon, null, tint = AniloverTextDim, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(
+            text,
+            color = if (selected) AniloverOnAccent else AniloverTextPrimary,
+            fontSize = 13.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            maxLines = 1,
+        )
+    }
+}
+
+/** Baris tren: angka peringkat besar bergaris tepi (gaya Top 10) + poster + judul, genre, skor. */
+@Composable
+private fun TrendingRow(rank: Int, t: Title, onClick: () -> Unit) {
+    val numStyle = androidx.compose.ui.text.TextStyle(
+        fontFamily = AniloverFont,
+        fontSize = 48.sp,
+        fontWeight = FontWeight.Bold,
+    )
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.width(46.dp), contentAlignment = Alignment.Center) {
+            Text(
+                rank.toString(),
+                style = numStyle.copy(
+                    color = AniloverAccent,
+                    drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(width = 5f),
+                ),
+            )
+            Text(rank.toString(), style = numStyle.copy(color = AniloverBackground))
+        }
+        Spacer(Modifier.width(6.dp))
+        PosterImage(
+            model = t.poster ?: t.banner,
+            contentDescription = t.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.width(68.dp).aspectRatio(2f / 3f)
+                .clip(AniloverShapes.Poster).background(AniloverSurface),
+        )
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                t.title, color = AniloverTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 20.sp,
+            )
+            val genreLine = t.genres.take(2).joinToString(" · ")
+            if (genreLine.isNotBlank()) {
+                Text(
+                    genreLine, color = AniloverTextDim, fontSize = 12.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+            }
+            val meta = listOfNotNull(
+                t.score?.let { "★ " + String.format("%.1f", it) },
+                t.episodes.takeIf { it.isNotEmpty() }?.let { "${it.size} Eps" },
+            ).joinToString("  ·  ")
+            if (meta.isNotBlank()) {
+                Text(
+                    meta, color = AniloverAccent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+            }
+        }
+    }
+}
+
+/** Satu baris grid poster 3 kolom (sisa kolom diisi ruang kosong agar lebar tetap sama). */
+@Composable
+private fun PosterGridRow(row: List<Title>, onClick: (Title) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        row.forEach { t ->
+            Box(Modifier.weight(1f)) { GridPoster(t) { onClick(t) } }
+        }
+        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
     }
 }
 
