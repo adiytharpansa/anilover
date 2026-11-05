@@ -454,7 +454,7 @@ private fun AppRoot(
                 .padding(padding)
                 .consumeWindowInsets(padding)
                 .imePadding()
-                .then(if (tabContent) Modifier else Modifier.statusBarsPadding())
+                .then(if (tabContent || selected != null) Modifier else Modifier.statusBarsPadding())
                 .background(AniloverBackground),
         ) {
             when {

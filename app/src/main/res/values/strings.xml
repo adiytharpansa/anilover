@@ -286,4 +286,8 @@
     <string name="track_forced">Forced</string>
     <string name="section_audio">Audio</string>
     <string name="section_subtitle">Subtitles</string>
+    <string name="play_episode_n">Play Episode %1$d</string>
+    <string name="resume_episode_n">Resume Episode %1$d</string>
+    <string name="resume_from">Continue from %1$s</string>
+    <string name="play_ep">Play E%1$s</string>
 </resources>

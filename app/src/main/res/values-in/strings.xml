@@ -277,4 +277,8 @@
     <string name="track_forced">Paksa</string>
     <string name="section_audio">Audio</string>
     <string name="section_subtitle">Subtitle</string>
+    <string name="play_episode_n">Putar Episode %1$d</string>
+    <string name="resume_episode_n">Lanjutkan Episode %1$d</string>
+    <string name="resume_from">Dilanjutkan dari %1$s</string>
+    <string name="play_ep">Putar E%1$s</string>
 </resources>
