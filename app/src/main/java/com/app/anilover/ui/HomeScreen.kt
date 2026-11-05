@@ -52,7 +52,6 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -318,22 +317,17 @@ fun HomeScreen(
         }
         }
         HomeHeader(
-            alpha = headerAlpha, onBell = onSeeNew,
+            alpha = headerAlpha,
             modifier = Modifier.align(Alignment.TopCenter),
         )
     }
 }
 
-/** Header melayang: transparan di atas hero, perlahan solid saat di-scroll. */
+/** Header melayang: benar-benar transparan di atas hero, perlahan solid saat di-scroll. */
 @Composable
-private fun HomeHeader(alpha: Float, onBell: () -> Unit, modifier: Modifier = Modifier) {
+private fun HomeHeader(alpha: Float, modifier: Modifier = Modifier) {
     Box(
         modifier.fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    listOf(Color.Black.copy(alpha = 0.55f * (1f - alpha)), Color.Transparent),
-                ),
-            )
             .background(AniloverBackground.copy(alpha = alpha)),
     ) {
         Row(
@@ -351,24 +345,11 @@ private fun HomeHeader(alpha: Float, onBell: () -> Unit, modifier: Modifier = Mo
                 "Anilover", color = AniloverTextPrimary,
                 style = MaterialTheme.typography.titleLarge,
             )
-            Spacer(Modifier.weight(1f))
-            HeaderAction(Icons.Outlined.Notifications, Str.get(R.string.bell_desc), onBell)
         }
         Box(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(1.dp)
                 .background(AniloverOutline.copy(alpha = alpha * 0.6f)),
         )
-    }
-}
-
-/** Tombol ikon bulat transparan untuk header. */
-@Composable
-private fun HeaderAction(icon: androidx.compose.ui.graphics.vector.ImageVector, desc: String, onClick: () -> Unit) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier.size(40.dp).background(Color.Black.copy(alpha = 0.35f), AniloverShapes.Pill),
-    ) {
-        Icon(icon, contentDescription = desc, tint = AniloverTextPrimary, modifier = Modifier.size(22.dp))
     }
 }
 
@@ -591,8 +572,7 @@ private fun Billboard(
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
-                    0f to Color.Black.copy(alpha = 0.35f),
-                    0.2f to Color.Transparent,
+                    0f to Color.Transparent,
                     0.50f to Color.Transparent,
                     0.78f to AniloverBackground.copy(alpha = 0.88f),
                     1f to AniloverBackground,
