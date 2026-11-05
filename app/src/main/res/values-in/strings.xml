@@ -288,4 +288,7 @@
     <string name="delete_download_title">Hapus unduhan?</string>
     <string name="delete_download_msg">Video episode %1$d akan dihapus dari penyimpanan perangkat.</string>
     <string name="episodes_label">Episode</string>
+    <string name="exit_title">Keluar dari Anilover?</string>
+    <string name="exit_message">Yakin ingin keluar dari aplikasi?</string>
+    <string name="exit_confirm">Keluar</string>
 </resources>

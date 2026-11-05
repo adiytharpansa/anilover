@@ -297,4 +297,7 @@
     <string name="delete_download_title">Delete download?</string>
     <string name="delete_download_msg">The video for episode %1$d will be removed from device storage.</string>
     <string name="episodes_label">Episodes</string>
+    <string name="exit_title">Exit Anilover?</string>
+    <string name="exit_message">Are you sure you want to exit the app?</string>
+    <string name="exit_confirm">Exit</string>
 </resources>

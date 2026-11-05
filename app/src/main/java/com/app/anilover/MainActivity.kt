@@ -248,6 +248,7 @@ private fun AppRoot(
     var selected by remember { mutableStateOf<Title?>(null) }
     var genreSel by rememberSaveable { mutableStateOf<String?>(null) }
     var tab by rememberSaveable { mutableStateOf(Tab.Home) }
+    var showExitConfirm by remember { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     // Judul yang sedang dibuka disimpan lewat id-nya (Title bukan Parcelable) dan
     // dipulihkan sekali setelah katalog dimuat, mis. bila Android mematikan aplikasi di latar.
@@ -475,6 +476,27 @@ private fun AppRoot(
     BackHandler(enabled = selected != null) { selected = null }
     BackHandler(enabled = selected == null && genreSel != null) { genreSel = null }
     BackHandler(enabled = selected == null && genreSel == null && !showSettings && tab != Tab.Home) { tab = Tab.Home }
+
+    // Di Beranda (tanpa layar lain terbuka), tombol kembali meminta konfirmasi sebelum keluar.
+    BackHandler(
+        enabled = selected == null && genreSel == null && !showSettings && tab == Tab.Home && !showExitConfirm,
+    ) { showExitConfirm = true }
+    if (showExitConfirm) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirm = false },
+            title = { Text(Str.get(R.string.exit_title)) },
+            text = { Text(Str.get(R.string.exit_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showExitConfirm = false
+                    (context as? android.app.Activity)?.finish()
+                }) { Text(Str.get(R.string.exit_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitConfirm = false }) { Text(Str.get(R.string.cancel)) }
+            },
+        )
+    }
 
     // Status bar ditangani tiap layar (Beranda justru menembusnya); sisi bawah/samping ditangani Scaffold.
     Scaffold(
