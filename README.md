@@ -1,45 +1,99 @@
 # Anilover
 
-**Unduh APK terbaru:** [Anilover-2.7.1.apk](https://github.com/adiytharpansa/anilover/raw/main/Anilover-2.7.1.apk)
+[![Release](https://img.shields.io/github/v/release/adiytharpansa/anilover)](https://github.com/adiytharpansa/anilover/releases)
+[![Build Status](https://github.com/adiytharpansa/anilover/actions/workflows/build.yml/badge.svg)](https://github.com/adiytharpansa/anilover/actions)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Aplikasi streaming anime gaya Netflix untuk gudang **project-X**, memakai API
-**api.anime** (https://api-anime.adiyth-arpansa.workers.dev).
+**Anilover** is an Android application for streaming anime content with HLS streaming support, built using modern Android development tools.
 
-- Beranda gaya Netflix: billboard, baris "Di Gudang", "Lanjutkan Menonton" dengan bilah progres
-- Halaman detail: sinopsis, metadata, daftar episode dengan progres per episode
-- Pemutar (Media3/ExoPlayer) bergaya Netflix: ketuk-dua-kali ±10 dtk, panel kecepatan,
-  panel audio & subtitle, panel episode, post-play episode berikutnya, PiP, kunci layar,
-  gestur kecerahan/volume/geser posisi, zoom layar (pas/isi/zoom), sisa waktu "-mm:ss"
-- Video diputar sebagai HLS dari salinan segmen di repo project-X lewat jsDelivr (pin commit)
+---
 
-Build: GitHub Actions (`assembleDebug`) — artefak `Anilover-debug-apk`.
+## Download
 
-## Perubahan 2.7.0
+Download the latest APK from the **[Releases](https://github.com/adiytharpansa/anilover/releases)** page.
 
-**Tampilan (gaya Netflix)**
-- Billboard potret: poster penuh, judul di tengah, tombol Putar + Daftarku sejajar, chip genre melayang di atasnya.
-- Bilah atas melayang dengan gradasi, menghitam pekat saat digeser.
-- Top 10: angka raksasa kini terlihat (sebelumnya garis tepi sewarna latar sehingga angka tak tampak).
-- Baris yang berisi judul identik tidak lagi diulang ("Di Gudang" = "Action" = "Drama" dsb.).
-- Kolom cari berlatar solid, tombol kembali & judul di Detail lebih tegas, versi di Profil dibaca dari APK.
+---
 
-**Bug stream**
-- Ketuk layar tidak pernah menampilkan/menyembunyikan kontrol & ketuk-dua-kali ±10 dtk mati: dua lapisan gestur bertumpuk, yang atas menelan sentuhan. Digabung jadi satu.
-- Bilah seek tidak bisa diketuk (hanya diseret). Kini ketuk = loncat.
-- Autoplay/"Episode Berikutnya" memakai nilai basi sehingga bisa salah episode; kini selalu membaca nilai terbaru.
-- Tombol "putar ulang" episode terakhir tidak pernah hilang; status "selesai" kini direset.
-- Durasi episode sebelumnya bocor ke episode baru (tombol "Episode Berikutnya" muncul sesaat); kini direset.
-- Progres episode yang baru selesai/ditinggalkan disimpan tepat saat pindah.
-- Suara tetap jalan saat layar mati/aplikasi ditutup; kini dijeda di onStop. Ditambah fokus audio + jeda saat headset dicabut.
-- Jaringan: User-Agent, timeout 15/20 dtk, redirect lintas-protokol, retry segmen 6x, buffer lebih besar, mime HLS dipaksa, dan coba ulang otomatis 3x (1/2/4 dtk) dari posisi terakhir. Pesan galat kini jelas + kode galat + tombol Kembali.
-- Unduhan: playlist lokal dulu ditulis di AWAL, jadi episode setengah-unduh/gagal diputar dari berkas lalu error. Kini playlist ditulis terakhir, segmen lewat berkas .part, nama berkas dinormalkan (subfolder/query/init fMP4/kunci), master playlist ditangani, dan unduhan yang tertinggal "mengunduh" ditandai gagal saat app dibuka.
+## Features
 
-## 2.7.1
-- Crash "background can not be translucent: #0" saat pemutar dibuka: tombol Cast (`MediaRouteButton`) dibuat dengan tema yang tidak punya `colorPrimary` opak. Ditambah tema `Theme.Anilover.Cast`, `colorPrimary` di tema pemutar, dan try/catch agar kegagalan Cast tidak menutup aplikasi.
+### Streaming
+- HLS streaming with adaptive bitrate support
+- CDN-based content delivery via jsDelivr
+- Automatic retry mechanism for failed segments
+- Optimized buffering for smooth playback
 
-## Desain ulang UI ("Tinta")
-- Sistem desain baru di `ui/Theme.kt`: palet biru-tinta + aksen sakura, skala radius (`AniloverShapes`), skala tipografi, `ScreenTitle`, `panel()`, warna Switch/Chip seragam.
-- Beranda: hero unggulan, Lanjutkan Menonton, Baru Ditambahkan, Jelajahi Genre, Semua Judul.
-- Tab Baru, Unduhan, Profil, Cari: judul halaman, panel bergaris tepi, kontrol seragam.
-- Pemutar: tombol, panel, seek bar, dan HUD memakai token yang sama.
-- Transisi tab searah urutan tab, Detail masuk dengan skala halus, skeleton Beranda mengikuti layout baru.
+### User Interface
+- Modern home screen with hero banner and category browsing
+- Continue watching with progress tracking
+- Episode list with individual progress indicators
+- Detailed metadata display for each title
+
+### Video Player
+- ExoPlayer (Media3) based player
+- Double-tap to seek forward/backward
+- Playback speed control
+- Audio and subtitle selection
+- Picture-in-Picture mode
+- Screen lock functionality
+- Gesture controls for brightness, volume, and seek
+
+### Offline Capabilities
+- Download episodes for offline viewing
+- Progress tracking for downloaded content
+- Automatic cleanup of failed downloads
+
+---
+
+## Technical Stack
+
+| Component | Technology |
+|-----------|------------|
+| Language | Kotlin |
+| UI Framework | Jetpack Compose |
+| Minimum SDK | 24 (Android 7.0+) |
+| Media Playback | ExoPlayer (Media3) |
+| Network | Retrofit, OkHttp |
+| Dependency Injection | Hilt |
+| Architecture | MVVM |
+
+---
+
+## Building from Source
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/adiytharpansa/anilover.git
+   ```
+
+2. Open in Android Studio
+
+3. Build the release APK:
+   ```bash
+   ./gradlew assembleRelease
+   ```
+
+Note: The app uses a debug keystore for signing. For production releases, configure your own signing configuration.
+
+---
+
+## Configuration
+
+The app requires a `CATALOG_KEY` environment variable for full functionality. Set this in your GitHub Secrets or local environment.
+
+---
+
+## Changelog
+
+Detailed change history is available in **[CATATAN-PERUBAHAN-UI.md](CATATAN-PERUBAHAN-UI.md)**
+
+---
+
+## Contributing
+
+Contributions are welcome. Please fork the repository and submit a pull request with your changes.
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the **[LICENSE](LICENSE)** file for details.
