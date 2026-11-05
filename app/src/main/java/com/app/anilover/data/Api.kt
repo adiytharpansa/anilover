@@ -8,8 +8,10 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import java.io.IOException
 import java.io.OutputStream
+import java.util.concurrent.ConcurrentHashMap
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -962,7 +964,7 @@ class DownloadManager(private val context: Context, private val library: Library
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val running = HashSet<String>()
 
-    @Volatile private var storedUris: Map<String, String> = emptyMap()
+    private val storedUris = ConcurrentHashMap<String, String>()
 
     init {
         // Simpan peta episode -> alamat video; sekali di awal, buang catatan yang
@@ -971,8 +973,9 @@ class DownloadManager(private val context: Context, private val library: Library
             var verified = false
             try {
                 library.downloads.collect { list ->
-                    storedUris = list.filter { it.state == "selesai" && it.uri.isNotBlank() }
-                        .associate { "${it.titleId}|${it.episode}" to it.uri }
+                    storedUris.clear()
+                    list.filter { it.state == "selesai" && it.uri.isNotBlank() }
+                        .forEach { storedUris["${it.titleId}|${it.episode}"] = it.uri }
                     if (!verified) {
                         verified = true
                         for (d in list) {
@@ -982,7 +985,9 @@ class DownloadManager(private val context: Context, private val library: Library
                         }
                     }
                 }
-            } catch (e: Exception) { /* abaikan */ }
+            } catch (e: Exception) {
+                Log.e("DownloadManager", "Error in downloads collect", e)
+            }
         }
         // Unduhan yang tertinggal berstatus "mengunduh" karena aplikasi dimatikan
         // paksa ditandai gagal agar bisa dicoba lagi (bukan berputar selamanya).
@@ -995,8 +1000,14 @@ class DownloadManager(private val context: Context, private val library: Library
                         library.upsertDownload(d.copy(state = "gagal"))
                     }
                 }
-            } catch (e: Exception) { /* abaikan */ }
+            } catch (e: Exception) {
+                Log.e("DownloadManager", "Error in stuck downloads check", e)
+            }
         }
+    }
+
+    fun cleanup() {
+        scope.cancel()
     }
 
     /**
@@ -1007,8 +1018,10 @@ class DownloadManager(private val context: Context, private val library: Library
      */
     fun storageRoot(): File {
         if (Build.VERSION.SDK_INT >= 29) {
-            @Suppress("DEPRECATION")
-            return File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "Anilover")
+            // Android 10+: Gunakan MediaStore untuk akses scoped storage
+            // Note: storageRoot() hanya digunakan untuk legacy path, downloadMerged sudah menggunakan MediaStore
+            return context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)?.let { File(it, "Anilover") }
+                ?: context.filesDir.let { File(it, "Anilover") }
         }
         val ext = try {
             context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
@@ -1417,14 +1430,19 @@ class DownloadManager(private val context: Context, private val library: Library
         val u = Uri.parse(uriStr)
         if (u.scheme == "file") File(u.path ?: "").let { it.exists() && it.length() > 0 }
         else context.contentResolver.openAssetFileDescriptor(u, "r")?.use { true } ?: false
-    } catch (e: Exception) { false }
+    } catch (e: Exception) {
+        Log.e("DownloadManager", "Error checking stored file existence: $uriStr", e)
+        false
+    }
 
     private fun deleteStored(uriStr: String) {
         try {
             val u = Uri.parse(uriStr)
             if (u.scheme == "file") File(u.path ?: "").delete()
             else context.contentResolver.delete(u, null, null)
-        } catch (e: Exception) { /* sudah hilang */ }
+        } catch (e: Exception) {
+            Log.e("DownloadManager", "Error deleting stored file: $uriStr", e)
+        }
     }
 
     private fun resolveUrl(base: String, ref: String): String {

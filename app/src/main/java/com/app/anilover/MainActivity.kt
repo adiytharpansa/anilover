@@ -81,6 +81,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import android.util.Log
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.Row
@@ -132,6 +135,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
+    private lateinit var downloader: DownloadManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         com.app.anilover.data.CrashReporter.install(applicationContext)
         val splashScreen = installSplashScreen()
@@ -195,7 +200,7 @@ class MainActivity : ComponentActivity() {
         com.app.anilover.data.CommentRepository.init(applicationContext)
         val store = HistoryStore(applicationContext)
         val library = LibraryStore(applicationContext)
-        val downloader = DownloadManager(applicationContext, library)
+        downloader = DownloadManager(applicationContext, library)
         setContent {
             AniloverTheme {
               AuthGate {
@@ -228,6 +233,11 @@ class MainActivity : ComponentActivity() {
               }
             }
         }
+    }
+
+    override fun onDestroy() {
+        downloader.cleanup()
+        super.onDestroy()
     }
 }
 
@@ -399,11 +409,13 @@ private fun AppRoot(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    LaunchedEffect(Unit) {
-        while (true) {
-            kotlinx.coroutines.delay(5 * 60_000L)
-            if (lifecycleOwner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED) && !refreshing) {
-                loadCatalog()
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                kotlinx.coroutines.delay(5 * 60_000L)
+                if (!refreshing) {
+                    loadCatalog()
+                }
             }
         }
     }
@@ -416,7 +428,8 @@ private fun AppRoot(
         val list = titles ?: return@LaunchedEffect
         if (settings.wifiOnlyDownloads) {
             val cm = context.getSystemService(ConnectivityManager::class.java)
-            val caps = cm?.getNetworkCapabilities(cm.activeNetwork)
+            val activeNetwork = cm?.activeNetwork
+            val caps = activeNetwork?.let { cm.getNetworkCapabilities(it) }
             val onWifi = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
             if (!onWifi) return@LaunchedEffect
         }
