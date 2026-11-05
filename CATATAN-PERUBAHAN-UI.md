@@ -93,3 +93,8 @@ Berkas diubah
 - Profil kini hanya: header, statistik, Daftarku, menu Pengaturan (+ tombol Masuk untuk tamu). Parameter `ProfileScreen` disederhanakan.
 - Komponen bersama (SettingCard, Segmented, ColorSwatch, dll.) ada di SettingsScreen.kt.
 - String baru: settings_title, settings_hint, settings_playback, settings_account (id & en).
+
+## Beranda — hero naik penuh ke atas layar
+- Poster hero tetap layar penuh seperti semula (HomeScreen.kt tidak diubah); strip hitam di atasnya dihilangkan.
+- Tema: statusBarColor transparan; values-v28/themes.xml menambah windowLayoutInDisplayCutoutMode=shortEdges.
+- MainActivity: setelah enableEdgeToEdge, dipaksa setDecorFitsSystemWindows(false), status bar transparan, tanpa contrast scrim, dan cutout mode shortEdges/always supaya konten menembus area poni.
