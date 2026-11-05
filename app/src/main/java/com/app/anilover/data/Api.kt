@@ -531,7 +531,8 @@ class HistoryStore(private val context: Context) {
 
 data class AniloverSettings(
     val autoplayNext: Boolean = true,
-    val subtitleDefault: String = "id",
+    /** auto (ikuti bahasa aplikasi) | id | en | off. */
+    val subtitleDefault: String = "auto",
     /** Ukuran teks subtitle: kecil | sedang | besar. */
     val subtitleSize: String = "sedang",
     /** Warna teks subtitle: putih | kuning | hijau. */
@@ -557,7 +558,7 @@ class LibraryStore(private val context: Context) {
     val settings: Flow<AniloverSettings> = context.dataStore.data.map { prefs ->
         AniloverSettings(
             autoplayNext = prefs[AUTOPLAY_KEY] ?: true,
-            subtitleDefault = prefs[SUBTITLE_KEY] ?: "id",
+            subtitleDefault = prefs[SUBTITLE_KEY] ?: "auto",
             subtitleSize = prefs[SUBSIZE_KEY] ?: "sedang",
             subtitleColor = prefs[SUBCOLOR_KEY] ?: "putih",
             smartDownloads = prefs[SMART_KEY] ?: false,

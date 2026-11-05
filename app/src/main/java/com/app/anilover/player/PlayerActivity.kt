@@ -27,6 +27,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -107,6 +108,14 @@ import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.media3.common.Tracks
+import androidx.media3.common.TrackSelectionParameters
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.heightIn
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -142,7 +151,6 @@ import com.app.anilover.ui.formatRemaining
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONArray
-import java.util.Locale
 
 private val SPEEDS = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f)
 
@@ -239,7 +247,7 @@ class PlayerActivity : FragmentActivity() {
         currentEp = intent.getIntExtra(EXTRA_EPISODE, 1)
         val startPos = intent.getLongExtra(EXTRA_START_POS, 0L)
         val autoplayNext = intent.getBooleanExtra(EXTRA_AUTOPLAY, true)
-        val subtitleDefault = intent.getStringExtra(EXTRA_SUBTITLE) ?: "id"
+        val subtitleDefault = intent.getStringExtra(EXTRA_SUBTITLE) ?: SubtitleLang.AUTO
         val meta = intent.getStringExtra(EXTRA_META) ?: ""
         val episodes = parseEpisodes(intent.getStringExtra(EXTRA_EPISODES) ?: "[]")
         PlaybackHolder.title = title
@@ -523,6 +531,8 @@ private fun PlayerScreen(
     var isPlaying by remember { mutableStateOf(false) }
     var isBuffering by remember { mutableStateOf(true) }
     var ended by remember { mutableStateOf(false) }
+    // true = trek subtitle episode ini belum dipilih otomatis (sekali per episode, tidak menimpa pilihan manual).
+    val subtitlePending = remember { java.util.concurrent.atomic.AtomicBoolean(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var positionMs by remember { mutableLongStateOf(0L) }
     var bufferedMs by remember { mutableLongStateOf(0L) }
@@ -568,12 +578,17 @@ private fun PlayerScreen(
     }
 
     fun loadEpisode(ep: Int, playlist: String, pos: Long) {
+        // Subtitle otomatis: "auto" mengikuti bahasa aplikasi; pemilihan trek final
+        // dilakukan di onTracksChanged (cocokkan kode bahasa maupun label trek).
+        val wantedLang = SubtitleLang.resolve(subtitleDefault, context)
+        subtitlePending.set(wantedLang != null)
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
-            if (subtitleDefault == "off") {
+            clearOverridesOfType(C.TRACK_TYPE_TEXT)
+            if (wantedLang == null) {
                 setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
             } else {
                 setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                setPreferredTextLanguage(subtitleDefault)
+                setPreferredTextLanguage(wantedLang)
             }
         }.build()
         player.setMediaItem(
@@ -627,6 +642,19 @@ private fun PlayerScreen(
                 isPlaying = playing
                 // Putar ulang setelah selesai: bersihkan tanda "selesai".
                 if (playing) ended = false
+            }
+            override fun onTracksChanged(tracks: Tracks) {
+                if (!subtitlePending.get()) return
+                val groups = tracks.groups
+                if (groups.none { it.type == C.TRACK_TYPE_TEXT }) return
+                subtitlePending.set(false)
+                val lang = SubtitleLang.resolve(subtitleDefault, context) ?: return
+                val (group, index) = SubtitleLang.pick(groups, lang) ?: return
+                if (group.isTrackSelected(index)) return
+                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                    .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, index))
+                    .build()
             }
             override fun onPlaybackStateChanged(state: Int) {
                 isBuffering = state == Player.STATE_BUFFERING
@@ -1233,7 +1261,7 @@ private fun PlayerScreen(
 }
 
 @Composable
-private fun PanelSheet(onClose: () -> Unit, content: @Composable () -> Unit) {
+private fun PanelSheet(onClose: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     Box(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).clickable(onClick = onClose))
         Column(
@@ -1243,76 +1271,101 @@ private fun PanelSheet(onClose: () -> Unit, content: @Composable () -> Unit) {
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                 ) {}
-                .padding(18.dp),
+                .navigationBarsPadding()
+                .padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 12.dp),
         ) { content() }
     }
 }
 
 @Composable
+private fun TrackRow(title: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            title,
+            color = if (selected) AniloverAccent else Color.White,
+            fontSize = 15.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = AniloverAccent)
+    }
+}
+
+@Composable
+private fun TrackSectionLabel(text: String) {
+    Text(
+        text, color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 2.dp),
+    )
+}
+
+@Composable
 private fun TracksPanel(player: ExoPlayer, onClose: () -> Unit) {
+    val context = LocalContext.current
     var refresh by remember { mutableIntStateOf(0) }
-    PanelSheet(onClose = onClose) {
-        Text(Str.get(R.string.title_audio_subtitles), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        Spacer(Modifier.height(8.dp))
-        val groups = player.currentTracks.groups
-        val audio = groups.filter { it.type == C.TRACK_TYPE_AUDIO }
-        val text = groups.filter { it.type == C.TRACK_TYPE_TEXT }
-        if (audio.isEmpty() && text.isEmpty()) {
-            Text(Str.get(R.string.no_extra_tracks), color = AniloverTextDim, fontSize = 13.sp)
+    // Segarkan daftar begitu pemutar selesai menerapkan pilihan (tanda centang selalu akurat).
+    DisposableEffect(player) {
+        val l = object : Player.Listener {
+            override fun onTracksChanged(tracks: Tracks) { refresh++ }
+            override fun onTrackSelectionParametersChanged(parameters: TrackSelectionParameters) { refresh++ }
         }
-        if (audio.isNotEmpty()) {
-            Text("Audio", color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            for (g in audio) {
-                for (i in 0 until g.length) {
-                    val f = g.getTrackFormat(i)
-                    val label = trackLabel(f.language, f.label, "Audio ${i + 1}")
-                    Row(
-                        Modifier.fillMaxWidth().clickable {
-                            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                                .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, i)).build()
-                            refresh++
-                        }.padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(label, color = Color.White, modifier = Modifier.weight(1f))
-                        if (g.isTrackSelected(i)) Icon(Icons.Filled.Check, contentDescription = null, tint = AniloverAccent)
+        player.addListener(l)
+        onDispose { player.removeListener(l) }
+    }
+    val locale = SubtitleLang.appLocale(context)
+    val forced = Str.get(R.string.track_forced)
+    val audio = remember(refresh) {
+        SubtitleLang.entries(player.currentTracks.groups, C.TRACK_TYPE_AUDIO, locale,
+            { Str.get(R.string.track_audio_n, it) }, forced)
+    }
+    val text = remember(refresh) {
+        SubtitleLang.entries(player.currentTracks.groups, C.TRACK_TYPE_TEXT, locale,
+            { Str.get(R.string.track_subtitle_n, it) }, forced)
+    }
+    val textOff = remember(refresh) {
+        player.trackSelectionParameters.disabledTrackTypes.contains(C.TRACK_TYPE_TEXT) || text.none { it.selected }
+    }
+
+    PanelSheet(onClose = onClose) {
+        Text(Str.get(R.string.title_audio_subtitles), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        Spacer(Modifier.height(8.dp))
+        Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+            if (audio.isEmpty() && text.isEmpty()) {
+                Text(Str.get(R.string.no_extra_tracks), color = AniloverTextDim, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp))
+            }
+            if (audio.isNotEmpty()) {
+                TrackSectionLabel(Str.get(R.string.section_audio))
+                for (e in audio) {
+                    TrackRow(e.title, e.selected) {
+                        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                            .setOverrideForType(TrackSelectionOverride(e.group.mediaTrackGroup, e.index)).build()
                     }
                 }
             }
-        }
-        if (text.isNotEmpty()) {
-            Spacer(Modifier.height(6.dp))
-            Text("Subtitle", color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            Row(
-                Modifier.fillMaxWidth().clickable {
+            if (text.isNotEmpty()) {
+                if (audio.isNotEmpty()) Spacer(Modifier.height(8.dp))
+                TrackSectionLabel(Str.get(R.string.section_subtitle))
+                TrackRow(Str.get(R.string.off), textOff) {
                     player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
                         .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
-                    refresh++
-                }.padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(Str.get(R.string.off), color = Color.White, modifier = Modifier.weight(1f))
-            }
-            for (g in text) {
-                for (i in 0 until g.length) {
-                    val f = g.getTrackFormat(i)
-                    val label = trackLabel(f.language, f.label, "Subtitle ${i + 1}")
-                    Row(
-                        Modifier.fillMaxWidth().clickable {
-                            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                                .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, i)).build()
-                            refresh++
-                        }.padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(label, color = Color.White, modifier = Modifier.weight(1f))
-                        if (g.isTrackSelected(i)) Icon(Icons.Filled.Check, contentDescription = null, tint = AniloverAccent)
+                }
+                for (e in text) {
+                    TrackRow(e.title, e.selected && !textOff) {
+                        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                            .setOverrideForType(TrackSelectionOverride(e.group.mediaTrackGroup, e.index)).build()
                     }
                 }
             }
         }
-        if (refresh < 0) Text("") // penanda state dibaca ulang
     }
 }
 
@@ -1359,14 +1412,6 @@ private fun QualityPanel(player: ExoPlayer, onClose: () -> Unit) {
         }
         if (refresh < 0) Text("")
     }
-}
-
-private fun trackLabel(language: String?, label: String?, fallback: String): String {
-    if (!label.isNullOrBlank()) return label
-    if (!language.isNullOrBlank() && language != "und") {
-        return Locale(language).getDisplayLanguage(Locale.getDefault()).ifBlank { language }
-    }
-    return fallback
 }
 
 private fun speedLabel(s: Float): String =

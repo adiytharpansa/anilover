@@ -52,7 +52,7 @@
     <string name="crash_title">The app stopped unexpectedly</string>
     <string name="create_account">Create Account</string>
     <string name="default_subtitle">Default subtitle</string>
-    <string name="default_subtitle_desc">Selected automatically when an episode starts playing</string>
+    <string name="default_subtitle_desc">Auto follows the app language, applied when an episode starts playing</string>
     <string name="delete">Delete</string>
     <string name="delete_comment_msg">This comment will be permanently deleted.</string>
     <string name="delete_comment_q">Delete comment?</string>
@@ -280,4 +280,10 @@
     <string name="verify_unavailable">Email verification is only available for Firebase accounts.</string>
     <string name="verify_unverified">Email not verified yet</string>
     <string name="verify_verified">Email verified</string>
+    <string name="lang_auto">Auto</string>
+    <string name="track_audio_n">Audio %1$d</string>
+    <string name="track_subtitle_n">Subtitle %1$d</string>
+    <string name="track_forced">Forced</string>
+    <string name="section_audio">Audio</string>
+    <string name="section_subtitle">Subtitles</string>
 </resources>

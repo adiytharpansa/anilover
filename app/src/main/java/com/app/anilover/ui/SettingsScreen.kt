@@ -136,6 +136,7 @@ fun SettingsScreen(
                     ) {
                         Segmented(
                             options = listOf(
+                                "auto" to Str.get(R.string.lang_auto),
                                 "id" to Str.get(R.string.lang_indonesian),
                                 "en" to Str.get(R.string.lang_english),
                                 "off" to Str.get(R.string.off),

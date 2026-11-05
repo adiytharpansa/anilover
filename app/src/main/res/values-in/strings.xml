@@ -51,7 +51,7 @@
     <string name="crash_title">Aplikasi sempat berhenti</string>
     <string name="create_account">Buat Akun</string>
     <string name="default_subtitle">Subtitle bawaan</string>
-    <string name="default_subtitle_desc">Dipilih otomatis saat episode mulai diputar</string>
+    <string name="default_subtitle_desc">Otomatis mengikuti bahasa aplikasi, dipilih saat episode mulai diputar</string>
     <string name="delete">Hapus</string>
     <string name="delete_comment_msg">Komentar ini akan dihapus permanen.</string>
     <string name="delete_comment_q">Hapus komentar?</string>
@@ -271,4 +271,10 @@
     <string name="verify_unavailable">Verifikasi email hanya tersedia untuk akun Firebase.</string>
     <string name="verify_unverified">Email belum terverifikasi</string>
     <string name="verify_verified">Email terverifikasi</string>
+    <string name="lang_auto">Otomatis</string>
+    <string name="track_audio_n">Audio %1$d</string>
+    <string name="track_subtitle_n">Subtitle %1$d</string>
+    <string name="track_forced">Paksa</string>
+    <string name="section_audio">Audio</string>
+    <string name="section_subtitle">Subtitle</string>
 </resources>
