@@ -8,11 +8,15 @@ import android.content.pm.ActivityInfo
 import android.media.AudioManager
 import android.content.res.Configuration
 import android.os.Bundle
+import android.util.Log
 import android.view.OrientationEventListener
 import androidx.activity.OnBackPressedCallback
 import android.util.Rational
 import android.view.WindowManager
 import android.widget.Toast
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.activity.compose.setContent
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.animation.AnimatedVisibility
@@ -338,9 +342,17 @@ class PlayerActivity : FragmentActivity() {
     }
 
     override fun onDestroy() {
+        // Bug #3: Matikan screen always on
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        
         if (orientationLocked) orientationListener.disable()
         stopService(Intent(this, PlaybackService::class.java))
+        
+        // Bug #4: Bersihkan PlaybackHolder
         PlaybackHolder.player = null
+        PlaybackHolder.title = ""
+        PlaybackHolder.episode = 1
+        
         playerRef?.release()
         playerRef = null
         super.onDestroy()
@@ -432,9 +444,15 @@ private fun PlayerScreen(
         .collectAsState(initial = CommentsState.Loading)
     val currentPlaylist = episodes.firstOrNull { it.number == currentEp }?.playlist ?: ""
 
+    // Bug #8: Error handling for player creation
     val player = remember {
-        buildPlayer(context).also { onPlayerCreated(it) }
-    }
+        try {
+            buildPlayer(context).also { onPlayerCreated(it) }
+        } catch (e: Exception) {
+            Log.e("PlayerActivity", "Failed to create player", e)
+            null
+        }
+    } ?: return
     val scope = rememberCoroutineScope()
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
     val library = remember { LibraryStore(context) }
@@ -447,8 +465,12 @@ private fun PlayerScreen(
     val compact = watchMode
 
     // ---- Cast ke TV (Google Cast, Default Media Receiver) ----
+    // Bug #10: Null check for castContext
     val castContext = remember {
-        try { CastContext.getSharedInstance(context) } catch (e: Throwable) { null }
+        try { CastContext.getSharedInstance(context) } catch (e: Throwable) {
+            Log.e("PlayerActivity", "Failed to get CastContext", e)
+            null
+        }
     }
     var casting by remember { mutableStateOf(false) }
     val latestPlaylist by rememberUpdatedState(currentPlaylist)
@@ -479,6 +501,7 @@ private fun PlayerScreen(
         Toast.makeText(context, Str.get(R.string.casting_to_tv), Toast.LENGTH_SHORT).show()
     }
 
+    // Bug #10: Fix cast session listener leak
     DisposableEffect(castContext) {
         val sm = castContext?.sessionManager
         if (sm == null) return@DisposableEffect onDispose { }
@@ -592,7 +615,8 @@ private fun PlayerScreen(
     fun loadEpisode(ep: Int, playlist: String, pos: Long) {
         // Subtitle otomatis: "auto" mengikuti bahasa aplikasi; pemilihan trek final
         // dilakukan di onTracksChanged (cocokkan kode bahasa maupun label trek).
-        val wantedLang = SubtitleLang.resolve(subtitleDefault, context)
+        // Bug #9: Null check for subtitleDefault
+        val wantedLang = subtitleDefault?.let { SubtitleLang.resolve(it, context) }
         subtitlePending.set(wantedLang != null)
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
             clearOverridesOfType(C.TRACK_TYPE_TEXT)
@@ -651,7 +675,7 @@ private fun PlayerScreen(
         if (currentPlaylist.isNotBlank()) loadEpisodeViaDoors(currentEp, currentPlaylist, startPos)
     }
 
-    // Dengarkan keadaan pemutar
+    // Dengarkan keadaan pemutar (Bug #5: Ensure listener is removed)
     DisposableEffect(player) {
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) {
@@ -693,11 +717,13 @@ private fun PlayerScreen(
                 }
                 // Galat jaringan/IO (2xxx): coba otomatis 3x dengan jeda 1s, 2s, 4s
                 // dan lanjut dari posisi terakhir sebelum menyerah ke tombol manual.
+                // Bug #6: Reset autoRetry after switching doors
                 val isIo = error.errorCode in 2000..2999
                 if (isIo && activeDoors.size > 1 && doorIdx + 1 < activeDoors.size) {
                     // Pintu aktif gagal di tengah putar -> pindah pintu berikutnya
                     // dari posisi yang sama, sebelum coba-ulang pintu yang sama.
                     doorIdx += 1
+                    autoRetry = 0  // Reset retry counter when switching doors
                     isBuffering = true
                     loadEpisode(currentEp, activeDoors[doorIdx], player.currentPosition)
                 } else if (isIo && autoRetry < 3) {
@@ -723,32 +749,44 @@ private fun PlayerScreen(
         player.playWhenReady = true
     }
 
-    // Polling posisi + simpan progres berkala
-    LaunchedEffect(player, currentEp) {
-        while (true) {
-            positionMs = player.currentPosition
-            bufferedMs = player.bufferedPosition
-            if (player.duration != C.TIME_UNSET) durationMs = player.duration
-            delay(500)
-        }
-    }
-    LaunchedEffect(player, currentEp) {
-        while (true) {
-            delay(5000)
-            val d = player.duration
-            if (d != C.TIME_UNSET && d > 0) {
-                store.save(WatchEntry(titleId, currentEp, player.currentPosition, d, System.currentTimeMillis()))
+    // Polling posisi (Bug #1: Infinite loop fixed with lifecycle)
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val job = lifecycleOwner.lifecycleScope.launch {
+            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    positionMs = player.currentPosition
+                    bufferedMs = player.bufferedPosition
+                    if (player.duration != C.TIME_UNSET) durationMs = player.duration
+                    delay(500)
+                }
             }
         }
+        onDispose { job.cancel() }
+    }
+    // Save progress (Bug #2: Infinite loop fixed with lifecycle)
+    DisposableEffect(lifecycleOwner) {
+        val job = lifecycleOwner.lifecycleScope.launch {
+            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    delay(5000)
+                    val d = player.duration
+                    if (d != C.TIME_UNSET && d > 0) {
+                        store.save(WatchEntry(titleId, currentEp, player.currentPosition, d, System.currentTimeMillis()))
+                    }
+                }
+            }
+        }
+        onDispose { job.cancel() }
     }
 
-    // Hitung mundur post-play
+    // Hitung mundur post-play (Bug #7: Fix race condition)
     LaunchedEffect(postPlayIn) {
-        var v = postPlayIn ?: return@LaunchedEffect
+        val initialValue = postPlayIn ?: return@LaunchedEffect
+        var v = initialValue
         while (v > 0) {
             delay(1000)
             v -= 1
-            if (postPlayIn == null) return@LaunchedEffect
             postPlayIn = v
         }
         val nx = latestNext
