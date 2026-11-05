@@ -138,8 +138,31 @@ internal fun WatchPage(
                         color = AniloverAccent, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                     )
                     if (meta.isNotBlank()) {
-                        Spacer(Modifier.height(2.dp))
-                        Text(meta, color = AniloverTextDim, fontSize = 12.sp, maxLines = 2)
+                        // Meta = "★ 6.0 · 2009 · Genre A, Genre B": info (skor/tahun) satu baris,
+                        // genre jadi chip yang bisa digeser, supaya tidak terpotong di tengah nama.
+                        val parts = meta.split(" · ").map { it.trim() }.filter { it.isNotEmpty() }
+                        val isInfo = { x: String -> x.startsWith("★") || x.matches(Regex("\\d{4}")) }
+                        val info = parts.filter(isInfo).joinToString(" · ")
+                        val genres = parts.filterNot(isInfo).flatMap { g -> g.split(",").map { it.trim() } }
+                            .filter { it.isNotEmpty() }
+                        if (info.isNotEmpty()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(info, color = AniloverTextDim, fontSize = 12.sp, maxLines = 1)
+                        }
+                        if (genres.isNotEmpty()) {
+                            Spacer(Modifier.height(8.dp))
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                items(genres) { g ->
+                                    Text(
+                                        g, color = AniloverTextDim, fontSize = 11.sp, maxLines = 1,
+                                        modifier = Modifier
+                                            .clip(AniloverShapes.Pill)
+                                            .background(AniloverSurfaceHigh)
+                                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                                    )
+                                }
+                            }
+                        }
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {

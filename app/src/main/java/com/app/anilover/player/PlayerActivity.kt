@@ -16,16 +16,22 @@ import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -88,6 +94,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -509,6 +516,11 @@ private fun PlayerScreen(
             "hijau" -> android.graphics.Color.GREEN
             else -> android.graphics.Color.WHITE
         }
+        // Tanpa latar & tanpa kontur tebal: hanya bayangan halus + huruf agak tebal.
+        // Gaya bawaan dari berkas subtitle (warna/ukuran ASS) diabaikan agar pilihan
+        // warna & ukuran pengguna selalu berlaku dan teks tidak jadi redup.
+        sv.setApplyEmbeddedStyles(false)
+        sv.setApplyEmbeddedFontSizes(false)
         sv.setStyle(
             CaptionStyleCompat(
                 fg,
@@ -516,7 +528,7 @@ private fun PlayerScreen(
                 android.graphics.Color.TRANSPARENT,
                 CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
                 android.graphics.Color.BLACK,
-                null,
+                android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL),
             )
         )
         sv.setFractionalTextSize(
@@ -762,6 +774,14 @@ private fun PlayerScreen(
         seekFeedback = if (delta > 0) Str.get(R.string.seek_fwd) else Str.get(R.string.seek_back)
     }
 
+    val controlsVisible = showControls && !locked && !inPip && errorMsg == null
+    val density = LocalDensity.current
+    // Subtitle naik di atas bar kontrol saat kontrol tampil, turun lagi saat disembunyikan.
+    val subtitleLift by animateDpAsState(
+        targetValue = if (controlsVisible) (if (compact) 84.dp else 104.dp) else 0.dp,
+        animationSpec = tween(180), label = "subtitleLift",
+    )
+
     val videoLayer: @Composable (Modifier) -> Unit = { videoMod ->
     Box(videoMod.background(Color.Black)) {
         AndroidView(
@@ -776,6 +796,7 @@ private fun PlayerScreen(
             update = {
                 it.resizeMode = resizeMode
                 if (playerViewRef !== it) playerViewRef = it
+                it.subtitleView?.setPadding(0, 0, 0, with(density) { subtitleLift.roundToPx() })
             },
             modifier = Modifier.fillMaxSize(),
         )
@@ -967,12 +988,18 @@ private fun PlayerScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = Str.get(R.string.back), tint = Color.White)
                     }
-                    Column(Modifier.weight(1f)) {
-                        Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                        Text(
-                            if (casting) Str.get(R.string.ep_of_casting, currentEp, episodes.size) else Str.get(R.string.ep_of, currentEp, episodes.size),
-                            color = AniloverTextDim, fontSize = 12.sp,
-                        )
+                    // Mode potret: judul & "Episode x dari y" sudah ada di bawah video, jadi
+                    // tidak diulang di sini (kecuali saat Cast, supaya status tetap terlihat).
+                    if (!compact || casting) {
+                        Column(Modifier.weight(1f)) {
+                            if (!compact) Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                            Text(
+                                if (casting) Str.get(R.string.ep_of_casting, currentEp, episodes.size) else Str.get(R.string.ep_of, currentEp, episodes.size),
+                                color = AniloverTextDim, fontSize = 12.sp,
+                            )
+                        }
+                    } else {
+                        Spacer(Modifier.weight(1f))
                     }
                     if (castContext != null) {
                         AndroidView(
@@ -1087,21 +1114,13 @@ private fun PlayerScreen(
         val skipVisible = !ended && !inPip && !locked && durationMs > 180_000 && positionMs > 0 &&
             positionMs <= (if (introDataMs > 0) introDataMs else 85_000L)
         if (skipVisible) {
-            Surface(
-                color = AniloverAccent,
-                shape = AniloverShapes.Button,
-                modifier = Modifier.align(Alignment.BottomEnd)
-                    .padding(end = if (compact) 10.dp else 22.dp, bottom = if (compact) 56.dp else 108.dp)
-                    .clickable {
-                        val target = minOf(skipTargetMs, (durationMs - 5_000).coerceAtLeast(0L))
-                        player.seekTo(target)
-                        showControls = false
-                    },
+            PlayerActionChip(
+                text = Str.get(R.string.skip_intro), compact = compact, controlsVisible = controlsVisible,
+                container = AniloverAccent, content = AniloverOnAccent,
             ) {
-                Text(
-                    Str.get(R.string.skip_intro), color = AniloverOnAccent, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
-                )
+                val target = minOf(skipTargetMs, (durationMs - 5_000).coerceAtLeast(0L))
+                player.seekTo(target)
+                showControls = false
             }
         }
 
@@ -1109,18 +1128,10 @@ private fun PlayerScreen(
         if (!ended && !inPip && !locked && nextEp != null && durationMs > 0 &&
             (durationMs - positionMs) > 0 && (durationMs - positionMs) <= 45_000
         ) {
-            Surface(
-                color = AniloverSurface,
-                shape = AniloverShapes.Button,
-                modifier = Modifier.align(Alignment.BottomEnd)
-                    .padding(end = if (compact) 10.dp else 22.dp, bottom = if (compact) 56.dp else 108.dp)
-                    .clickable { switchTo(nextEp) },
-            ) {
-                Text(
-                    Str.get(R.string.next_episode), color = Color.White, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
-                )
-            }
+            PlayerActionChip(
+                text = Str.get(R.string.next_episode), compact = compact, controlsVisible = controlsVisible,
+                container = AniloverSurface, content = Color.White,
+            ) { switchTo(nextEp) }
         }
 
         // Post-play: episode berikutnya
@@ -1417,6 +1428,46 @@ private fun QualityPanel(player: ExoPlayer, onClose: () -> Unit) {
 private fun speedLabel(s: Float): String =
     if (s == s.toInt().toFloat()) "${s.toInt()}x" else "${s}x"
 
+/**
+ * Tombol aksi melayang (Lewati Intro / Episode Berikutnya). Tidak menutupi seekbar:
+ * - kontrol tersembunyi: di pojok kanan bawah,
+ * - kontrol tampil, layar besar: tepat di atas bar kontrol,
+ * - kontrol tampil, mode potret (video pendek): di pojok kanan atas, di bawah bar judul.
+ */
+@Composable
+private fun BoxScope.PlayerActionChip(
+    text: String,
+    compact: Boolean,
+    controlsVisible: Boolean,
+    container: Color,
+    content: Color,
+    onClick: () -> Unit,
+) {
+    val bottom by animateDpAsState(
+        targetValue = if (controlsVisible) 108.dp else 24.dp, animationSpec = tween(180), label = "chipBottom",
+    )
+    val onTop = compact && controlsVisible
+    Surface(
+        color = container,
+        shape = AniloverShapes.Button,
+        modifier = Modifier
+            .align(if (onTop) Alignment.TopEnd else Alignment.BottomEnd)
+            .padding(
+                end = if (compact) 12.dp else 24.dp,
+                top = if (onTop) 56.dp else 0.dp,
+                bottom = if (onTop) 0.dp else if (compact) 14.dp else bottom,
+            )
+            .clip(AniloverShapes.Button)
+            .clickable(onClick = onClick),
+    ) {
+        Text(
+            text, color = content, fontWeight = FontWeight.Bold,
+            fontSize = if (compact) 13.sp else 14.sp, maxLines = 1,
+            modifier = Modifier.padding(horizontal = if (compact) 14.dp else 18.dp, vertical = if (compact) 7.dp else 10.dp),
+        )
+    }
+}
+
 @Composable
 private fun NetflixSeekBar(
     positionMs: Long,
@@ -1424,21 +1475,27 @@ private fun NetflixSeekBar(
     durationMs: Long,
     onScrub: (Long) -> Unit,
 ) {
+    // Lintasan diberi ruang sebesar jari-jari thumb di kiri & kanan, sehingga thumb
+    // selalu bulat penuh (dulu terpotong di awal video -> tampak seperti pil).
+    val thumb = 16.dp
+    val inset = thumb / 2
     var scrubFrac by remember { mutableStateOf<Float?>(null) }
     val played = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     val buffered = if (durationMs > 0) (bufferedMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+    val shown = scrubFrac ?: played
     Box(
         Modifier.fillMaxWidth().height(32.dp).pointerInput(durationMs) {
+            val pad = inset.toPx()
+            fun frac(x: Float) = ((x - pad) / (size.width - 2 * pad).coerceAtLeast(1f)).coerceIn(0f, 1f)
             detectTapGestures { off ->
-                if (durationMs > 0) {
-                    val f = (off.x / size.width).coerceIn(0f, 1f)
-                    onScrub((f * durationMs).toLong())
-                }
+                if (durationMs > 0) onScrub((frac(off.x) * durationMs).toLong())
             }
         }.pointerInput(durationMs) {
+            val pad = inset.toPx()
+            fun frac(x: Float) = ((x - pad) / (size.width - 2 * pad).coerceAtLeast(1f)).coerceIn(0f, 1f)
             detectDragGestures(
-                onDragStart = { off -> scrubFrac = (off.x / size.width).coerceIn(0f, 1f) },
-                onDrag = { change, _ -> scrubFrac = (change.position.x / size.width).coerceIn(0f, 1f) },
+                onDragStart = { off -> scrubFrac = frac(off.x) },
+                onDrag = { change, _ -> scrubFrac = frac(change.position.x) },
                 onDragEnd = {
                     val f = scrubFrac
                     if (f != null && durationMs > 0) onScrub((f * durationMs).toLong())
@@ -1449,14 +1506,18 @@ private fun NetflixSeekBar(
         },
         contentAlignment = Alignment.CenterStart,
     ) {
-        Box(Modifier.fillMaxWidth().height(5.dp).background(Color.White.copy(alpha = 0.25f), AniloverShapes.Pill))
-        Box(Modifier.fillMaxWidth(buffered).height(5.dp).background(Color.White.copy(alpha = 0.45f), AniloverShapes.Pill))
-        Box(Modifier.fillMaxWidth(scrubFrac ?: played).height(5.dp).background(AniloverAccent, AniloverShapes.Pill))
-        Box(
-            Modifier.fillMaxWidth(scrubFrac ?: played),
-            contentAlignment = Alignment.CenterEnd,
-        ) {
-            Box(Modifier.size(16.dp).background(AniloverAccent, AniloverShapes.Pill).border(2.dp, Color.White, AniloverShapes.Pill))
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = inset), contentAlignment = Alignment.CenterStart) {
+            val trackWidth = maxWidth
+            Box(Modifier.fillMaxWidth().height(5.dp).background(Color.White.copy(alpha = 0.25f), AniloverShapes.Pill))
+            Box(Modifier.fillMaxWidth(buffered).height(5.dp).background(Color.White.copy(alpha = 0.45f), AniloverShapes.Pill).align(Alignment.CenterStart))
+            Box(Modifier.fillMaxWidth(shown).height(5.dp).background(AniloverAccent, AniloverShapes.Pill).align(Alignment.CenterStart))
+            Box(
+                Modifier.offset(x = trackWidth * shown - inset)
+                    .size(thumb)
+                    .background(AniloverAccent, CircleShape)
+                    .border(2.dp, Color.White, CircleShape)
+                    .align(Alignment.CenterStart),
+            )
         }
     }
 }
