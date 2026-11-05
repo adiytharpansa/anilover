@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Anilover</string>
     <string name="add_comment">Tambahkan komentar…</string>
     <string name="add_to_list">Tambah ke Daftarku</string>
     <string name="ago_day">%1$s hari lalu</string>
@@ -232,27 +233,35 @@
     <string name="write_reply">Tulis balasan…</string>
     <string name="yellow">Kuning</string>
     <plurals name="downloaded_summary">
+        <item quantity="one">%1$d episode terunduh · %2$s</item>
         <item quantity="other">%1$d episode terunduh · %2$s</item>
     </plurals>
     <plurals name="episodes_count">
+        <item quantity="one">%1$d episode</item>
         <item quantity="other">%1$d episode</item>
     </plurals>
     <plurals name="episodes_count_cap">
+        <item quantity="one">%1$d Episode</item>
         <item quantity="other">%1$d Episode</item>
     </plurals>
     <plurals name="history_saved">
+        <item quantity="one">%1$d riwayat tonton tersimpan.</item>
         <item quantity="other">%1$d riwayat tonton tersimpan.</item>
     </plurals>
     <plurals name="notif_more_titles">
+        <item quantity="one">dan %1$d judul lain</item>
         <item quantity="other">dan %1$d judul lain</item>
     </plurals>
     <plurals name="play_in_seconds">
+        <item quantity="one">Diputar dalam %1$d detik…</item>
         <item quantity="other">Diputar dalam %1$d detik…</item>
     </plurals>
     <plurals name="titles_count">
+        <item quantity="one">%1$d judul</item>
         <item quantity="other">%1$d judul</item>
     </plurals>
     <plurals name="view_replies">
+        <item quantity="one">Lihat %1$d balasan</item>
         <item quantity="other">Lihat %1$d balasan</item>
     </plurals>
     <string name="auth_back">Kembali</string>
