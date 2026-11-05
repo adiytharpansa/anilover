@@ -85,6 +85,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -153,6 +154,8 @@ fun HomeScreen(
 
     // Lebar poster seragam di semua baris & grid: 3 kolom, dengan ~8dp kartu ke-4 mengintip.
     val posterW: Dp = ((LocalConfiguration.current.screenWidthDp - 64) / 3f).dp
+    // Baru Ditambahkan: poster potret sedikit lebih besar (± 2,7 kartu terlihat), ala Netflix.
+    val freshW: Dp = (LocalConfiguration.current.screenWidthDp * 0.34f).dp.coerceIn(120.dp, 180.dp)
 
     val listState = rememberLazyListState()
     val fadePx = with(LocalDensity.current) { 240.dp.toPx() }
@@ -231,9 +234,11 @@ fun HomeScreen(
             }
             if (fresh.isNotEmpty()) {
                 item(key = "fresh") {
-                    LandscapeRow(
+                    PosterRow(
                         Str.get(R.string.recently_added), fresh, onOpen, newIds = newIds, myList = myList,
-                        onToggleMyList = onToggleMyList, onSeeAll = onSeeNew,
+                        onPlayFirst = playFirst, onToggleMyList = onToggleMyList,
+                        onDownloadFirst = onDownloadFirst,
+                        cardWidth = freshW, onSeeAll = onSeeNew,
                     )
                 }
             }
@@ -455,15 +460,17 @@ internal fun TrailerPlayer(url: String, controls: Boolean = false) {
     )
 }
 
-/** Kartu Top 10 gaya Netflix: angka raksasa bergaris tepi abu-abu + poster yang menimpanya. */
+/** Kartu Top 10 gaya Netflix: angka raksasa bergaris tepi abu-abu + poster besar yang menimpanya. */
 @Composable
 fun Top10Card(rank: Int, t: Title, onClick: () -> Unit) {
     val pressSource = remember { MutableInteractionSource() }
+    // Ukuran mengikuti lebar layar (± 2,5 kartu terlihat, seperti Netflix seluler).
+    val posterW: Dp = (LocalConfiguration.current.screenWidthDp * 0.33f).dp.coerceIn(112.dp, 170.dp)
     val numStyle = TextStyle(
         fontFamily = AniloverFont,
-        fontSize = if (rank < 10) 110.sp else 82.sp,
+        fontSize = (posterW.value * (if (rank < 10) 1.2f else 0.9f)).sp,
         fontWeight = FontWeight.Bold,
-        letterSpacing = (-6).sp,
+        letterSpacing = (-posterW.value * 0.06f).sp,
     )
     Row(
         Modifier.pressScaleFx(pressSource)
@@ -485,8 +492,8 @@ fun Top10Card(rank: Int, t: Title, onClick: () -> Unit) {
             model = t.poster ?: t.banner,
             contentDescription = t.title,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.width(100.dp).aspectRatio(2f / 3f)
-                .offset(x = (-14).dp)
+            modifier = Modifier.width(posterW).aspectRatio(2f / 3f)
+                .offset(x = -(posterW * 0.12f))
                 .clip(AniloverShapes.Poster).background(AniloverSurface),
         )
     }

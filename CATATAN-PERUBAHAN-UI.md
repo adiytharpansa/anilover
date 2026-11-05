@@ -98,3 +98,7 @@ Berkas diubah
 - Poster hero tetap layar penuh seperti semula (HomeScreen.kt tidak diubah); strip hitam di atasnya dihilangkan.
 - Tema: statusBarColor transparan; values-v28/themes.xml menambah windowLayoutInDisplayCutoutMode=shortEdges.
 - MainActivity: setelah enableEdgeToEdge, dipaksa setDecorFitsSystemWindows(false), status bar transparan, tanpa contrast scrim, dan cutout mode shortEdges/always supaya konten menembus area poni.
+
+## Beranda — ukuran poster ala Netflix
+- Top 10: poster ±33% lebar layar (min 112dp, maks 170dp), angka bergaris ikut membesar proporsional; poster menimpa angka ±12% lebarnya.
+- Baru Ditambahkan: dari banner lanskap 16:9 menjadi poster potret 2:3 (±34% lebar layar, ±2,7 kartu terlihat), dengan lencana BARU, menu tekan-lama, dan tombol + seperti baris poster lain.
