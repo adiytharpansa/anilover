@@ -176,7 +176,7 @@ fun HomeScreen(
     // Bug #2: Use application ImageLoader instead of creating new instance
     val appContext = LocalContext.current.applicationContext
     LaunchedEffect(heroes, top10, fresh) {
-        val loader = coil.Coil.imageLoader()  // Use default ImageLoader from Application
+        val loader = coil.Coil.imageLoader(appContext)  // Use default ImageLoader from Application
         // Bug #3: Use Set to remove duplicates across all lists
         val urls = (heroes.mapNotNull { it.poster ?: it.banner } +
             top10.take(6).mapNotNull { it.poster ?: it.banner } +
