@@ -78,3 +78,11 @@ Berkas diubah
 - Format angka skor & nama bahasa trek audio/subtitle memakai bahasa perangkat.
 - Menambah bahasa baru: salin values/strings.xml ke values-<kode>/ lalu terjemahkan, tambahkan <locale> di locales_config.xml.
 - Tidak ikut diterjemahkan: judul, sinopsis, dan genre dari katalog (datanya dari server), serta pesan diagnostik teknis internal.
+
+## Profil — rapikan total
+- `ProfileScreen` dipindah ke `ui/ProfileScreen.kt` (signature sama, MainActivity tidak berubah).
+- Header bergradasi hijau, avatar bercincin, lencana status email.
+- Statistik jadi 3 kartu berikon; Daftarku kosong tampil dalam kartu.
+- Pengaturan dipecah jadi kartu: Autoplay, Subtitle bawaan (segmented, tidak lagi terpotong "No na ktif"), Tampilan Subtitle (pratinjau langsung, segmented ukuran, pilihan warna bulat).
+- Riwayat: tombol bersihkan selebar penuh (nonaktif bila kosong). Keluar: merah + ikon; tamu: tombol hijau Masuk/Daftar.
+- String baru: `subtitle_preview` (id & en).
