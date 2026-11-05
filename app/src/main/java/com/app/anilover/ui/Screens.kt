@@ -111,10 +111,12 @@ fun SearchScreen(
         onOpen(t)
     }
     val genres = remember(titles) { titles.flatMap { it.genres }.distinct() }
-    val results = titles.filter { t ->
-        (genre == null || t.genres.contains(genre)) &&
-            (query.isBlank() || t.title.contains(query, ignoreCase = true) ||
-                t.genres.any { it.contains(query, ignoreCase = true) })
+    val results = remember(titles, query, genre) {
+        titles.filter { t ->
+            (genre == null || t.genres.contains(genre)) &&
+                (query.isBlank() || t.title.contains(query, ignoreCase = true) ||
+                    t.genres.any { it.contains(query, ignoreCase = true) })
+        }
     }
     // "Sedang Tren Sekarang" ala Netflix: tampil saat kolom masih kosong.
     val trending = remember(titles) {

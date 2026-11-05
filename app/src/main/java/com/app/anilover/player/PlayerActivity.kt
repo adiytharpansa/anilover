@@ -1149,7 +1149,7 @@ private fun PlayerScreen(
             ) {
                 Column {
                     Text(Str.get(R.string.next_episode), color = AniloverTextDim, fontSize = 12.sp)
-                    Text("Episode ${nextEp.number}", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    Text(Str.get(R.string.episode_n, nextEp.number), color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
                     Text(
                         when {
@@ -1249,7 +1249,7 @@ private fun PlayerScreen(
             Panel.Quality -> QualityPanel(player = player, onClose = { panel = Panel.None })
             Panel.Tracks -> TracksPanel(player = player, onClose = { panel = Panel.None })
             Panel.Episodes -> PanelSheet(onClose = { panel = Panel.None }) {
-                Text("Episode", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(Str.get(R.string.episodes_label), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Spacer(Modifier.height(8.dp))
                 LazyColumn(Modifier.fillMaxHeight(0.7f)) {
                     items(episodes) { ep ->
@@ -1260,7 +1260,7 @@ private fun PlayerScreen(
                             }.padding(vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("Episode ${ep.number}", color = if (ep.number == currentEp) AniloverAccent else Color.White, modifier = Modifier.weight(1f))
+                            Text(Str.get(R.string.episode_n, ep.number), color = if (ep.number == currentEp) AniloverAccent else Color.White, modifier = Modifier.weight(1f))
                             if (ep.number == currentEp) Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = AniloverAccent)
                         }
                     }

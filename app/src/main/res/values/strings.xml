@@ -293,4 +293,7 @@
     <string name="downloads_saved_in">Saved to device storage: %1$s</string>
     <string name="downloading_title">downloading…</string>
     <string name="episode_n">Episode %1$d</string>
+    <string name="delete_download_title">Delete download?</string>
+    <string name="delete_download_msg">The video for episode %1$d will be removed from device storage.</string>
+    <string name="episodes_label">Episodes</string>
 </resources>

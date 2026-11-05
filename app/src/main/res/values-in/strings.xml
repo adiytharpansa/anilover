@@ -284,4 +284,7 @@
     <string name="downloads_saved_in">Tersimpan di penyimpanan perangkat: %1$s</string>
     <string name="downloading_title">sedang mengunduh…</string>
     <string name="episode_n">Episode %1$d</string>
+    <string name="delete_download_title">Hapus unduhan?</string>
+    <string name="delete_download_msg">Video episode %1$d akan dihapus dari penyimpanan perangkat.</string>
+    <string name="episodes_label">Episode</string>
 </resources>

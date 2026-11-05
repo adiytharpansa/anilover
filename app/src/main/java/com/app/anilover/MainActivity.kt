@@ -78,6 +78,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -241,9 +242,13 @@ private fun AppRoot(
     var error by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableIntStateOf(0) }
     var selected by remember { mutableStateOf<Title?>(null) }
-    var genreSel by remember { mutableStateOf<String?>(null) }
-    var tab by remember { mutableStateOf(Tab.Home) }
-    var showSettings by remember { mutableStateOf(false) }
+    var genreSel by rememberSaveable { mutableStateOf<String?>(null) }
+    var tab by rememberSaveable { mutableStateOf(Tab.Home) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
+    // Judul yang sedang dibuka disimpan lewat id-nya (Title bukan Parcelable) dan
+    // dipulihkan sekali setelah katalog dimuat, mis. bila Android mematikan aplikasi di latar.
+    var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
+    var restoreTried by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val history by store.entries.collectAsState(initial = emptyList())
@@ -266,7 +271,7 @@ private fun AppRoot(
             title = { Text(Str.get(R.string.crash_title)) },
             text = {
                 Column(Modifier.height(300.dp).verticalScroll(rememberScrollState())) {
-                    Text(crashText!!, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                    Text(crashText.orEmpty(), fontSize = 10.sp, fontFamily = FontFamily.Monospace)
                 }
             },
             confirmButton = {
@@ -373,7 +378,7 @@ private fun AppRoot(
             if (!onWifi) return@LaunchedEffect
         }
         val byId = list.associateBy { it.id }
-        for (d in downloads.filter { it.state == "selesai" }) {
+        for (d in downloads.filter { it.state == "selesai" && it.auto }) {
             val h = history.firstOrNull { it.titleId == d.titleId && it.episode == d.episode }
             if (h != null && h.isFinished) downloader.delete(d)
         }
@@ -382,13 +387,23 @@ private fun AppRoot(
             val next = t.episodes.firstOrNull { it.number == h.episode + 1 } ?: continue
             val exists = downloads.any { it.titleId == t.id && it.episode == next.number }
             if (!exists && downloader.localPlaylistUri(t.id, next.number) == null) {
-                downloader.start(t, next)
+                downloader.start(t, next, auto = true)
             }
         }
     }
 
     fun play(t: Title, ep: Int, pos: Long) =
         onPlay(t, ep, pos, settings.autoplayNext, settings.subtitleDefault)
+
+    LaunchedEffect(selected) { selectedId = selected?.id }
+    LaunchedEffect(titles) {
+        val list = titles
+        if (!restoreTried && list != null) {
+            restoreTried = true
+            val id = selectedId
+            if (selected == null && id != null) selected = list.firstOrNull { it.id == id }
+        }
+    }
 
     // Segarkan status akun (terutama verifikasi email) tiap membuka tab Profil.
     LaunchedEffect(tab) {
@@ -403,7 +418,7 @@ private fun AppRoot(
             SkeletonHome()
         } else {
             OnboardingScreen(
-                titles = titles!!,
+                titles = titles ?: emptyList(),
                 accountName = account?.name ?: "",
                 onFinish = { name, genres, ids ->
                     scope.launch { AuthRepository.completeOnboarding(name, genres, ids) }
@@ -417,6 +432,7 @@ private fun AppRoot(
     BackHandler(enabled = selected == null && showSettings) { showSettings = false }
     BackHandler(enabled = selected != null) { selected = null }
     BackHandler(enabled = selected == null && genreSel != null) { genreSel = null }
+    BackHandler(enabled = selected == null && genreSel == null && !showSettings && tab != Tab.Home) { tab = Tab.Home }
 
     // Status bar ditangani tiap layar (Beranda justru menembusnya); sisi bawah/samping ditangani Scaffold.
     Scaffold(
@@ -459,7 +475,7 @@ private fun AppRoot(
         ) {
             when {
                 selected != null -> {
-                    val t = titles?.firstOrNull { it.id == selected!!.id } ?: selected!!
+                    val t = titles?.firstOrNull { it.id == selected?.id } ?: selected ?: return@Box
                     val similar = (titles ?: emptyList())
                         .filter { it.id != t.id }
                         .sortedByDescending { other ->
@@ -493,7 +509,7 @@ private fun AppRoot(
                     }
                 }
                 genreSel != null -> CategoryScreen(
-                    genre = genreSel!!,
+                    genre = genreSel.orEmpty(),
                     titles = (titles ?: emptyList()).filter { it.genres.contains(genreSel) },
                     onOpen = { selected = it },
                     onBack = { genreSel = null },
@@ -517,7 +533,7 @@ private fun AppRoot(
                     Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(error!!, color = Color.White)
+                    Text(error.orEmpty(), color = Color.White)
                     Spacer(Modifier.height(14.dp))
                     Button(
                         onClick = { error = null; reloadKey++ },
@@ -540,7 +556,7 @@ private fun AppRoot(
                     Box(if (currentTab == Tab.Home) Modifier else Modifier.statusBarsPadding()) {
                     when (currentTab) {
                     Tab.Home -> HomeScreen(
-                        titles = titles!!,
+                        titles = titles ?: emptyList(),
                         history = history,
                         myList = myList,
                         ratings = ratings,
@@ -563,14 +579,14 @@ private fun AppRoot(
                         onRefresh = refreshHome,
                     )
                     Tab.Search -> SearchScreen(
-                        titles = titles!!,
+                        titles = titles ?: emptyList(),
                         onOpen = { selected = it },
                         recents = recents,
                         onSaveRecent = { q -> scope.launch { library.addRecentSearch(q) } },
                         onClearRecents = { scope.launch { library.clearRecentSearches() } },
                     )
                     Tab.New -> NewScreen(
-                        titles = titles!!,
+                        titles = titles ?: emptyList(),
                         soon = soon,
                         reminders = reminders,
                         onToggleReminder = { s -> scope.launch { library.toggleReminder(s.id) } },
@@ -578,11 +594,11 @@ private fun AppRoot(
                     )
                     Tab.Downloads -> DownloadsScreen(
                         downloads = downloads,
-                        titles = titles!!,
+                        titles = titles ?: emptyList(),
                         settings = settings,
                         storageRoot = downloader.storageRoot(),
                         onPlayDownload = { item ->
-                            titles!!.firstOrNull { it.id == item.titleId }?.let { t ->
+                            titles?.firstOrNull { it.id == item.titleId }?.let { t ->
                                 val entry = history.firstOrNull {
                                     it.titleId == item.titleId && it.episode == item.episode &&
                                         it.isStarted && !it.isFinished
@@ -596,7 +612,7 @@ private fun AppRoot(
                         onBrowse = { tab = Tab.Home },
                     )
                     Tab.Profile -> ProfileScreen(
-                        myListTitles = titles!!.filter { myList.contains(it.id) },
+                        myListTitles = (titles ?: emptyList()).filter { myList.contains(it.id) },
                         finishedEpisodes = history.count { it.isFinished },
                         watchedTitles = history.map { it.titleId }.distinct().size,
                         onOpenTitle = { selected = it },

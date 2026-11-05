@@ -122,35 +122,45 @@ fun HomeScreen(
     isRefreshing: Boolean = false,
     onRefresh: () -> Unit = {},
 ) {
-    val byId = titles.associateBy { it.id }
-    val resume: Map<String, WatchEntry> = history
-        .filter {
-            it.isStarted && !it.isFinished && byId.containsKey(it.titleId) &&
-                !hiddenContinue.contains("${it.titleId}|${it.episode}")
-        }
-        .sortedByDescending { it.updatedAt }
-        .distinctBy { it.titleId }
-        .associateBy { it.titleId }
+    // Semua turunan katalog dihitung sekali per perubahan data (bukan tiap recompose,
+    // mis. saat hero berputar tiap 6 dtk atau saat menggulir).
+    val byId = remember(titles) { titles.associateBy { it.id } }
+    val resume: Map<String, WatchEntry> = remember(history, byId, hiddenContinue) {
+        history
+            .filter {
+                it.isStarted && !it.isFinished && byId.containsKey(it.titleId) &&
+                    !hiddenContinue.contains("${it.titleId}|${it.episode}")
+            }
+            .sortedByDescending { it.updatedAt }
+            .distinctBy { it.titleId }
+            .associateBy { it.titleId }
+    }
     // Urutan katalog = urutan terbit di gudang; yang terakhir masuk = terbaru.
-    val newIds = if (titles.size >= 4) titles.takeLast(3).map { it.id }.toSet() else emptySet()
+    val newIds = remember(titles) { if (titles.size >= 4) titles.takeLast(3).map { it.id }.toSet() else emptySet() }
     val playFirst: (Title) -> Unit = { t -> onPlay(t, t.episodes.firstOrNull()?.number ?: 1, 0L) }
 
     // Hero: judul berskor tertinggi yang BUKAN sedang ditonton (itu sudah ada di "Lanjutkan").
-    val heroes = titles.reversed()
-        .filter { !resume.containsKey(it.id) }
-        .sortedByDescending { it.score ?: 0.0 }
-        .take(5)
-        .ifEmpty { titles.take(1) }
-    val genreList = titles.flatMap { it.genres }.groupingBy { it }.eachCount()
-        .entries.sortedByDescending { it.value }.take(10).map { it.key }
-    val fresh = titles.reversed().take(10)
-    val freshIds = fresh.map { it.id }.toSet()
-    val top10 = titles.filter { (it.score ?: 0.0) > 0.0 }.sortedByDescending { it.score }.take(10)
-    val genreRows = genreList.take(4)
-        .map { g -> g to titles.filter { it.genres.contains(g) }.sortedByDescending { it.score ?: 0.0 } }
-        .filter { it.second.size >= 3 }
-        .take(2)
-    val rest = titles.reversed().filter { !freshIds.contains(it.id) }
+    val heroes = remember(titles, resume) {
+        titles.reversed()
+            .filter { !resume.containsKey(it.id) }
+            .sortedByDescending { it.score ?: 0.0 }
+            .take(5)
+            .ifEmpty { titles.take(1) }
+    }
+    val genreList = remember(titles) {
+        titles.flatMap { it.genres }.groupingBy { it }.eachCount()
+            .entries.sortedByDescending { it.value }.take(10).map { it.key }
+    }
+    val fresh = remember(titles) { titles.reversed().take(10) }
+    val freshIds = remember(fresh) { fresh.map { it.id }.toSet() }
+    val top10 = remember(titles) { titles.filter { (it.score ?: 0.0) > 0.0 }.sortedByDescending { it.score }.take(10) }
+    val genreRows = remember(titles, genreList) {
+        genreList.take(4)
+            .map { g -> g to titles.filter { it.genres.contains(g) }.sortedByDescending { it.score ?: 0.0 } }
+            .filter { it.second.size >= 3 }
+            .take(2)
+    }
+    val rest = remember(titles, freshIds) { titles.reversed().filter { !freshIds.contains(it.id) } }
 
     // Lebar poster seragam di semua baris & grid: 3 kolom, dengan ~8dp kartu ke-4 mengintip.
     val posterW: Dp = ((LocalConfiguration.current.screenWidthDp - 64) / 3f).dp
@@ -543,7 +553,7 @@ private fun Billboard(
             ),
     ) {
         if (active && !t.trailer.isNullOrBlank()) {
-            TrailerPlayer(url = t.trailer!!)
+            TrailerPlayer(url = t.trailer.orEmpty())
         } else {
             PosterImage(
                 model = t.poster ?: t.banner,

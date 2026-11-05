@@ -770,6 +770,7 @@ class LibraryStore(private val context: Context) {
                         sizeBytes = o.optLong("b"),
                         updatedAt = o.optLong("u"),
                         uri = o.optString("c", ""),
+                        auto = o.optBoolean("a", false),
                     )
                 )
             }
@@ -785,7 +786,7 @@ class LibraryStore(private val context: Context) {
                     .put("t", d.titleId).put("n", d.titleName).put("e", d.episode)
                     .put("p", d.playlist).put("s", d.state)
                     .put("ts", d.totalSegs).put("ds", d.doneSegs)
-                    .put("b", d.sizeBytes).put("u", d.updatedAt).put("c", d.uri)
+                    .put("b", d.sizeBytes).put("u", d.updatedAt).put("c", d.uri).put("a", d.auto)
             )
         }
         return arr.toString()
@@ -805,6 +806,8 @@ data class DownloadItem(
     val updatedAt: Long = 0,
     /** Alamat berkas video hasil unduhan di penyimpanan perangkat (content:// atau file://). Kosong = unduhan model lama. */
     val uri: String = "",
+    /** true = diunduh otomatis oleh Unduhan Cerdas (hanya yang ini yang boleh dihapus otomatis). */
+    val auto: Boolean = false,
 ) {
     val fraction: Float
         get() = if (totalSegs > 0) (doneSegs.toFloat() / totalSegs).coerceIn(0f, 1f) else 0f
@@ -925,14 +928,14 @@ class DownloadManager(private val context: Context, private val library: Library
         }
     }
 
-    fun start(title: Title, episode: Episode) {
+    fun start(title: Title, episode: Episode, auto: Boolean = false) {
         val key = "${title.id}|${episode.number}"
         synchronized(running) { if (!running.add(key)) return }
         scope.launch {
             var item = DownloadItem(
                 titleId = title.id, titleName = title.title, episode = episode.number,
                 playlist = episode.playlist, state = "mengunduh",
-                updatedAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis(), auto = auto,
             )
             try {
                 library.upsertDownload(item)

@@ -119,3 +119,13 @@ Berkas diubah
 - ui/Screens.kt (DownloadsScreen): kartu penyimpanan (bar: terpakai lain vs unduhan Anilover), Unduhan Cerdas di kartu sendiri, unduhan dikelompokkan per judul (poster + ringkasan + baris episode dengan ikon putar/progres/hapus), status kosong rata tengah.
 - MainActivity.kt: meneruskan downloader.storageRoot() ke DownloadsScreen.
 - strings (id/en): downloads_saved_in, downloading_title, episode_n.
+
+---
+# Tambahan: perbaikan per halaman
+
+- Unduhan Cerdas: hanya episode yang diunduh otomatis (DownloadItem.auto) yang dihapus otomatis; unduhan manual tidak disentuh.
+- Detail: ketuk centang unduhan kini meminta konfirmasi "Hapus unduhan?".
+- Navigasi: tombol Kembali di tab selain Beranda kembali ke Beranda dulu.
+- Beranda: turunan katalog (hero, Top 10, genre, koleksi) dibungkus remember; Cari: hasil pencarian di-remember.
+- Tab, pengaturan, genre, dan judul yang dibuka kini bertahan bila aplikasi dimatikan Android di latar (rememberSaveable; judul dipulihkan lewat id).
+- Teks "Episode" di pemutar & Detail kini lewat strings (episode_n, episodes_label); `!!` berisiko di MainActivity/Detail/Beranda diganti pengaman null.

@@ -142,7 +142,7 @@ fun DetailScreen(
                     .background(AniloverSurface),
             ) {
                 when {
-                    hasTrailer -> TrailerPlayer(title.trailer!!)
+                    hasTrailer -> TrailerPlayer(title.trailer.orEmpty())
                     posterMode -> {
                         PosterImage(
                             model = title.poster,
@@ -377,7 +377,7 @@ fun DetailScreen(
                         Modifier.fillMaxWidth().aspectRatio(16f / 9f)
                             .clip(RoundedCornerShape(8.dp)).background(AniloverSurface),
                     ) {
-                        TrailerPlayer(title.trailer!!, controls = true)
+                        TrailerPlayer(title.trailer.orEmpty(), controls = true)
                     }
                     Spacer(Modifier.height(10.dp))
                     Text(
@@ -471,6 +471,22 @@ private fun EpisodeRow(
 ) {
     val finished = prog != null && prog.isFinished
     val started = prog != null && prog.isStarted && !prog.isFinished
+    var confirmDelete by remember { mutableStateOf(false) }
+    if (confirmDelete && dl != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(Str.get(R.string.delete_download_title)) },
+            text = { Text(Str.get(R.string.delete_download_msg, ep.number)) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { confirmDelete = false; onDeleteDownload(dl) }) {
+                    Text(Str.get(R.string.delete), color = AniloverDanger)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { confirmDelete = false }) { Text(Str.get(R.string.cancel)) }
+            },
+        )
+    }
     Column(
         Modifier.fillMaxWidth().clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 6.dp),
@@ -483,7 +499,7 @@ private fun EpisodeRow(
                 ) {
                     PosterImage(
                         model = ep.thumb,
-                        contentDescription = "Episode ${ep.number}",
+                        contentDescription = Str.get(R.string.episode_n, ep.number),
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize().alpha(if (finished) 0.55f else 1f),
                     )
@@ -499,7 +515,7 @@ private fun EpisodeRow(
                             Modifier.align(Alignment.BottomStart).fillMaxWidth()
                                 .height(3.dp).background(Color.White.copy(alpha = 0.35f)),
                         ) {
-                            Box(Modifier.fillMaxWidth(prog!!.fraction).height(3.dp).background(AniloverAccent))
+                            Box(Modifier.fillMaxWidth((prog?.fraction ?: 0f)).height(3.dp).background(AniloverAccent))
                         }
                     }
                 }
@@ -518,7 +534,7 @@ private fun EpisodeRow(
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    ep.title ?: "Episode ${ep.number}",
+                    ep.title ?: Str.get(R.string.episode_n, ep.number),
                     color = if (finished) AniloverTextDim else Color.White,
                     fontSize = 15.sp, fontWeight = FontWeight.Medium,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -531,7 +547,7 @@ private fun EpisodeRow(
                 }
                 val status = when {
                     finished -> Str.get(R.string.watched)
-                    started -> Str.get(R.string.dur_time_left, formatClock(prog!!.durationMs), formatRemainingPlain(prog.positionMs, prog.durationMs))
+                    started -> Str.get(R.string.dur_time_left, formatClock(prog?.durationMs ?: 0L), formatRemainingPlain(prog?.positionMs ?: 0L, prog?.durationMs ?: 0L))
                     dl?.state == "selesai" -> Str.get(R.string.downloaded_size, formatSize(dl.sizeBytes))
                     else -> null
                 }
@@ -549,7 +565,7 @@ private fun EpisodeRow(
                         Modifier.padding(top = 6.dp).fillMaxWidth().height(3.dp)
                             .clip(AniloverShapes.Pill).background(Color.White.copy(alpha = 0.2f)),
                     ) {
-                        Box(Modifier.fillMaxWidth(prog!!.fraction).height(3.dp).background(AniloverAccent))
+                        Box(Modifier.fillMaxWidth((prog?.fraction ?: 0f)).height(3.dp).background(AniloverAccent))
                     }
                 }
             }
@@ -563,7 +579,7 @@ private fun EpisodeRow(
                     )
                 }
                 // Selesai diunduh: tanda centang aksen (ketuk untuk menghapus unduhan).
-                "selesai" -> IconButton(onClick = { onDeleteDownload(dl) }) {
+                "selesai" -> IconButton(onClick = { confirmDelete = true }) {
                     Icon(Icons.Filled.CheckCircle, contentDescription = Str.get(R.string.delete_download), tint = AniloverAccent)
                 }
                 else -> IconButton(onClick = onDownload) {
