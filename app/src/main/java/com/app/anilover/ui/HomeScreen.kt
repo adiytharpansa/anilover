@@ -153,6 +153,11 @@ fun HomeScreen(
     }
     val fresh = remember(titles) { titles.reversed().take(10) }
     val freshIds = remember(fresh) { fresh.map { it.id }.toSet() }
+    // Donghua (animasi Tiongkok): dikenali dari tag genre "Donghua"/"China"/"Chinese".
+    val donghua = remember(titles) {
+        titles.reversed().filter { t -> t.genres.any { g -> DONGHUA_TAGS.any { g.contains(it, ignoreCase = true) } } }
+            .sortedByDescending { it.score ?: 0.0 }.take(15)
+    }
     val top10 = remember(titles) { titles.filter { (it.score ?: 0.0) > 0.0 }.sortedByDescending { it.score }.take(10) }
     val genreRows = remember(titles, genreList) {
         genreList.take(4)
@@ -262,6 +267,16 @@ fun HomeScreen(
                         onPlayFirst = playFirst, onToggleMyList = onToggleMyList,
                         onDownloadFirst = onDownloadFirst,
                         cardWidth = freshW, onSeeAll = onSeeNew,
+                    )
+                }
+            }
+            if (donghua.size >= 3) {
+                item(key = "donghua") {
+                    PosterRow(
+                        Str.get(R.string.donghua), donghua, onOpen, newIds = newIds, myList = myList,
+                        onPlayFirst = playFirst, onToggleMyList = onToggleMyList,
+                        onDownloadFirst = onDownloadFirst,
+                        cardWidth = posterW, onSeeAll = { onGenre(donghua.first().genres.first { g -> DONGHUA_TAGS.any { g.contains(it, ignoreCase = true) } }) },
                     )
                 }
             }
@@ -406,6 +421,8 @@ private fun HeroPager(
         }
     }
 }
+
+private val DONGHUA_TAGS = listOf("donghua", "china", "chinese")
 
 /** Lebar poster standar seluruh aplikasi (potret 2:3), acuan: baris "Baru Ditambahkan". */
 @Composable
